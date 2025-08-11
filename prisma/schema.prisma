@@ -1,0 +1,158 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id                String           @id @default(cuid())
+  email             String           @unique
+  password          String
+  fullName          String
+  address           String?
+  gender            Gender?
+  nikKtp            String?          @unique
+  phoneNumber       String?
+  bankAccountNumber String?
+  ewalletNumber     String?
+  profilePicture    String?
+  role              Role             @default(EMPLOYEE)
+  status            UserStatus       @default(PENDING)
+  createdAt         DateTime         @default(now())
+  updatedAt         DateTime         @updatedAt
+  notifications     Notification[]
+  taskSubmissions   TaskSubmission[]
+  assignedTasks     Task[]           @relation("TaskAssignee")
+  createdTasks      Task[]           @relation("TaskCreator")
+  transactions      Transaction[]
+
+  @@map("users")
+}
+
+model Task {
+  id                String             @id @default(cuid())
+  title             String
+  description       String
+  dueDate           DateTime?
+  status            TaskStatus         @default(NOT_STARTED)
+  assignment        TaskAssignmentType
+  createdById       String
+  assigneeId        String?
+  validationMessage String?
+  createdAt         DateTime           @default(now())
+  updatedAt         DateTime           @updatedAt
+  notifications     Notification[]
+  submissions       TaskSubmission[]
+  assignee          User?              @relation("TaskAssignee", fields: [assigneeId], references: [id])
+  createdBy         User               @relation("TaskCreator", fields: [createdById], references: [id], onDelete: Cascade)
+
+  @@index([assigneeId], map: "tasks_assigneeId_fkey")
+  @@index([createdById], map: "tasks_createdById_fkey")
+  @@map("tasks")
+}
+
+model TaskSubmission {
+  id           String   @id @default(cuid())
+  taskId       String
+  userId       String
+  description  String?
+  documentUrl  String?
+  documentName String?
+  documentSize Int?
+  submittedAt  DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  task         Task     @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([taskId, userId])
+  @@index([userId], map: "task_submissions_userId_fkey")
+  @@map("task_submissions")
+}
+
+model Transaction {
+  id          String              @id @default(cuid())
+  type        TransactionType
+  category    TransactionCategory
+  amount      Decimal             @db.Decimal(15, 2)
+  description String
+  date        DateTime
+  createdById String
+  createdAt   DateTime            @default(now())
+  updatedAt   DateTime            @updatedAt
+  createdBy   User                @relation(fields: [createdById], references: [id], onDelete: Cascade)
+
+  @@index([createdById], map: "transactions_createdById_fkey")
+  @@map("transactions")
+}
+
+model Notification {
+  id        String   @id @default(cuid())
+  userId    String
+  taskId    String?
+  title     String
+  message   String
+  isRead    Boolean  @default(false)
+  createdAt DateTime @default(now())
+  task      Task?    @relation(fields: [taskId], references: [id])
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([taskId], map: "notifications_taskId_fkey")
+  @@index([userId], map: "notifications_userId_fkey")
+  @@map("notifications")
+}
+
+
+
+enum Role {
+  ADMIN
+  EMPLOYEE
+  CLIENT
+}
+
+enum Gender {
+  MALE
+  FEMALE
+}
+
+enum UserStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum TaskStatus {
+  NOT_STARTED
+  IN_PROGRESS
+  PENDING_VALIDATION
+  COMPLETED
+}
+
+enum TaskAssignmentType {
+  SPECIFIC
+  ALL_EMPLOYEES
+}
+
+enum TransactionType {
+  INCOME
+  EXPENSE
+}
+
+enum TransactionCategory {
+  SALARY
+  BONUS
+  COMMISSION
+  OTHER_INCOME
+  OFFICE_SUPPLIES
+  UTILITIES
+  RENT
+  MARKETING
+  TRAVEL
+  MEALS
+  EQUIPMENT
+  SOFTWARE
+  TRAINING
+  OTHER_EXPENSE
+}

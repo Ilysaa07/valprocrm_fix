@@ -1,0 +1,79 @@
+nohup: ignoring input
+
+> employee-dashboard@0.1.0 dev
+> next dev --turbopack
+
+   ▲ Next.js 15.4.5 (Turbopack)
+   - Local:        http://localhost:3000
+   - Network:      http://169.254.0.21:3000
+   - Environments: .env
+
+ ✓ Starting...
+ ○ Compiling middleware ...
+ ✓ Compiled middleware in 508ms
+ ✓ Ready in 1896ms
+ ⚠ Your project has `@next/font` installed as a dependency, please use the built-in `next/font` instead. The `@next/font` package will be removed in Next.js 14. You can migrate by running `npx @next/codemod@latest built-in-next-font .`. Read more: https://nextjs.org/docs/messages/built-in-next-font
+ ○ Compiling / ...
+ ✓ Compiled / in 4.1s
+ ⨯ [Error: Element type is invalid: expected a string (for built-in components) or a class/function (for composite components) but got: undefined. You likely forgot to export your component from the file it's defined in, or you might have mixed up default and named imports.] {
+  digest: '330391841'
+}
+ GET / 500 in 4906ms
+ ✓ Compiled /favicon.ico in 483ms
+ GET /favicon.ico 200 in 755ms
+ GET /favicon.ico?favicon.45db1c09.ico 200 in 797ms
+ ⚠ Fast Refresh had to perform a full reload due to a runtime error.
+ ✓ Compiled in 80ms
+ ✓ Compiled / in 39ms
+ GET / 200 in 378ms
+ GET /favicon.ico?favicon.45db1c09.ico 200 in 652ms
+ ○ Compiling /api/auth/[...nextauth] ...
+ ✓ Compiled /api/auth/[...nextauth] in 1335ms
+ GET /api/auth/session 200 in 2137ms
+ ○ Compiling /auth/login ...
+ ✓ Compiled /auth/login in 920ms
+ GET /auth/login 200 in 1002ms
+ GET /api/auth/providers 200 in 68ms
+ GET /api/auth/csrf 200 in 38ms
+ POST /api/auth/callback/credentials 200 in 194ms
+ GET /api/auth/session 200 in 33ms
+ GET / 200 in 89ms
+ GET /api/auth/session 200 in 94ms
+ ○ Compiling /admin ...
+ ✓ Compiled /admin in 601ms
+ GET /admin 200 in 712ms
+ ⚠ Fast Refresh had to perform a full reload due to a runtime error.
+ ✓ Compiled in 159ms
+ ⨯ ReferenceError: ThemeToggle is not defined
+    at AdminLayout (src/components/layout/AdminLayout.tsx:160:15)
+  158 |             </div>
+  159 |             <div className="flex items-center space-x-4">
+> 160 |               <ThemeToggle />
+      |               ^
+  161 |               <NotificationDropdown />
+  162 |               <div className="relative">
+  163 |                 <div className="flex items-center space-x-2 cursor-pointer group"> {
+  digest: '3248834290'
+}
+ GET /admin 500 in 403ms
+ GET /favicon.ico 200 in 239ms
+ ⚠ Fast Refresh had to perform a full reload due to a runtime error.
+ ✓ Compiled in 55ms
+ GET /admin 200 in 365ms
+ GET /favicon.ico?favicon.45db1c09.ico 200 in 267ms
+ GET /api/auth/session 200 in 175ms
+ ✓ Compiled /api/notifications in 454ms
+ GET /api/notifications?limit=5 200 in 536ms
+ GET /api/notifications?unread=true 200 in 533ms
+ ○ Compiling /admin/finance ...
+ ✓ Compiled /admin/finance in 562ms
+ GET /admin/finance 200 in 641ms
+ GET /api/notifications?limit=5 200 in 127ms
+ GET /api/notifications?unread=true 200 in 151ms
+ GET /api/notifications?limit=5 200 in 98ms
+ GET /api/notifications?unread=true 200 in 94ms
+ ○ Compiling /api/transactions ...
+ ✓ Compiled /api/transactions in 680ms
+ GET /api/transactions? 200 in 781ms
+ GET /api/transactions? 200 in 43ms
+[?25h
