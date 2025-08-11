@@ -1,10 +1,11 @@
 'use client'
 
-import { useState, useEffect, useRef, useCallback } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { Bell, X, Volume2, VolumeX } from 'lucide-react'
 import Link from 'next/link'
+import { useToast } from './providers/ToastProvider'
 
-interface Notification {
+interface NotificationItem {
   id: string
   title: string
   message: string
@@ -15,464 +16,273 @@ interface Notification {
 
 export default function NotificationDropdown() {
   const [isOpen, setIsOpen] = useState(false)
-  const [notifications, setNotifications] = useState<Notification[]>([])
+  const [notifications, setNotifications] = useState<NotificationItem[]>([])
   const [unreadCount, setUnreadCount] = useState(0)
   const [loading, setLoading] = useState(false)
   const [soundEnabled, setSoundEnabled] = useState(true)
-  const [previousUnreadCount, setPreviousUnreadCount] = useState(0)
   const [notificationPermission, setNotificationPermission] = useState<NotificationPermission>('default')
-  const [userInteracted, setUserInteracted] = useState(false)
-  const audioRef = useRef<HTMLAudioElement | null>(null)
+  const [mounted, setMounted] = useState(false)
 
-  // Check if browser supports notifications
+  const bellRef = useRef<HTMLButtonElement | null>(null)
+  const prevUnreadRef = useRef<number>(0)
+  const seenIdsRef = useRef<Set<string>>(new Set()) // NEW: untuk anti-duplicate
+  const pollingRef = useRef<number | null>(null)
+  const audioRef = useRef<HTMLAudioElement | null>(null)
+  const { showToast } = useToast()
+
   const notificationSupported = typeof window !== 'undefined' && 'Notification' in window
 
-  // Fallback to standard notification API
-  const fallbackToStandardNotification = useCallback((title: string, options: NotificationOptions) => {
-    const notification = new Notification(title, options)
-    
-    // Handle notification click
-    notification.onclick = () => {
-      // Focus the window and navigate to notifications page if needed
-      window.focus()
-      
-      // Close the notification
-      notification.close()
-      
-      // Open the dropdown if it's not already open
-      if (!isOpen) {
-        setIsOpen(true)
-      }
-    }
-    
-    return notification
-  }, [isOpen, setIsOpen])
-
-  // Show browser notification
-  const showBrowserNotification = useCallback((title: string, options: NotificationOptions = {}) => {
-    if (!notificationSupported || notificationPermission !== 'granted') return
-    
+  const fetchNotifications = useCallback(async (opts?: { limit?: number }) => {
+    setLoading(true)
     try {
-      // Enhanced options for better mobile and desktop experience
-      const enhancedOptions: NotificationOptions = {
-        icon: '/valprologo.webp', // Icon for desktop notifications
-        badge: '/valprologo.webp', // Badge for mobile notifications
-        vibrate: [200, 100, 200], // Vibration pattern for mobile
-        silent: false, // Allow sound on mobile if supported
-        requireInteraction: true, // Keep notification visible until user interacts with it
-        ...options
-      }
-      
-      // Try to use service worker for notifications if available (better for mobile)
-      if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
-        navigator.serviceWorker.ready.then((registration) => {
-          // Use service worker showNotification for better mobile support
-          registration.showNotification(title, {
-            ...enhancedOptions,
-            // Add data for handling notification click
-            data: {
-              url: '/admin/notifications',
-              timestamp: new Date().getTime()
-            },
-            // Add actions for mobile notifications
-            actions: [
-              {
-                action: 'view',
-                title: 'Lihat'
-              },
-              {
-                action: 'close',
-                title: 'Tutup'
-              }
-            ]
-          }).catch(error => {
-            console.error('Error showing notification via service worker:', error)
-          })
-        }).catch(error => {
-          console.error('Service worker not ready:', error)
-          // Fallback to standard notification
-          fallbackToStandardNotification(title, enhancedOptions)
-        })
-      } else {
-        // Fallback to standard notification API
-        return fallbackToStandardNotification(title, enhancedOptions)
-      }
-    } catch (error) {
-      console.error('Error showing browser notification:', error)
-    }
-  }, [notificationSupported, notificationPermission, fallbackToStandardNotification])
+      const params = new URLSearchParams()
+      if (opts?.limit) params.append('limit', String(opts.limit))
 
-  // Play notification sound safely
-  const playNotificationSound = useCallback(() => {
-    if (!soundEnabled || !audioRef.current) return
-    
-    // Only try to play if user has interacted with the page
-    if (userInteracted) {
-      // Create a new audio instance each time to avoid issues with replaying
-      const audio = new Audio('/notification.mp3')
-      audio.volume = 0.5 // Set volume to 50%
-      
-      audio.play().catch(err => {
-        console.error('Error playing notification sound:', err)
-      })
-    }
-  }, [soundEnabled, userInteracted])
+      const res = await fetch(`/api/notifications?${params.toString()}`)
+      if (!res.ok) throw new Error('Fetch failed')
 
-  const fetchUnreadCount = useCallback(async () => {
-    try {
-      const response = await fetch('/api/notifications?unread=true')
-      if (response.ok) {
-        const data = await response.json()
-        const newUnreadCount = data.notifications?.length || 0
-        
-        // Check if there are new notifications
-        if (newUnreadCount > previousUnreadCount) {
-          // Play notification sound
-          playNotificationSound()
-          
-          // Show browser notification if we have permission
-          if (notificationPermission === 'granted' && data.notifications && data.notifications.length > 0) {
-            const latestNotification = data.notifications[0]
-            showBrowserNotification('Notifikasi Baru', {
-              body: latestNotification.message,
-              tag: latestNotification.id, // Prevent duplicate notifications
-              renotify: true
-            })
-          }
-        }
-        
-        setUnreadCount(newUnreadCount)
-        setPreviousUnreadCount(newUnreadCount)
-      }
-    } catch (error) {
-      console.error('Error fetching unread count:', error)
-    }
-  }, [notificationPermission, previousUnreadCount, showBrowserNotification, playNotificationSound])
+      const data = await res.json()
+      setNotifications(data.notifications || [])
 
-  useEffect(() => {
-    fetchNotifications()
-    // Fetch unread count
-    fetchUnreadCount()
-    
-    // Initialize audio element
-    if (typeof window !== 'undefined') {
-      audioRef.current = new Audio('/notification.mp3')
-      // Preload audio to prepare it for playback
-      audioRef.current.load()
-    }
-    
-    // Load sound preference from localStorage
-    const savedSoundPreference = localStorage.getItem('notificationSoundEnabled')
-    if (savedSoundPreference !== null) {
-      setSoundEnabled(savedSoundPreference === 'true')
-    }
-    
-    // Check notification permission
-    if (notificationSupported) {
-      setNotificationPermission(Notification.permission)
-    }
-    
-    // Set up polling for new notifications
-    const intervalId = setInterval(() => {
-      fetchUnreadCount()
-    }, 30000) // Check every 30 seconds
-    
-    // Set user interaction flag when user interacts with the page
-    const handleUserInteraction = () => {
-      setUserInteracted(true)
-      // Remove event listeners after first interaction
-      window.removeEventListener('click', handleUserInteraction)
-      window.removeEventListener('keydown', handleUserInteraction)
-      window.removeEventListener('touchstart', handleUserInteraction)
-    }
-    
-    window.addEventListener('click', handleUserInteraction)
-    window.addEventListener('keydown', handleUserInteraction)
-    window.addEventListener('touchstart', handleUserInteraction)
-    
-    return () => {
-      clearInterval(intervalId)
-      window.removeEventListener('click', handleUserInteraction)
-      window.removeEventListener('keydown', handleUserInteraction)
-      window.removeEventListener('touchstart', handleUserInteraction)
-    }
-  }, [fetchUnreadCount, notificationSupported])
-
-  const fetchNotifications = async () => {
-    try {
-      setLoading(true)
-      const response = await fetch('/api/notifications?limit=5')
-      if (response.ok) {
-        const data = await response.json()
-        setNotifications(data.notifications || [])
-      }
-    } catch (error) {
-      console.error('Error fetching notifications:', error)
+      const unread = data.unreadCount ?? (data.notifications?.filter((n: NotificationItem) => !n.isRead).length ?? 0)
+      setUnreadCount(unread)
+      prevUnreadRef.current = unread
+    } catch {
+      // ignore
     } finally {
       setLoading(false)
     }
-  }
+  }, [])
 
-  // Request notification permission and register service worker if available
-  const requestNotificationPermission = async () => {
-    if (!notificationSupported) return
-    
+  const fetchUnreadAndNotify = useCallback(async () => {
     try {
-      const permission = await Notification.requestPermission()
-      setNotificationPermission(permission)
-      
-      // If permission granted, try to register service worker for better mobile support
-      if (permission === 'granted' && 'serviceWorker' in navigator) {
-        try {
-          // Check if service worker is already registered
-          const registration = await navigator.serviceWorker.getRegistration()
-          
-          if (!registration) {
-            // Register service worker if not already registered
-            await navigator.serviceWorker.register('/sw.js', { scope: '/' })
-              .then((registration) => {
-                console.log('Service Worker registered with scope:', registration.scope)
+      const res = await fetch('/api/notifications?unread=true')
+      if (!res.ok) return
+
+      const data = await res.json()
+      const newUnread = data.notifications?.length ?? 0
+
+      if (newUnread > prevUnreadRef.current) {
+        const newCount = newUnread - prevUnreadRef.current
+        const latest = data.notifications?.[0]
+
+        if (newCount === 1 && latest && !seenIdsRef.current.has(latest.id)) {
+          showToast(latest.message, { title: latest.title, type: 'info', duration: 5000, idKey: latest.id })
+          seenIdsRef.current.add(latest.id)
+        } else if (newCount > 1) {
+          const batchId = `multi-${Date.now()}`
+          showToast(`Anda memiliki ${newCount} notifikasi baru`, { title: 'Notifikasi Baru', type: 'info', duration: 5000, idKey: batchId })
+          data.notifications?.forEach((n: NotificationItem) => seenIdsRef.current.add(n.id))
+        }
+
+        if (soundEnabled && audioRef.current) {
+          audioRef.current.currentTime = 0
+          audioRef.current.play().catch(() => {})
+        }
+
+        if (notificationSupported && notificationPermission === 'granted' && latest) {
+          try {
+            if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
+              navigator.serviceWorker.ready.then((reg) => {
+                reg.showNotification(latest.title || 'Notifikasi Baru', {
+                  body: latest.message,
+                  icon: '/valprologo.webp',
+                  badge: '/valprologo.webp',
+                  tag: latest.id,
+                  renotify: true,
+                  data: { url: latest.taskId ? `/admin/tasks` : '/admin/notifications', id: latest.id }
+                })
               })
-              .catch((error) => {
-                console.error('Service Worker registration failed:', error)
-              })
-          }
-        } catch (error) {
-          console.error('Error checking service worker registration:', error)
+            } else {
+              new Notification(latest.title || 'Notifikasi Baru', { body: latest.message, icon: '/valprologo.webp' })
+            }
+          } catch {}
         }
       }
-    } catch (error) {
-      console.error('Error requesting notification permission:', error)
+
+      setUnreadCount(newUnread)
+      prevUnreadRef.current = newUnread
+    } catch {}
+  }, [notificationPermission, showToast, soundEnabled, notificationSupported])
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    setMounted(true)
+
+    audioRef.current = new Audio('/notification.mp3')
+    audioRef.current.preload = 'auto'
+    audioRef.current.volume = 0.4
+
+    const saved = localStorage.getItem('notificationSoundEnabled')
+    if (saved !== null) setSoundEnabled(saved === 'true')
+
+    if (notificationSupported) setNotificationPermission(Notification.permission)
+
+    fetchNotifications({ limit: 5 })
+
+    pollingRef.current = window.setInterval(() => {
+      fetchUnreadAndNotify()
+    }, 30000)
+
+    return () => {
+      if (pollingRef.current) clearInterval(pollingRef.current)
     }
+  }, [fetchNotifications, fetchUnreadAndNotify, notificationSupported])
+
+  const toggleDropdown = async () => {
+    const newOpen = !isOpen
+    setIsOpen(newOpen)
+    if (newOpen) await fetchNotifications({ limit: 10 })
   }
 
-
-
-  const markAsRead = async (notificationId: string) => {
+  const requestNotificationPermission = async () => {
+    if (!notificationSupported) return
     try {
-      const response = await fetch('/api/notifications', {
-        method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          action: 'mark_read',
-          notificationIds: [notificationId]
-        })
-      })
-
-      if (response.ok) {
-        setNotifications(prev => 
-          prev.map(notif => 
-            notif.id === notificationId 
-              ? { ...notif, isRead: true }
-              : notif
-          )
-        )
-        setUnreadCount(prev => Math.max(0, prev - 1))
+      const p = await Notification.requestPermission()
+      setNotificationPermission(p)
+      if (p === 'granted' && 'serviceWorker' in navigator) {
+        const reg = await navigator.serviceWorker.getRegistration()
+        if (!reg) {
+          await navigator.serviceWorker.register('/sw.js', { scope: '/' })
+        }
       }
-    } catch (error) {
-      console.error('Error marking notification as read:', error)
-    }
+      showToast(p === 'granted' ? 'Notifikasi desktop diaktifkan' : 'Notifikasi desktop tidak diaktifkan', {
+        type: p === 'granted' ? 'success' : 'warning',
+        duration: 3000,
+        idKey: `perm-${p}`
+      })
+    } catch {}
+  }
+
+  const markAsRead = async (id: string) => {
+    try {
+      const res = await fetch('/api/notifications', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'mark_read', notificationIds: [id] })
+      })
+      if (res.ok) {
+        setNotifications(prev => prev.map(n => n.id === id ? { ...n, isRead: true } : n))
+        setUnreadCount(prev => Math.max(0, prev - 1))
+        prevUnreadRef.current = Math.max(0, prevUnreadRef.current - 1)
+      }
+    } catch {}
   }
 
   const markAllAsRead = async () => {
     try {
-      const response = await fetch('/api/notifications', {
+      const res = await fetch('/api/notifications', {
         method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          action: 'mark_all_read'
-        })
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'mark_all_read' })
       })
-
-      if (response.ok) {
-        setNotifications(prev => 
-          prev.map(notif => ({ ...notif, isRead: true }))
-        )
+      if (res.ok) {
+        setNotifications(prev => prev.map(n => ({ ...n, isRead: true })))
         setUnreadCount(0)
-        setPreviousUnreadCount(0)
+        prevUnreadRef.current = 0
+        showToast('Semua notifikasi ditandai sudah dibaca', { type: 'success', duration: 2500, idKey: 'mark-all' })
       }
-    } catch (error) {
-      console.error('Error marking all notifications as read:', error)
-    }
+    } catch {}
   }
-  
+
   const toggleSound = () => {
-    const newSoundEnabled = !soundEnabled
-    setSoundEnabled(newSoundEnabled)
-    localStorage.setItem('notificationSoundEnabled', newSoundEnabled.toString())
-    
-    // Set user interacted flag to true when user toggles sound
-    // This ensures audio can be played after user interaction
-    setUserInteracted(true)
-    
-    // If enabling sound, try to play a short test sound to confirm it works
-    if (newSoundEnabled && userInteracted) {
-      const testAudio = new Audio('/notification.mp3')
-      testAudio.volume = 0.2 // Lower volume for test
-      testAudio.play().catch(err => {
-        console.error('Error playing test sound:', err)
-      })
-    }
-    
-    // If notifications are not yet enabled, ask for permission
-    if (notificationSupported && notificationPermission !== 'granted') {
-      requestNotificationPermission()
+    const next = !soundEnabled
+    setSoundEnabled(next)
+    localStorage.setItem('notificationSoundEnabled', String(next))
+    showToast(next ? 'Suara notifikasi aktif' : 'Suara notifikasi dimatikan', {
+      type: next ? 'success' : 'warning',
+      duration: 2000,
+      idKey: `sound-${next}`
+    })
+    if (next && audioRef.current) {
+      audioRef.current.currentTime = 0
+      audioRef.current.play().catch(() => {})
     }
   }
 
-  const formatDate = (dateString: string) => {
-    const date = new Date(dateString)
-    const now = new Date()
-    const diffInMinutes = Math.floor((now.getTime() - date.getTime()) / (1000 * 60))
-    
-    if (diffInMinutes < 1) return 'Baru saja'
-    if (diffInMinutes < 60) return `${diffInMinutes} menit yang lalu`
-    if (diffInMinutes < 1440) return `${Math.floor(diffInMinutes / 60)} jam yang lalu`
-    return `${Math.floor(diffInMinutes / 1440)} hari yang lalu`
+  const formatDate = (d: string) => {
+    try {
+      const date = new Date(d)
+      const now = new Date()
+      const diff = Math.floor((now.getTime() - date.getTime()) / 60000)
+      if (diff < 1) return 'Baru saja'
+      if (diff < 60) return `${diff} menit yang lalu`
+      if (diff < 1440) return `${Math.floor(diff / 60)} jam yang lalu`
+      return `${Math.floor(diff / 1440)} hari yang lalu`
+    } catch {
+      return d
+    }
   }
 
   return (
     <div className="relative">
-      {/* Notification Bell */}
+      {/* Bell Icon */}
       <button
-        onClick={() => {
-          setIsOpen(!isOpen)
-          setUserInteracted(true)
-          
-          // If we have unread notifications and sound is enabled, try to play sound
-          // This will work because the click on the bell is a user interaction
-          if (unreadCount > 0 && soundEnabled && !isOpen) {
-            playNotificationSound()
-          }
-          
-          // Request notification permission if not granted yet
-          if (notificationSupported && notificationPermission !== 'granted') {
-            requestNotificationPermission()
-          }
-        }}
-        className="relative p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors"
+        ref={bellRef}
+        onClick={toggleDropdown}
+        className="relative p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors focus:outline-none"
+        aria-label="Notifikasi"
       >
         <Bell className="h-6 w-6" />
         {unreadCount > 0 && (
-          <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">
+          <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center animate-pulse">
             {unreadCount > 9 ? '9+' : unreadCount}
           </span>
         )}
       </button>
 
       {/* Dropdown */}
-      {isOpen && (
+      {isOpen && mounted && (
         <>
-          {/* Backdrop */}
-          <div 
-            className="fixed inset-0 z-10" 
-            onClick={() => setIsOpen(false)}
-          />
-          
-          {/* Dropdown Content */}
-          <div className="absolute right-0 mt-2 w-80 bg-white rounded-lg shadow-lg border border-gray-200 z-20">
-            {/* Header */}
-            <div className="flex items-center justify-between p-4 border-b border-gray-200">
-            <h3 className="text-lg font-semibold text-gray-900">Notifikasi</h3>
-            <div className="flex items-center space-x-2">
-              {notificationSupported && notificationPermission !== 'granted' && (
-                <button
-                  onClick={requestNotificationPermission}
-                  className="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded hover:bg-blue-200 transition-colors"
-                  title="Aktifkan notifikasi desktop"
-                >
-                  Aktifkan Notifikasi
-                </button>
-              )}
-              <button
-                onClick={toggleSound}
-                className="text-gray-400 hover:text-gray-600 p-1"
-                title={soundEnabled ? 'Matikan suara notifikasi' : 'Aktifkan suara notifikasi'}
-              >
-                {soundEnabled ? (
-                  <Volume2 className="h-4 w-4" />
-                ) : (
-                  <VolumeX className="h-4 w-4" />
+          <div className="fixed inset-0 z-10" onClick={() => setIsOpen(false)} />
+          <div className="absolute right-0 mt-2 w-96 bg-white rounded-lg shadow-lg border border-gray-200 z-20">
+            <div className="flex items-center justify-between p-4 border-b border-gray-100">
+              <h3 className="text-lg font-semibold text-gray-900">Notifikasi</h3>
+              <div className="flex items-center space-x-2">
+                {notificationSupported && notificationPermission !== 'granted' && (
+                  <button onClick={requestNotificationPermission} className="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded hover:bg-blue-200">
+                    Aktifkan Notifikasi
+                  </button>
                 )}
-              </button>
-              {unreadCount > 0 && (
-                <button
-                  onClick={markAllAsRead}
-                  className="text-sm text-blue-600 hover:text-blue-800"
-                >
-                  Tandai Semua Dibaca
+                <button onClick={toggleSound} className="p-1 text-gray-500 hover:text-gray-700">
+                  {soundEnabled ? <Volume2 className="h-4 w-4" /> : <VolumeX className="h-4 w-4" />}
                 </button>
-              )}
-              <button
-                onClick={() => setIsOpen(false)}
-                className="text-gray-400 hover:text-gray-600"
-              >
-                <X className="h-5 w-5" />
-              </button>
+                {unreadCount > 0 && (
+                  <button onClick={markAllAsRead} className="text-sm text-blue-600 hover:text-blue-800">
+                    Tandai Semua
+                  </button>
+                )}
+                <button onClick={() => setIsOpen(false)} className="text-gray-400 hover:text-gray-600">
+                  <X className="h-5 w-5" />
+                </button>
+              </div>
             </div>
-          </div>
-
-            {/* Notifications List */}
             <div className="max-h-96 overflow-y-auto">
               {loading ? (
-                <div className="p-4 text-center text-gray-500">
-                  Memuat notifikasi...
-                </div>
+                <div className="p-4 text-center text-gray-500">Memuat notifikasi...</div>
               ) : notifications.length === 0 ? (
-                <div className="p-4 text-center text-gray-500">
-                  Tidak ada notifikasi
-                </div>
+                <div className="p-6 text-center text-gray-500">Tidak ada notifikasi</div>
               ) : (
                 <div className="divide-y divide-gray-100">
-                  {notifications.map((notification) => (
-                    <div
-                      key={notification.id}
-                      className={`p-4 hover:bg-gray-50 transition-colors ${
-                        !notification.isRead ? 'bg-blue-50 border-l-4 border-l-blue-500' : ''
-                      }`}
-                    >
-                      <div className="flex items-start justify-between">
-                        <div className="flex-1 min-w-0">
+                  {notifications.map((n) => (
+                    <div key={n.id} className={`p-4 hover:bg-gray-50 transition-colors ${!n.isRead ? 'bg-gradient-to-r from-blue-50 to-white' : ''}`}>
+                      <div className="flex flex-col">
+                        <div className="flex items-center space-x-2">
+                          <h4 className={`text-sm font-medium ${!n.isRead ? 'text-gray-900' : 'text-gray-700'}`}>{n.title}</h4>
+                          {!n.isRead && <span className="w-2 h-2 bg-blue-500 rounded-full" />}
+                        </div>
+                        <p className="text-sm text-gray-600 mt-1">{n.message}</p>
+                        <div className="flex items-center justify-between mt-2">
+                          <span className="text-xs text-gray-500">{formatDate(n.createdAt)}</span>
                           <div className="flex items-center space-x-2">
-                            <h4 className={`text-sm font-medium ${
-                              !notification.isRead ? 'text-gray-900' : 'text-gray-700'
-                            }`}>
-                              {notification.title}
-                            </h4>
-                            {!notification.isRead && (
-                              <span className="w-2 h-2 bg-blue-500 rounded-full"></span>
+                            {n.taskId && (
+                              <Link href="/admin/tasks" className="text-xs text-blue-600 hover:text-blue-800" onClick={() => setIsOpen(false)}>
+                                Lihat Tugas
+                              </Link>
                             )}
-                          </div>
-                          <p className="text-sm text-gray-600 mt-1 line-clamp-2">
-                            {notification.message}
-                          </p>
-                          <div className="flex items-center justify-between mt-2">
-                            <span className="text-xs text-gray-500">
-                              {formatDate(notification.createdAt)}
-                            </span>
-                            <div className="flex items-center space-x-2">
-                              {notification.taskId && (
-                                <Link
-                                  href={`/admin/tasks`}
-                                  className="text-xs text-blue-600 hover:text-blue-800"
-                                  onClick={() => setIsOpen(false)}
-                                >
-                                  Lihat Tugas
-                                </Link>
-                              )}
-                              {!notification.isRead && (
-                                <button
-                                  onClick={() => markAsRead(notification.id)}
-                                  className="text-xs text-gray-500 hover:text-gray-700"
-                                >
-                                  Tandai Dibaca
-                                </button>
-                              )}
-                            </div>
+                            {!n.isRead && (
+                              <button onClick={() => markAsRead(n.id)} className="text-xs text-gray-500 hover:text-gray-700">Tandai Dibaca</button>
+                            )}
                           </div>
                         </div>
                       </div>
@@ -481,15 +291,9 @@ export default function NotificationDropdown() {
                 </div>
               )}
             </div>
-
-            {/* Footer */}
             {notifications.length > 0 && (
-              <div className="p-3 border-t border-gray-200">
-                <Link
-                  href="/admin/notifications"
-                  className="block text-center text-sm text-blue-600 hover:text-blue-800"
-                  onClick={() => setIsOpen(false)}
-                >
+              <div className="p-3 border-t border-gray-100">
+                <Link href="/admin/notifications" className="block text-center text-sm text-blue-600 hover:text-blue-800" onClick={() => setIsOpen(false)}>
                   Lihat Semua Notifikasi
                 </Link>
               </div>
@@ -500,4 +304,3 @@ export default function NotificationDropdown() {
     </div>
   )
 }
-

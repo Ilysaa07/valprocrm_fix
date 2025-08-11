@@ -1,11 +1,9 @@
 // Service Worker for handling notifications
 
-// Cache name for offline support
-const CACHE_NAME = 'valpro-cache-v1';
+const CACHE_NAME = 'valpro-cache-v2';
 
-// Install event - cache important files
 self.addEventListener('install', (event) => {
-  console.log('Service Worker installing.');
+  console.log('[SW] installing');
   event.waitUntil(
     caches.open(CACHE_NAME).then((cache) => {
       return cache.addAll([
@@ -16,104 +14,93 @@ self.addEventListener('install', (event) => {
       ]);
     })
   );
+  self.skipWaiting();
 });
 
-// Activate event - clean up old caches
 self.addEventListener('activate', (event) => {
-  console.log('Service Worker activating.');
+  console.log('[SW] activating');
   event.waitUntil(
-    caches.keys().then((cacheNames) => {
-      return Promise.all(
-        cacheNames.map((cacheName) => {
-          if (cacheName !== CACHE_NAME) {
-            return caches.delete(cacheName);
-          }
-        })
-      );
-    })
+    caches.keys().then((names) => Promise.all(
+      names.map(name => name !== CACHE_NAME ? caches.delete(name) : Promise.resolve())
+    ))
   );
+  self.clients.claim();
 });
 
-// Fetch event - serve from cache if available
 self.addEventListener('fetch', (event) => {
   event.respondWith(
-    caches.match(event.request).then((response) => {
-      return response || fetch(event.request);
-    })
+    caches.match(event.request).then((resp) => resp || fetch(event.request))
   );
 });
 
-// Push event - handle incoming push messages
 self.addEventListener('push', (event) => {
-  console.log('Push message received:', event);
-  
-  let notificationData = {};
-  
+  console.log('[SW] push received', event);
+
+  let data = {};
   try {
-    notificationData = event.data.json();
+    data = event.data.json();
   } catch (e) {
-    notificationData = {
+    data = {
       title: 'Notifikasi Baru',
       body: 'Anda memiliki notifikasi baru',
       icon: '/valprologo.webp',
-      badge: '/valprologo.webp'
+      badge: '/valprologo.webp',
+      url: '/admin/notifications'
     };
   }
-  
-  const title = notificationData.title || 'Notifikasi Baru';
+
+  const title = data.title || 'Notifikasi Baru';
   const options = {
-    body: notificationData.body || 'Anda memiliki notifikasi baru',
-    icon: notificationData.icon || '/valprologo.webp',
-    badge: notificationData.badge || '/valprologo.webp',
+    body: data.body || 'Anda memiliki notifikasi baru',
+    icon: data.icon || '/valprologo.webp',
+    badge: data.badge || '/valprologo.webp',
     vibrate: [200, 100, 200],
+    tag: data.tag || 'default',
+    renotify: true,
+    requireInteraction: !!data.requireInteraction,
     data: {
-      url: notificationData.url || '/admin/notifications'
+      url: data.url || '/admin/notifications',
+      id: data.id || null,
+      timestamp: data.timestamp || Date.now()
     },
     actions: [
-      {
-        action: 'view',
-        title: 'Lihat'
-      },
-      {
-        action: 'close',
-        title: 'Tutup'
-      }
+      { action: 'view', title: 'Lihat' },
+      { action: 'close', title: 'Tutup' }
     ]
   };
-  
+
+  event.waitUntil(self.registration.showNotification(title, options));
+});
+
+self.addEventListener('notificationclick', (event) => {
+  console.log('[SW] notificationclick', event);
+  event.notification.close();
+
+  const urlToOpen = (event.notification.data && event.notification.data.url) ? event.notification.data.url : '/admin/notifications';
+
   event.waitUntil(
-    self.registration.showNotification(title, options)
+    clients.matchAll({ type: 'window', includeUncontrolled: true }).then(async (windowClients) => {
+      // Try to find existing client
+      for (let i = 0; i < windowClients.length; i += 1) {
+        const client = windowClients[i];
+        // If client is already open, focus and navigate
+        if (client.url.includes(urlToOpen)) {
+          try {
+            client.focus();
+            return;
+          } catch (e) {
+            // ignore
+          }
+        }
+      }
+      // If none found - open a new window/tab
+      if (clients.openWindow) {
+        return clients.openWindow(urlToOpen);
+      }
+    })
   );
 });
 
-// Notification click event
-self.addEventListener('notificationclick', (event) => {
-  console.log('Notification clicked:', event);
-  
-  event.notification.close();
-  
-  // Handle notification click - open appropriate URL
-  if (event.action === 'view' || !event.action) {
-    const urlToOpen = event.notification.data && event.notification.data.url
-      ? event.notification.data.url
-      : '/admin/notifications';
-    
-    event.waitUntil(
-      clients.matchAll({ type: 'window' }).then((windowClients) => {
-        // Check if there is already a window/tab open with the target URL
-        for (let i = 0; i < windowClients.length; i++) {
-          const client = windowClients[i];
-          // If so, focus it
-          if (client.url.includes(urlToOpen) && 'focus' in client) {
-            return client.focus();
-          }
-        }
-        
-        // If not, open a new window/tab
-        if (clients.openWindow) {
-          return clients.openWindow(urlToOpen);
-        }
-      })
-    );
-  }
+self.addEventListener('notificationclose', (event) => {
+  console.log('[SW] notificationclosed', event);
 });
