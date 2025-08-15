@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, Suspense } from 'react'
 import { useSearchParams } from 'next/navigation'
 import AdminLayout from '@/components/layout/AdminLayout'
 import { 
@@ -38,7 +38,7 @@ interface User {
   createdAt: string
 }
 
-export default function UsersPage() {
+function UsersPageInner() {
   const searchParams = useSearchParams()
   const [users, setUsers] = useState<User[]>([])
   const [isLoading, setIsLoading] = useState(true)
@@ -1081,6 +1081,14 @@ export default function UsersPage() {
         </div>
       )}
     </AdminLayout>
+  )
+}
+
+export default function UsersPage() {
+  return (
+    <Suspense fallback={<div className="p-6">Loading...</div>}>
+      <UsersPageInner />
+    </Suspense>
   )
 }
 

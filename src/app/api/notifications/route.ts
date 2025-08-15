@@ -124,3 +124,43 @@ export async function PATCH(request: NextRequest) {
   }
 }
 
+export async function DELETE(request: NextRequest) {
+  try {
+    const session = await getServerSession(authOptions)
+    if (!session) {
+      return NextResponse.json(
+        { error: 'Unauthorized' },
+        { status: 401 }
+      )
+    }
+
+    const { searchParams } = new URL(request.url)
+    const all = searchParams.get('all') === 'true'
+    let ids: string[] = []
+    if (!all) {
+      try {
+        const body = await request.json()
+        ids = Array.isArray(body?.notificationIds) ? body.notificationIds : []
+      } catch {}
+    }
+
+    if (all) {
+      await prisma.notification.deleteMany({ where: { userId: session.user.id } })
+      return NextResponse.json({ message: 'Semua notifikasi dihapus' })
+    }
+
+    if (ids.length > 0) {
+      await prisma.notification.deleteMany({ where: { id: { in: ids }, userId: session.user.id } })
+      return NextResponse.json({ message: 'Notifikasi terpilih dihapus' })
+    }
+
+    return NextResponse.json({ error: 'Tidak ada notifikasi untuk dihapus' }, { status: 400 })
+  } catch (error) {
+    console.error('Delete notifications error:', error)
+    return NextResponse.json(
+      { error: 'Terjadi kesalahan server' },
+      { status: 500 }
+    )
+  }
+}
+

@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, Suspense } from 'react'
 import { useSearchParams } from 'next/navigation'
 import EmployeeLayout from '@/components/layout/EmployeeLayout'
 import { 
@@ -34,7 +34,7 @@ interface Task {
   submissions: any[]
 }
 
-export default function EmployeeTasksPage() {
+function EmployeeTasksPageInner() {
   const searchParams = useSearchParams()
   const [tasks, setTasks] = useState<Task[]>([])
   const [isLoading, setIsLoading] = useState(true)
@@ -609,6 +609,14 @@ export default function EmployeeTasksPage() {
         </div>
       )}
     </EmployeeLayout>
+  )
+}
+
+export default function EmployeeTasksPage() {
+  return (
+    <Suspense fallback={<div className="p-6">Loading...</div>}>
+      <EmployeeTasksPageInner />
+    </Suspense>
   )
 }
 

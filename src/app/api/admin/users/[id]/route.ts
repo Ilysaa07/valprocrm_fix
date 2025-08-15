@@ -15,8 +15,8 @@ const updateUserSchema = z.object({
   status: z.enum(['PENDING', 'APPROVED', 'REJECTED']).optional(),
 })
 
-// GET - Mendapatkan detail user berdasarkan ID
-export async function GET(request: NextRequest, { params }: { params: { id: string } }) {
+// GET - Ambil data user berdasarkan ID
+export async function GET(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const session = await getServerSession(authOptions)
     
@@ -27,7 +27,7 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
       )
     }
 
-    const userId = params.id
+    const { id: userId } = await params
 
     const user = await prisma.user.findUnique({
       where: { id: userId },
@@ -66,7 +66,7 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
 }
 
 // PUT - Update data user oleh admin
-export async function PUT(request: NextRequest, { params }: { params: { id: string } }) {
+export async function PUT(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const session = await getServerSession(authOptions)
     
@@ -77,7 +77,7 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
       )
     }
 
-    const userId = params.id
+    const { id: userId } = await params
     const body = await request.json()
     const validatedData = updateUserSchema.parse(body)
 
@@ -125,18 +125,8 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
       })
     }
 
-    return NextResponse.json({
-      message: 'Data user berhasil diperbarui',
-      user: updatedUser
-    })
+    return NextResponse.json({ user: updatedUser })
   } catch (error) {
-    if (error instanceof z.ZodError) {
-      return NextResponse.json(
-        { error: 'Validasi gagal', details: error.errors },
-        { status: 400 }
-      )
-    }
-    
     console.error('Update user error:', error)
     return NextResponse.json(
       { error: 'Terjadi kesalahan server' },
@@ -145,8 +135,8 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
   }
 }
 
-// DELETE - Menghapus user
-export async function DELETE(request: NextRequest, { params }: { params: { id: string } }) {
+// DELETE - Hapus user oleh admin
+export async function DELETE(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const session = await getServerSession(authOptions)
     
@@ -157,17 +147,11 @@ export async function DELETE(request: NextRequest, { params }: { params: { id: s
       )
     }
 
-    const userId = params.id
+    const { id: userId } = await params
 
     // Cek apakah user ada
     const userExists = await prisma.user.findUnique({
-      where: { id: userId },
-      include: {
-        assignedTasks: true,
-        createdTasks: true,
-        issuedInvoices: true,
-        createdInvoices: true
-      }
+      where: { id: userId }
     })
 
     if (!userExists) {
@@ -177,46 +161,12 @@ export async function DELETE(request: NextRequest, { params }: { params: { id: s
       )
     }
 
-    // Cek apakah user memiliki task yang aktif
-    if (userExists.assignedTasks.some(task => task.status === 'NOT_STARTED' || task.status === 'IN_PROGRESS')) {
-      return NextResponse.json(
-        { error: 'Tidak dapat menghapus user yang memiliki tugas aktif' },
-        { status: 400 }
-      )
-    }
-
-    // Cek apakah user memiliki invoice
-    if (userExists.issuedInvoices.length > 0 || userExists.createdInvoices.length > 0) {
-      return NextResponse.json(
-        { error: 'Tidak dapat menghapus user yang memiliki invoice. Hapus invoice terlebih dahulu.' },
-        { status: 400 }
-      )
-    }
-
-    // Hapus semua data terkait user
-    // Hapus notifikasi user terlebih dahulu
-    await prisma.notification.deleteMany({
-      where: { userId }
-    })
-
-    // Hapus task submission
-    await prisma.taskSubmission.deleteMany({
-      where: { userId }
-    })
-
-    // Hapus transaksi
-    await prisma.transaction.deleteMany({
-      where: { createdById: userId }
-    })
-
     // Hapus user
     await prisma.user.delete({
       where: { id: userId }
     })
 
-    return NextResponse.json({
-      message: 'User berhasil dihapus'
-    })
+    return NextResponse.json({ message: 'User berhasil dihapus' })
   } catch (error) {
     console.error('Delete user error:', error)
     return NextResponse.json(

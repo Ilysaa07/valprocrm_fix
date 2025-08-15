@@ -12,7 +12,8 @@ import {
   LogOut,
   User,
   DollarSign,
-  FileText
+  FileText,
+  MessageCircle
 } from 'lucide-react'
 import NotificationDropdown from '../NotificationDropdown'
 
@@ -23,6 +24,9 @@ interface EmployeeLayoutProps {
 const navigation = [
   { name: 'Dashboard', href: '/employee', icon: Home },
   { name: 'Tugas Saya', href: '/employee/tasks', icon: CheckSquare },
+  { name: 'Kehadiran', href: '/employee/attendance', icon: FileText },
+  { name: 'Cuti/Izin', href: '/employee/leave-requests', icon: FileText },
+  { name: 'Chat', href: '/chat', icon: MessageCircle },
   { name: 'Profil Saya', href: '/profile', icon: User },
 ]
 

@@ -16,61 +16,68 @@ export const authOptions: NextAuthOptions = {
           return null
         }
 
-        const user = await prisma.user.findUnique({
-          where: {
-            email: credentials.email
+        try {
+          const user = await prisma.user.findUnique({
+            where: {
+              email: credentials.email
+            }
+          })
+
+          if (!user) {
+            return null
           }
-        })
 
-        if (!user) {
+          if (user.status !== 'APPROVED') {
+            return null
+          }
+
+          const isPasswordValid = await argon2.verify(
+            user.password,
+            credentials.password
+          )
+
+          if (!isPasswordValid) {
+            return null
+          }
+
+          return {
+            id: user.id,
+            email: user.email,
+            name: user.fullName,
+            role: user.role,
+            image: user.profilePicture || null,
+          }
+        } catch (error) {
+          console.error('Auth error:', error)
           return null
-        }
-
-        if (user.status !== 'APPROVED') {
-          throw new Error('Akun Anda belum disetujui oleh admin')
-        }
-
-        const isPasswordValid = await argon2.verify(
-          user.password,
-          credentials.password
-        )
-
-        if (!isPasswordValid) {
-          return null
-        }
-
-        return {
-          id: user.id,
-          email: user.email,
-          name: user.fullName,
-          role: user.role,
-          image: user.profilePicture || undefined,
         }
       }
     })
   ],
   session: {
-    strategy: 'jwt'
+    strategy: 'jwt',
   },
   callbacks: {
     async jwt({ token, user }) {
       if (user) {
+        token.id = user.id
+        token.email = user.email
         token.role = user.role
-        token.picture = user.image
       }
       return token
     },
     async session({ session, token }) {
-      if (token) {
-        session.user.id = token.sub!
+      if (session.user) {
+        session.user.id = token.id as string
         session.user.role = token.role as string
-        session.user.image = token.picture as string || undefined
       }
       return session
     }
   },
   pages: {
     signIn: '/auth/login',
+    error: '/auth/error',
   },
+  secret: process.env.NEXTAUTH_SECRET,
 }
 

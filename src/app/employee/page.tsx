@@ -64,11 +64,16 @@ export default function EmployeeDashboard() {
         const tasks = tasksData.tasks || []
         setRecentTasks(tasks)
         
+        // Ensure all values are valid numbers
+        const notStarted = tasks.filter((t: any) => t.status === 'NOT_STARTED').length
+        const inProgress = tasks.filter((t: any) => t.status === 'IN_PROGRESS').length
+        const completed = tasks.filter((t: any) => t.status === 'COMPLETED').length
+        
         taskStats = {
-          totalTasks: tasks.length,
-          notStartedTasks: tasks.filter((t: any) => t.status === 'NOT_STARTED').length,
-          inProgressTasks: tasks.filter((t: any) => t.status === 'IN_PROGRESS').length,
-          completedTasks: tasks.filter((t: any) => t.status === 'COMPLETED').length
+          totalTasks: tasks.length || 0,
+          notStartedTasks: notStarted || 0,
+          inProgressTasks: inProgress || 0,
+          completedTasks: completed || 0
         }
       } else {
         console.error('Error fetching tasks:', tasksResponse.statusText)
@@ -77,20 +82,32 @@ export default function EmployeeDashboard() {
       // Process notifications data
       if (notificationsResponse.ok) {
         const notificationsData = await notificationsResponse.json()
+        const unreadCount = parseInt(notificationsData.unreadCount) || 0
         notificationStats = {
-          unreadNotifications: notificationsData.unreadCount || 0
+          unreadNotifications: isNaN(unreadCount) ? 0 : unreadCount
         }
       } else {
         console.error('Error fetching notifications:', notificationsResponse.statusText)
       }
       
-      // Update stats with real data
+      // Update stats with real data and ensure all values are valid
       setStats({
-        ...taskStats,
-        ...notificationStats
+        totalTasks: taskStats.totalTasks || 0,
+        notStartedTasks: taskStats.notStartedTasks || 0,
+        inProgressTasks: taskStats.inProgressTasks || 0,
+        completedTasks: taskStats.completedTasks || 0,
+        unreadNotifications: notificationStats.unreadNotifications || 0
       })
     } catch (error) {
       console.error('Error fetching dashboard data:', error)
+      // Set default values on error
+      setStats({
+        totalTasks: 0,
+        notStartedTasks: 0,
+        inProgressTasks: 0,
+        completedTasks: 0,
+        unreadNotifications: 0
+      })
     } finally {
       setIsLoading(false)
     }
@@ -99,28 +116,28 @@ export default function EmployeeDashboard() {
   const statCards = [
     {
       title: 'Total Tugas',
-      value: stats.totalTasks,
+      value: stats.totalTasks || 0,
       icon: CheckSquare,
       color: 'bg-blue-500',
       textColor: 'text-blue-600'
     },
     {
       title: 'Belum Dikerjakan',
-      value: stats.notStartedTasks,
+      value: stats.notStartedTasks || 0,
       icon: AlertCircle,
       color: 'bg-gray-500',
       textColor: 'text-gray-600'
     },
     {
       title: 'Sedang Dikerjakan',
-      value: stats.inProgressTasks,
+      value: stats.inProgressTasks || 0,
       icon: Clock,
       color: 'bg-yellow-500',
       textColor: 'text-yellow-600'
     },
     {
       title: 'Selesai',
-      value: stats.completedTasks,
+      value: stats.completedTasks || 0,
       icon: CheckSquare,
       color: 'bg-green-500',
       textColor: 'text-green-600'
@@ -235,7 +252,7 @@ export default function EmployeeDashboard() {
                     <AlertCircle className="h-5 w-5 text-gray-600 mr-3" />
                     <div>
                       <p className="font-medium text-gray-900">Tugas Belum Dikerjakan</p>
-                      <p className="text-sm text-gray-600">{stats.notStartedTasks} tugas menunggu</p>
+                      <p className="text-sm text-gray-600">{(stats.notStartedTasks || 0)} tugas menunggu</p>
                     </div>
                   </div>
                 </Link>
@@ -244,7 +261,7 @@ export default function EmployeeDashboard() {
                     <Clock className="h-5 w-5 text-yellow-600 mr-3" />
                     <div>
                       <p className="font-medium text-gray-900">Tugas Sedang Dikerjakan</p>
-                      <p className="text-sm text-gray-600">{stats.inProgressTasks} tugas dalam progress</p>
+                      <p className="text-sm text-gray-600">{(stats.inProgressTasks || 0)} tugas dalam progress</p>
                     </div>
                   </div>
                 </Link>
@@ -265,7 +282,7 @@ export default function EmployeeDashboard() {
                 <div>
                   <p className="font-medium text-gray-900">Notifikasi Belum Dibaca</p>
                   <p className="text-sm text-gray-600">
-                    Anda memiliki {stats.unreadNotifications} notifikasi belum dibaca
+                    Anda memiliki {(stats.unreadNotifications || 0)} notifikasi belum dibaca
                   </p>
                 </div>
               </div>
@@ -280,36 +297,60 @@ export default function EmployeeDashboard() {
             <div>
               <div className="flex justify-between text-sm text-gray-600">
                 <span>Tugas Selesai</span>
-                <span>{stats.completedTasks}/{stats.totalTasks}</span>
+                <span>{stats.completedTasks || 0}/{stats.totalTasks || 0}</span>
               </div>
               <div className="w-full bg-gray-200 rounded-full h-2">
                 <div
                   className="bg-green-500 h-2 rounded-full"
-                  style={{ width: `${stats.totalTasks > 0 ? Math.round((stats.completedTasks / stats.totalTasks) * 100) : 0}%` }}
+                  style={{ 
+                    width: `${(() => {
+                      const total = stats.totalTasks || 0
+                      const completed = stats.completedTasks || 0
+                      if (total <= 0) return 0
+                      const percentage = Math.round((completed / total) * 100)
+                      return isNaN(percentage) || !isFinite(percentage) ? 0 : percentage
+                    })()}%` 
+                  }}
                 ></div>
               </div>
             </div>
             <div>
               <div className="flex justify-between text-sm text-gray-600">
                 <span>Tugas Dalam Progress</span>
-                <span>{stats.inProgressTasks}/{stats.totalTasks}</span>
+                <span>{stats.inProgressTasks || 0}/{stats.totalTasks || 0}</span>
               </div>
               <div className="w-full bg-gray-200 rounded-full h-2">
                 <div
                   className="bg-yellow-500 h-2 rounded-full"
-                  style={{ width: `${stats.totalTasks > 0 ? Math.round((stats.inProgressTasks / stats.totalTasks) * 100) : 0}%` }}
+                  style={{ 
+                    width: `${(() => {
+                      const total = stats.totalTasks || 0
+                      const inProgress = stats.inProgressTasks || 0
+                      if (total <= 0) return 0
+                      const percentage = Math.round((inProgress / total) * 100)
+                      return isNaN(percentage) || !isFinite(percentage) ? 0 : percentage
+                    })()}%` 
+                  }}
                 ></div>
               </div>
             </div>
             <div>
               <div className="flex justify-between text-sm text-gray-600">
                 <span>Tugas Belum Dimulai</span>
-                <span>{stats.notStartedTasks}/{stats.totalTasks}</span>
+                <span>{stats.notStartedTasks || 0}/{stats.totalTasks || 0}</span>
               </div>
               <div className="w-full bg-gray-200 rounded-full h-2">
                 <div
                   className="bg-gray-500 h-2 rounded-full"
-                  style={{ width: `${stats.totalTasks > 0 ? Math.round((stats.notStartedTasks / stats.totalTasks) * 100) : 0}%` }}
+                  style={{ 
+                    width: `${(() => {
+                      const total = stats.totalTasks || 0
+                      const notStarted = stats.notStartedTasks || 0
+                      if (total <= 0) return 0
+                      const percentage = Math.round((notStarted / total) * 100)
+                      return isNaN(percentage) || !isFinite(percentage) ? 0 : percentage
+                    })()}%` 
+                  }}
                 ></div>
               </div>
             </div>
@@ -317,7 +358,13 @@ export default function EmployeeDashboard() {
           
           {stats.totalTasks > 0 ? (
             <p className="text-lg font-semibold text-green-600 mt-4 text-center">
-              {stats.totalTasks > 0 ? Math.round((stats.completedTasks / stats.totalTasks) * 100) : 0}% tugas selesai
+              {(() => {
+                const total = stats.totalTasks || 0
+                const completed = stats.completedTasks || 0
+                if (total <= 0) return 0
+                const percentage = Math.round((completed / total) * 100)
+                return isNaN(percentage) || !isFinite(percentage) ? 0 : percentage
+              })()}% tugas selesai
             </p>
           ) : (
             <div className="text-center py-4 mt-4">

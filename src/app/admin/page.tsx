@@ -100,37 +100,41 @@ export default function AdminDashboard() {
   const statCards = [
     {
       title: 'Total Karyawan',
-      value: stats.totalUsers,
+      value: stats.totalUsers || 0,
       icon: Users,
       color: 'bg-blue-500',
       textColor: 'text-blue-600'
     },
     {
       title: 'Menunggu Persetujuan',
-      value: stats.pendingUsers,
+      value: stats.pendingUsers || 0,
       icon: Clock,
       color: 'bg-yellow-500',
       textColor: 'text-yellow-600'
     },
     {
       title: 'Karyawan Aktif',
-      value: stats.approvedUsers,
+      value: stats.approvedUsers || 0,
       icon: UserCheck,
       color: 'bg-green-500',
       textColor: 'text-green-600'
     },
     {
       title: 'Total Tugas',
-      value: stats.totalTasks,
+      value: stats.totalTasks || 0,
       icon: CheckSquare,
       color: 'bg-purple-500',
       textColor: 'text-purple-600'
     }
   ]
 
-  const completionPercentage = stats.totalTasks > 0
-    ? Math.round((stats.completedTasks / stats.totalTasks) * 100)
-    : 0
+  const completionPercentage = (() => {
+    const total = stats.totalTasks || 0
+    const completed = stats.completedTasks || 0
+    if (total <= 0) return 0
+    const percentage = Math.round((completed / total) * 100)
+    return isNaN(percentage) || !isFinite(percentage) ? 0 : percentage
+  })()
 
   if (isLoading) {
     return (
@@ -182,7 +186,7 @@ export default function AdminDashboard() {
                   <AlertCircle className="h-5 w-5 text-yellow-600 mr-3" />
                   <div>
                     <p className="font-medium text-gray-900">Persetujuan Registrasi</p>
-                    <p className="text-sm text-gray-600">{stats.pendingUsers} karyawan menunggu persetujuan</p>
+                    <p className="text-sm text-gray-600">{(stats.pendingUsers || 0)} karyawan menunggu persetujuan</p>
                   </div>
                 </div>
               </Link>
@@ -204,11 +208,11 @@ export default function AdminDashboard() {
             <h3 className="text-lg font-semibold text-gray-900 mb-4">Status Tugas</h3>
             <div className="flex justify-between mb-2">
               <span className="text-gray-600">Selesai</span>
-              <span className="font-semibold text-green-600">{stats.completedTasks}</span>
+              <span className="font-semibold text-green-600">{stats.completedTasks || 0}</span>
             </div>
             <div className="flex justify-between mb-2">
               <span className="text-gray-600">Dalam Progress</span>
-              <span className="font-semibold text-yellow-600">{stats.pendingTasks}</span>
+              <span className="font-semibold text-yellow-600">{stats.pendingTasks || 0}</span>
             </div>
             <div className="w-full bg-gray-200 rounded-full h-2">
               <div

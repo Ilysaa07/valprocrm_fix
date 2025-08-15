@@ -1,9 +1,11 @@
 'use client'
 
 import { useCallback, useEffect, useRef, useState } from 'react'
+import { io, Socket } from 'socket.io-client'
 import { Bell, X, Volume2, VolumeX } from 'lucide-react'
 import Link from 'next/link'
 import { useToast } from './providers/ToastProvider'
+import { AttendanceNotification } from '@/lib/socket'
 
 interface NotificationItem {
   id: string
@@ -29,6 +31,7 @@ export default function NotificationDropdown() {
   const pollingRef = useRef<number | null>(null)
   const audioRef = useRef<HTMLAudioElement | null>(null)
   const { showToast } = useToast()
+  const socketRef = useRef<Socket | null>(null)
 
   const notificationSupported = typeof window !== 'undefined' && 'Notification' in window
 
@@ -124,8 +127,120 @@ export default function NotificationDropdown() {
       fetchUnreadAndNotify()
     }, 30000)
 
+    // Socket realtime notifications (reuse global socket if exists)
+    try {
+      const globalSocket = (window as unknown as { socket?: Socket }).socket
+      const s = globalSocket || io(process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000')
+      socketRef.current = s
+      s.on('notification', (payload: { title: string; message: string; conversationId?: string }) => {
+        // Update badge and toast
+        setUnreadCount((prev) => prev + 1)
+        prevUnreadRef.current = prevUnreadRef.current + 1
+        showToast(payload.message, { title: payload.title, type: 'info', duration: 5000, idKey: `sock-${Date.now()}` })
+        if (soundEnabled && audioRef.current) {
+          audioRef.current.currentTime = 0
+          audioRef.current.play().catch(() => {})
+        }
+
+        // Desktop notification
+        if (notificationSupported && notificationPermission === 'granted') {
+          try {
+            const url = payload.conversationId ? `/chat?c=${payload.conversationId}` : '/admin/notifications'
+            if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
+              navigator.serviceWorker.ready.then((reg) => {
+                reg.showNotification(payload.title || 'Notifikasi Baru', {
+                  body: payload.message,
+                  icon: '/valprologo.webp',
+                  badge: '/valprologo.webp',
+                  tag: `chat-${payload.conversationId || Date.now()}`,
+                  renotify: true,
+                  data: { url },
+                })
+              })
+            } else {
+              new Notification(payload.title || 'Notifikasi Baru', { body: payload.message, icon: '/valprologo.webp' })
+            }
+          } catch {}
+        }
+      })
+
+      // Handle attendance check-in notifications with employee name
+      s.on('attendance_check_in', (payload: AttendanceNotification) => {
+        const userName = payload.userName || 'Karyawan'
+        const status = payload.status || ''
+        const message = `${userName} telah melakukan check-in ${status ? `(${status})` : ''}`
+        
+        // Update badge and toast
+        setUnreadCount((prev) => prev + 1)
+        prevUnreadRef.current = prevUnreadRef.current + 1
+        showToast(message, { title: 'Check-in Karyawan', type: 'info', duration: 5000, idKey: `ci-${payload.userId}-${Date.now()}` })
+        
+        if (soundEnabled && audioRef.current) {
+          audioRef.current.currentTime = 0
+          audioRef.current.play().catch(() => {})
+        }
+
+        // Desktop notification
+        if (notificationSupported && notificationPermission === 'granted') {
+          try {
+            if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
+              navigator.serviceWorker.ready.then((reg) => {
+                reg.showNotification('Check-in Karyawan', {
+                  body: message,
+                  icon: '/valprologo.webp',
+                  badge: '/valprologo.webp',
+                  tag: `ci-${payload.userId}-${Date.now()}`,
+                  renotify: true,
+                  data: { url: '/admin/attendance' }
+                })
+              })
+            } else {
+              new Notification('Check-in Karyawan', { body: message, icon: '/valprologo.webp' })
+            }
+          } catch {}
+        }
+      })
+
+      // Handle attendance check-out notifications with employee name
+      s.on('attendance_check_out', (payload: AttendanceNotification) => {
+        const userName = payload.userName || 'Karyawan'
+        const message = `${userName} telah melakukan check-out`
+        
+        // Update badge and toast
+        setUnreadCount((prev) => prev + 1)
+        prevUnreadRef.current = prevUnreadRef.current + 1
+        showToast(message, { title: 'Check-out Karyawan', type: 'info', duration: 5000, idKey: `co-${payload.userId}-${Date.now()}` })
+        
+        if (soundEnabled && audioRef.current) {
+          audioRef.current.currentTime = 0
+          audioRef.current.play().catch(() => {})
+        }
+
+        // Desktop notification
+        if (notificationSupported && notificationPermission === 'granted') {
+          try {
+            if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
+              navigator.serviceWorker.ready.then((reg) => {
+                reg.showNotification('Check-out Karyawan', {
+                  body: message,
+                  icon: '/valprologo.webp',
+                  badge: '/valprologo.webp',
+                  tag: `co-${payload.userId}-${Date.now()}`,
+                  renotify: true,
+                  data: { url: '/admin/attendance' }
+                })
+              })
+            } else {
+              new Notification('Check-out Karyawan', { body: message, icon: '/valprologo.webp' })
+            }
+          } catch {}
+        }
+      })
+    } catch {}
+
     return () => {
       if (pollingRef.current) clearInterval(pollingRef.current)
+      if (socketRef.current && !(window as any).socket) socketRef.current.disconnect()
     }
   }, [fetchNotifications, fetchUnreadAndNotify, notificationSupported])
 
@@ -185,6 +300,32 @@ export default function NotificationDropdown() {
     } catch {}
   }
 
+  const deleteNotification = async (id: string) => {
+    try {
+      const res = await fetch('/api/notifications', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ notificationIds: [id] })
+      })
+      if (res.ok) {
+        setNotifications(prev => prev.filter(n => n.id !== id))
+        showToast('Notifikasi dihapus', { type: 'success', duration: 1500, idKey: `del-${id}` })
+      }
+    } catch {}
+  }
+
+  const deleteAllNotifications = async () => {
+    try {
+      const res = await fetch('/api/notifications?all=true', { method: 'DELETE' })
+      if (res.ok) {
+        setNotifications([])
+        setUnreadCount(0)
+        prevUnreadRef.current = 0
+        showToast('Semua notifikasi dihapus', { type: 'success', duration: 2000, idKey: 'del-all' })
+      }
+    } catch {}
+  }
+
   const toggleSound = () => {
     const next = !soundEnabled
     setSoundEnabled(next)
@@ -200,17 +341,24 @@ export default function NotificationDropdown() {
     }
   }
 
-  const formatDate = (d: string) => {
+  // Format date for display
+  const formatDate = (dateStr: string) => {
     try {
-      const date = new Date(d)
+      const date = new Date(dateStr)
       const now = new Date()
-      const diff = Math.floor((now.getTime() - date.getTime()) / 60000)
-      if (diff < 1) return 'Baru saja'
-      if (diff < 60) return `${diff} menit yang lalu`
-      if (diff < 1440) return `${Math.floor(diff / 60)} jam yang lalu`
-      return `${Math.floor(diff / 1440)} hari yang lalu`
+      const diffMs = now.getTime() - date.getTime()
+      const diffMins = Math.floor(diffMs / 60000)
+      const diffHours = Math.floor(diffMins / 60)
+      const diffDays = Math.floor(diffHours / 24)
+
+      if (diffMins < 1) return 'Baru saja'
+      if (diffMins < 60) return `${diffMins} menit yang lalu`
+      if (diffHours < 24) return `${diffHours} jam yang lalu`
+      if (diffDays < 7) return `${diffDays} hari yang lalu`
+
+      return date.toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' })
     } catch {
-      return d
+      return dateStr
     }
   }
 
@@ -252,6 +400,11 @@ export default function NotificationDropdown() {
                     Tandai Semua
                   </button>
                 )}
+                {notifications.length > 0 && (
+                  <button onClick={deleteAllNotifications} className="text-sm text-red-600 hover:text-red-700">
+                    Hapus Semua
+                  </button>
+                )}
                 <button onClick={() => setIsOpen(false)} className="text-gray-400 hover:text-gray-600">
                   <X className="h-5 w-5" />
                 </button>
@@ -274,7 +427,7 @@ export default function NotificationDropdown() {
                         <p className="text-sm text-gray-600 mt-1">{n.message}</p>
                         <div className="flex items-center justify-between mt-2">
                           <span className="text-xs text-gray-500">{formatDate(n.createdAt)}</span>
-                          <div className="flex items-center space-x-2">
+                           <div className="flex items-center space-x-2">
                             {n.taskId && (
                               <Link href="/admin/tasks" className="text-xs text-blue-600 hover:text-blue-800" onClick={() => setIsOpen(false)}>
                                 Lihat Tugas
@@ -283,6 +436,7 @@ export default function NotificationDropdown() {
                             {!n.isRead && (
                               <button onClick={() => markAsRead(n.id)} className="text-xs text-gray-500 hover:text-gray-700">Tandai Dibaca</button>
                             )}
+                             <button onClick={() => deleteNotification(n.id)} className="text-xs text-red-600 hover:text-red-700">Hapus</button>
                           </div>
                         </div>
                       </div>

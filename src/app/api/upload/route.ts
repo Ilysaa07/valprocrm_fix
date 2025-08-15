@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
-import { writeFile } from 'fs/promises'
-import { join } from 'path'
+import { writeFile, mkdir } from 'fs/promises'
+import { join, dirname } from 'path'
 import { v4 as uuidv4 } from 'uuid'
 
 export async function POST(request: NextRequest) {
@@ -33,7 +33,10 @@ export async function POST(request: NextRequest) {
       'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
       'image/jpeg',
       'image/png',
-      'image/jpg'
+      'image/jpg',
+      'video/mp4',
+      'video/webm',
+      'image/webp'
     ]
 
     if (!allowedTypes.includes(file.type)) {
@@ -58,13 +61,18 @@ export async function POST(request: NextRequest) {
     // Generate unique filename
     const fileExtension = file.name.split('.').pop()
     const uniqueFilename = `${uuidv4()}.${fileExtension}`
-    const uploadPath = join(process.cwd(), 'public/uploads/documents', uniqueFilename)
+    // Route by type: images/videos to /uploads/media, others to /uploads/documents
+    const isMedia = file.type.startsWith('image/') || file.type.startsWith('video/')
+    const subdir = isMedia ? 'media' : 'documents'
+    const uploadPath = join(process.cwd(), `public/uploads/${subdir}`, uniqueFilename)
+    // Ensure target directory exists
+    await mkdir(dirname(uploadPath), { recursive: true })
 
     // Save file
     await writeFile(uploadPath, buffer)
 
     // Return file info
-    const fileUrl = `/uploads/documents/${uniqueFilename}`
+    const fileUrl = `/uploads/${subdir}/${uniqueFilename}`
     
     return NextResponse.json({
       message: 'File berhasil diupload',
