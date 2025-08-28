@@ -1,292 +1,293 @@
-'use client'
+"use client"
 
-import { useEffect, useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { useSession, signOut } from 'next-auth/react'
-import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import {
-  Menu,
-  X,
-  Home,
-  Users,
-  CheckSquare,
+import Link from 'next/link'
+import { 
+  Home, 
+  Users, 
+  FolderKanban, 
+  Settings, 
+  Contact, 
+  CheckSquare, 
+  MessageCircle, 
+  Bell, 
+  Menu, 
+  X, 
+  Sun, 
+  Moon, 
   LogOut,
-  User,
   DollarSign,
-  FileText,
-  MessageCircle,
-  Bell,
-  Settings,
+  Folder,
   Calendar,
-  ClipboardList,
+  BarChart3,
+  UserCheck,
+  ClipboardList
 } from 'lucide-react'
-import Image from 'next/image'
 
-import NotificationDropdown from '../NotificationDropdown'
-import { Button } from '@/components/ui/Button'
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
-import Badge from '@/components/ui/Badge'
-import { Separator } from '@/components/ui/separator'
-import { useToast } from '@/components/providers/ToastProvider'
-import SocketClient from '@/lib/socket'
-import { io, Socket } from 'socket.io-client'
-
-interface AdminLayoutProps {
-  children: React.ReactNode
+interface NavItem {
+  name: string
+  href: string
+  icon: React.ComponentType<{ className?: string }>
+  badge?: number
 }
 
-const navigation = [
-  { name: 'Dashboard', href: '/admin', icon: Home },
-  { name: 'Kelola Karyawan', href: '/admin/users', icon: Users },
-  { name: 'Kelola Tugas', href: '/admin/tasks', icon: CheckSquare },
-  { name: 'Chat', href: '/chat', icon: MessageCircle },
-  { name: 'Keuangan', href: '/admin/finance', icon: DollarSign },
-  { name: 'Kehadiran', href: '/admin/attendance', icon: Calendar },
-  { name: 'Pengajuan Izin', href: '/admin/leave-requests', icon: ClipboardList },
+interface NavigationSection {
+  title: string
+  items: NavItem[]
+}
+
+const navigationSections: NavigationSection[] = [
+  {
+    title: 'Banking',
+    items: [
+      { name: 'Dashboard', href: '/admin', icon: Home },
+      { name: 'Calendar', href: '/admin/calendar', icon: Calendar },
+      { name: 'Analysis', href: '/admin/analysis', icon: BarChart3 },
+      { name: 'Finances', href: '/admin/finance', icon: DollarSign },
+    ]
+  },
+  {
+    title: 'Services',
+    items: [
+      { name: 'Messages', href: '/chat', icon: MessageCircle, badge: 3 },
+      { name: 'Documents', href: '/admin/documents', icon: Folder },
+      { name: 'Products', href: '/admin/projects', icon: FolderKanban },
+    ]
+  },
+  {
+    title: 'Other',
+    items: [
+      { name: 'Tasks', href: '/admin/tasks', icon: CheckSquare },
+      { name: 'Employees', href: '/admin/users', icon: Users },
+      { name: 'Contacts', href: '/admin/contacts', icon: UserCheck },
+      { name: 'Settings', href: '/admin/settings', icon: Settings },
+    ]
+  }
 ]
 
-export default function AdminLayout({ children }: AdminLayoutProps) {
-  const [sidebarOpen, setSidebarOpen] = useState(false)
+// Keep original navigation for reference
+const originalNavigation: NavItem[] = [
+  { name: 'Dashboard', href: '/admin', icon: Home },
+  { name: 'Contacts', href: '/admin/contacts', icon: Contact },
+  { name: 'Projects', href: '/admin/projects', icon: FolderKanban },
+  { name: 'Users', href: '/admin/users', icon: Users },
+  { name: 'Tasks', href: '/admin/tasks', icon: ClipboardList },
+  { name: 'Finance', href: '/admin/finance', icon: DollarSign },
+  { name: 'Attendance', href: '/admin/attendance', icon: Calendar },
+  { name: 'Documents', href: '/admin/documents', icon: Folder },
+  { name: 'Chat', href: '/chat', icon: MessageCircle },
+  { name: 'Notifications', href: '/admin/notifications', icon: Bell },
+  { name: 'Settings', href: '/admin/settings', icon: Settings },
+]
+
+function LayoutContent({ children }: { children: React.ReactNode }) {
   const { data: session } = useSession()
   const pathname = usePathname()
-  const { showToast } = useToast()
-
-  // Realtime toast for attendance and leave events
-  useEffect(() => {
-    let s: Socket | null = null
-    try {
-      const g = (window as unknown as { socket?: Socket }).socket
-      s = g || io()
-      s.on('attendance_check_in', (p: { userId: string; status: string; userName?: string }) => {
-        const name = p.userName || 'Karyawan'
-        showToast(`${name} check-in (${p.status})`, { title: 'Kehadiran', type: 'info', duration: 3000, idKey: `ci-${p.userId}-${Date.now()}` })
-      })
-      s.on('attendance_check_out', (p: { userId: string; userName?: string }) => {
-        const name = p.userName || 'Karyawan'
-        showToast(`${name} check-out`, { title: 'Kehadiran', type: 'info', duration: 3000, idKey: `co-${p.userId}-${Date.now()}` })
-      })
-      s.on('leave_request_created', () => {
-        showToast('Pengajuan izin baru masuk', { title: 'Pengajuan Izin', type: 'info', duration: 3500, idKey: `lr-${Date.now()}` })
-      })
-      // Presence notifications
-      s.on('user_online', (p: { userId: string; name?: string; role?: string }) => {
-        const who = p.name || 'Pengguna'
-        showToast(`${who} online`, { title: 'Presence', type: 'success', duration: 2000, idKey: `on-${p.userId}` })
-      })
-      s.on('user_offline', (p: { userId: string; name?: string; role?: string }) => {
-        const who = p.name || 'Pengguna'
-        showToast(`${who} offline`, { title: 'Presence', type: 'warning', duration: 2000, idKey: `off-${p.userId}` })
-      })
-    } catch {}
-    return () => {
-      try {
-        s?.off('attendance_check_in')
-        s?.off('attendance_check_out')
-        s?.off('leave_request_created')
-        s?.off('user_online')
-        s?.off('user_offline')
-        if (!(window as any).socket) s?.disconnect()
-      } catch {}
-    }
-  }, [showToast])
+  const [collapsed, setCollapsed] = useState(false)
+  const [theme, setTheme] = useState<'light' | 'dark'>('light')
+  const [mounted, setMounted] = useState(false)
 
   useEffect(() => {
-    const socket = SocketClient.getSocket()
+    setMounted(true)
     
-    return () => {
-      SocketClient.disconnect()
+    // Only access localStorage after component mounts
+    if (typeof window !== 'undefined') {
+      const savedCollapsed = localStorage.getItem('sidebar-collapsed')
+      if (savedCollapsed) {
+        setCollapsed(JSON.parse(savedCollapsed))
+      }
+      
+      const savedTheme = localStorage.getItem('theme') as 'light' | 'dark'
+      if (savedTheme) {
+        setTheme(savedTheme)
+        document.documentElement.classList.toggle('dark', savedTheme === 'dark')
+      }
     }
   }, [])
 
-  const renderNavLink = (item: typeof navigation[0]) => {
-    const isActive = pathname === item.href
-    const baseClass =
-      'group flex items-center px-3 py-2.5 text-sm font-medium rounded-lg transition-all duration-200'
-    const activeClass = 'bg-blue-50 text-blue-700 border border-blue-200 shadow-sm'
-    const inactiveClass = 'text-gray-700 hover:bg-gray-50 hover:text-gray-900'
+  useEffect(() => {
+    if (mounted) {
+      localStorage.setItem('sidebar-collapsed', JSON.stringify(collapsed))
+    }
+  }, [collapsed, mounted])
 
-    return (
-      <Link
-        key={item.name}
-        href={item.href}
-        className={`${baseClass} ${isActive ? activeClass : inactiveClass}`}
-        onClick={() => setSidebarOpen(false)}
-      >
-        <item.icon className={`mr-3 h-5 w-5 flex-shrink-0 ${
-          isActive ? 'text-blue-600' : 'text-gray-500 group-hover:text-gray-700'
-        }`} />
-        {item.name}
-        {isActive && (
-          <Badge variant="default" className="ml-auto text-xs bg-blue-100 text-blue-700">
-            Active
-          </Badge>
-        )}
-      </Link>
-    )
+  const toggleTheme = () => {
+    if (!mounted) return
+    const newTheme = theme === 'light' ? 'dark' : 'light'
+    setTheme(newTheme)
+    localStorage.setItem('theme', newTheme)
+    document.documentElement.classList.toggle('dark', newTheme === 'dark')
   }
 
-  const renderUserInfo = () => (
-    <div className="flex items-center p-3">
-      <Avatar className="w-10 h-10">
-        <AvatarImage src={session?.user?.image} alt={session?.user?.name || ''} />
-        <AvatarFallback className="bg-blue-100 text-blue-600">
-          <User className="h-5 w-5" />
-        </AvatarFallback>
-      </Avatar>
-      <div className="ml-3 flex-1 min-w-0">
-        <p className="text-sm font-medium text-gray-900 truncate">
-          {session?.user?.name}
-        </p>
-        <p className="text-xs text-gray-500">Administrator</p>
-      </div>
-    </div>
-  )
+  const isActive = (href: string) => pathname === href
 
-  const renderLogoutButton = () => (
-    <Button
-      onClick={() => signOut()}
-      variant="outline"
-      size="sm"
-      className="w-full mt-2 text-gray-700 hover:text-red-600 hover:border-red-200"
-    >
-      <LogOut className="mr-2 h-4 w-4" />
-      Keluar
-    </Button>
-  )
-
-  return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-blue-50">
-      {/* Mobile Sidebar */}
-      <div
-        className={`fixed inset-0 z-50 lg:hidden ${
-          sidebarOpen ? 'block' : 'hidden'
-        }`}
-      >
-        <div
-          className="fixed inset-0 bg-gray-600 bg-opacity-75 backdrop-blur-sm"
-          onClick={() => setSidebarOpen(false)}
-        />
-        <div className="fixed inset-y-0 left-0 flex w-80 flex-col bg-white shadow-2xl">
-          <div className="flex h-16 items-center justify-between px-6 border-b border-gray-200">
-            <div className="relative h-10 w-40">
-              <Image
-                src="/valprologo.webp"
-                alt="Valpro Intertech"
-                fill
-                className="object-contain"
-                priority
-                sizes="160px"
-              />
-            </div>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setSidebarOpen(false)}
-              className="p-2"
-            >
-              <X className="h-5 w-5" />
-            </Button>
-          </div>
-          <nav className="flex-1 space-y-1 px-3 py-4">
-            {navigation.map(renderNavLink)}
-          </nav>
-          <div className="border-t border-gray-200 p-3">
-            {renderUserInfo()}
-            {renderLogoutButton()}
-          </div>
-        </div>
-      </div>
-
-      {/* Desktop Sidebar */}
-      <aside className="hidden lg:fixed lg:inset-y-0 lg:flex lg:w-80 lg:flex-col bg-white border-r border-gray-200 shadow-lg">
-        {/* Logo */}
-        <div className="flex h-20 items-center justify-center border-b border-gray-200 px-6">
-          <div className="relative h-12 w-48">
-            <Image
-              src="/valprologo.webp"
-              alt="Valpro Intertech"
-              fill
-              className="object-contain"
-              priority
-              sizes="200px"
-            />
-          </div>
-        </div>
-        
-        {/* Navigation */}
-        <nav className="flex-1 space-y-1 px-3 py-6">
-          {navigation.map(renderNavLink)}
-        </nav>
-        
-        {/* User Info */}
-        <div className="border-t border-gray-200 p-3">
-          {renderUserInfo()}
-          {renderLogoutButton()}
-        </div>
-      </aside>
-
-      {/* Main Content Area */}
-      <div className="lg:pl-80">
-        {/* Topbar */}
-        <header className="sticky top-0 z-40 flex h-16 bg-white/80 backdrop-blur-sm border-b border-gray-200 shadow-sm">
-          <Button
-            onClick={() => setSidebarOpen(true)}
-            variant="outline"
-            size="sm"
-            className="ml-4 lg:hidden"
-          >
-            <Menu className="h-5 w-5" />
-          </Button>
-          
-          <div className="flex flex-1 justify-between px-4 lg:px-6 items-center">
-            <div>
-              <h1 className="text-xl font-semibold text-gray-900">
-                {navigation.find((item) => item.href === pathname)?.name || 'Dashboard'}
-              </h1>
-              <p className="text-sm text-gray-500">Welcome back, {session?.user?.name}</p>
-            </div>
-            
-            <div className="flex items-center space-x-4">
-              <NotificationDropdown />
-              
+  if (!mounted) {
+    return (
+      <div className="min-h-screen bg-gray-50">
+        <div className="flex">
+          <div className="w-64 bg-white border-r border-gray-200">
+            <div className="p-4 border-b border-gray-200">
               <div className="flex items-center space-x-3">
-                <Button variant="outline" size="sm" className="p-2">
-                  <Settings className="h-4 w-4" />
-                </Button>
-                
-                <div className="flex items-center space-x-3">
-                  <Avatar className="w-8 h-8">
-                    <AvatarImage src={session?.user?.image} alt={session?.user?.name || ''} />
-                    <AvatarFallback className="bg-blue-100 text-blue-600 text-sm">
-                      {session?.user?.name?.charAt(0) || 'U'}
-                    </AvatarFallback>
-                  </Avatar>
-                  <span className="text-sm font-medium text-gray-700 hidden md:block">
-                    {session?.user?.name}
-                  </span>
+                <div className="w-10 h-10 bg-gray-200 rounded-lg"></div>
+                <div className="flex-1">
+                  <div className="h-4 bg-gray-200 rounded w-24"></div>
+                  <div className="h-3 bg-gray-100 rounded w-16 mt-1"></div>
                 </div>
-                
-                <Button
-                  onClick={() => signOut()}
-                  variant="outline"
-                  size="sm"
-                  className="hidden md:flex"
-                >
-                  <LogOut className="h-4 w-4 mr-2" />
-                  Keluar
-                </Button>
               </div>
             </div>
           </div>
-        </header>
-
-        {/* Page Content */}
-        <main className="flex-1 p-4 lg:p-6">
-          <div className="mx-auto max-w-7xl">
-            {children}
+          <div className="flex-1 ml-64">
+            <main className="p-6">{children}</main>
           </div>
-        </main>
+        </div>
+      </div>
+    )
+  }
+
+  return (
+    <div className={`min-h-screen ${mounted ? 'bg-gray-50 dark:bg-gray-900' : 'bg-gray-50'}`} suppressHydrationWarning>
+      <div className="flex">
+        {/* Clean Sidebar */}
+        <div className={`
+          fixed inset-y-0 left-0 z-50 flex flex-col
+          ${collapsed ? 'w-16' : 'w-64'}
+          bg-white border-r border-gray-200
+          dark:bg-gray-800 dark:border-gray-700
+          transition-all duration-200
+        `}>
+          {/* Header */}
+          <div className="p-4 border-b border-gray-200 dark:border-gray-700">
+            <div className="flex items-center justify-between">
+              {!collapsed && (
+                <div className="flex items-center space-x-3">
+                  <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center">
+                    <span className="text-white font-semibold text-sm">CRM</span>
+                  </div>
+                  <div>
+                    <h1 className="text-gray-900 dark:text-white font-semibold">ValPro ERP</h1>
+                    <p className="text-gray-500 dark:text-gray-400 text-xs">Admin</p>
+                  </div>
+                </div>
+              )}
+              <button
+                onClick={() => setCollapsed(!collapsed)}
+                className="p-2 rounded-lg bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600"
+                title={collapsed ? 'Expand' : 'Collapse'}
+              >
+                {collapsed ? (
+                  <Menu className="w-4 h-4 text-gray-600 dark:text-gray-300" />
+                ) : (
+                  <X className="w-4 h-4 text-gray-600 dark:text-gray-300" />
+                )}
+              </button>
+            </div>
+            
+            {/* User Profile */}
+            <div className="mt-4 flex items-center space-x-3">
+              <div className="relative">
+                <img
+                  src={session?.user?.image || '/default-avatar.svg'}
+                  alt="Profile"
+                  className="w-10 h-10 rounded-lg object-cover"
+                />
+                <div className="absolute -bottom-1 -right-1 w-3 h-3 bg-green-500 border-2 border-white dark:border-gray-800 rounded-full"></div>
+              </div>
+              {!collapsed && (
+                <div className="flex-1 min-w-0">
+                  <p className="text-gray-900 dark:text-white font-medium text-sm truncate">
+                    {session?.user?.name || 'Admin'}
+                  </p>
+                  <p className="text-gray-500 dark:text-gray-400 text-xs">Administrator</p>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Navigation */}
+          <nav className="flex-1 p-4 space-y-1 overflow-y-auto">
+            {originalNavigation.map((item) => {
+              const Icon = item.icon
+              const active = isActive(item.href)
+              
+              return (
+                <Link
+                  key={item.name}
+                  href={item.href}
+                  className={`
+                    flex items-center px-3 py-2 text-sm font-medium rounded-lg
+                    ${active 
+                      ? 'bg-blue-50 text-blue-700 dark:bg-blue-900/20 dark:text-blue-300' 
+                      : 'text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-700'
+                    }
+                  `}
+                  title={collapsed ? item.name : undefined}
+                >
+                  <Icon className={`w-5 h-5 ${collapsed ? 'mx-auto' : 'mr-3'}`} />
+                  {!collapsed && (
+                    <span className="truncate">{item.name}</span>
+                  )}
+                  {!collapsed && item.badge && (
+                    <span className="ml-auto px-2 py-1 text-xs bg-red-500 text-white rounded-full">
+                      {item.badge}
+                    </span>
+                  )}
+                </Link>
+              )
+            })}
+          </nav>
+
+          {/* Footer */}
+          <div className="p-4 border-t border-gray-200 dark:border-gray-700 space-y-2">
+            {/* Theme Toggle */}
+            <button
+              onClick={toggleTheme}
+              className="w-full flex items-center justify-center px-3 py-2 text-sm font-medium rounded-lg
+                         bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600
+                         text-gray-700 dark:text-gray-300"
+              title={collapsed ? (theme === 'dark' ? 'Light' : 'Dark') : undefined}
+            >
+              {theme === 'dark' ? (
+                <Sun className={`w-5 h-5 ${collapsed ? '' : 'mr-3'}`} />
+              ) : (
+                <Moon className={`w-5 h-5 ${collapsed ? '' : 'mr-3'}`} />
+              )}
+              {!collapsed && (
+                <span>{theme === 'dark' ? 'Light Mode' : 'Dark Mode'}</span>
+              )}
+            </button>
+
+            {/* Logout */}
+            <button
+              onClick={() => signOut()}
+              className="w-full flex items-center justify-center px-3 py-2 text-sm font-medium rounded-lg
+                         bg-red-50 hover:bg-red-100 dark:bg-red-900/20 dark:hover:bg-red-900/30
+                         text-red-700 dark:text-red-300"
+              title={collapsed ? 'Logout' : undefined}
+            >
+              <LogOut className={`w-5 h-5 ${collapsed ? '' : 'mr-3'}`} />
+              {!collapsed && <span>Logout</span>}
+            </button>
+          </div>
+        </div>
+
+        {/* Main Content */}
+        <div className={`
+          flex-1 transition-all duration-200
+          ${collapsed ? 'ml-16' : 'ml-64'}
+          bg-gray-50 dark:bg-gray-900
+          min-h-screen
+        `}>
+          <main className="p-6">
+            {children}
+          </main>
+        </div>
       </div>
     </div>
   )
+}
+
+export default function AdminLayout({ children }: { children: React.ReactNode }) {
+  return <LayoutContent>{children}</LayoutContent>
 }

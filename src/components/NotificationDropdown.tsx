@@ -5,7 +5,7 @@ import { io, Socket } from 'socket.io-client'
 import { Bell, X, Volume2, VolumeX } from 'lucide-react'
 import Link from 'next/link'
 import { useToast } from './providers/ToastProvider'
-import { AttendanceNotification } from '@/lib/socket'
+// import { AttendanceNotification } from '@/lib/socket'
 
 interface NotificationItem {
   id: string
@@ -34,6 +34,7 @@ export default function NotificationDropdown() {
   const socketRef = useRef<Socket | null>(null)
 
   const notificationSupported = typeof window !== 'undefined' && 'Notification' in window
+  const isDev = typeof process !== 'undefined' && process.env.NODE_ENV !== 'production'
 
   const fetchNotifications = useCallback(async (opts?: { limit?: number }) => {
     setLoading(true)
@@ -83,30 +84,29 @@ export default function NotificationDropdown() {
           audioRef.current.play().catch(() => {})
         }
 
-        if (notificationSupported && notificationPermission === 'granted' && latest) {
+        if (!isDev && notificationSupported && notificationPermission === 'granted' && latest) {
           try {
-            if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
-              navigator.serviceWorker.ready.then((reg) => {
-                reg.showNotification(latest.title || 'Notifikasi Baru', {
-                  body: latest.message,
-                  icon: '/valprologo.webp',
-                  badge: '/valprologo.webp',
-                  tag: latest.id,
-                  renotify: true,
-                  data: { url: latest.taskId ? `/admin/tasks` : '/admin/notifications', id: latest.id }
-                })
-              })
-            } else {
-              new Notification(latest.title || 'Notifikasi Baru', { body: latest.message, icon: '/valprologo.webp' })
-            }
+            new Notification(latest.title || 'Notifikasi Baru', {
+              body: latest.message,
+              icon: '/valprologo.webp',
+              tag: 'notification-' + latest.id,
+              requireInteraction: false,
+              silent: false,
+              data: {
+                url: '/admin/notifications',
+                id: latest.id
+              }
+            })
           } catch {}
+        } else {
+          new Notification(latest.title || 'Notifikasi Baru', { body: latest.message, icon: '/valprologo.webp' })
         }
       }
 
       setUnreadCount(newUnread)
       prevUnreadRef.current = newUnread
     } catch {}
-  }, [notificationPermission, showToast, soundEnabled, notificationSupported])
+  }, [notificationPermission, showToast, soundEnabled, notificationSupported, isDev])
 
   useEffect(() => {
     if (typeof window === 'undefined') return
@@ -133,7 +133,6 @@ export default function NotificationDropdown() {
       const s = globalSocket || io(process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000')
       socketRef.current = s
       s.on('notification', (payload: { title: string; message: string; conversationId?: string }) => {
-        // Update badge and toast
         setUnreadCount((prev) => prev + 1)
         prevUnreadRef.current = prevUnreadRef.current + 1
         showToast(payload.message, { title: payload.title, type: 'info', duration: 5000, idKey: `sock-${Date.now()}` })
@@ -142,107 +141,30 @@ export default function NotificationDropdown() {
           audioRef.current.play().catch(() => {})
         }
 
-        // Desktop notification
-        if (notificationSupported && notificationPermission === 'granted') {
+        if (!isDev && notificationSupported && notificationPermission === 'granted') {
           try {
             const url = payload.conversationId ? `/chat?c=${payload.conversationId}` : '/admin/notifications'
-            if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
-              navigator.serviceWorker.ready.then((reg) => {
-                reg.showNotification(payload.title || 'Notifikasi Baru', {
-                  body: payload.message,
-                  icon: '/valprologo.webp',
-                  badge: '/valprologo.webp',
-                  tag: `chat-${payload.conversationId || Date.now()}`,
-                  renotify: true,
-                  data: { url },
-                })
-              })
-            } else {
-              new Notification(payload.title || 'Notifikasi Baru', { body: payload.message, icon: '/valprologo.webp' })
-            }
+            new Notification(payload.title || 'Notifikasi Baru', {
+              body: payload.message,
+              icon: '/valprologo.webp',
+              badge: '/valprologo.webp',
+              tag: `chat-${payload.conversationId || Date.now()}`,
+              data: { url }
+            })
           } catch {}
+        } else {
+          new Notification(payload.title || 'Notifikasi Baru', { body: payload.message, icon: '/valprologo.webp' })
         }
       })
 
-      // Handle attendance check-in notifications with employee name
-      s.on('attendance_check_in', (payload: AttendanceNotification) => {
-        const userName = payload.userName || 'Karyawan'
-        const status = payload.status || ''
-        const message = `${userName} telah melakukan check-in ${status ? `(${status})` : ''}`
-        
-        // Update badge and toast
-        setUnreadCount((prev) => prev + 1)
-        prevUnreadRef.current = prevUnreadRef.current + 1
-        showToast(message, { title: 'Check-in Karyawan', type: 'info', duration: 5000, idKey: `ci-${payload.userId}-${Date.now()}` })
-        
-        if (soundEnabled && audioRef.current) {
-          audioRef.current.currentTime = 0
-          audioRef.current.play().catch(() => {})
-        }
-
-        // Desktop notification
-        if (notificationSupported && notificationPermission === 'granted') {
-          try {
-            if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
-              navigator.serviceWorker.ready.then((reg) => {
-                reg.showNotification('Check-in Karyawan', {
-                  body: message,
-                  icon: '/valprologo.webp',
-                  badge: '/valprologo.webp',
-                  tag: `ci-${payload.userId}-${Date.now()}`,
-                  renotify: true,
-                  data: { url: '/admin/attendance' }
-                })
-              })
-            } else {
-              new Notification('Check-in Karyawan', { body: message, icon: '/valprologo.webp' })
-            }
-          } catch {}
-        }
-      })
-
-      // Handle attendance check-out notifications with employee name
-      s.on('attendance_check_out', (payload: AttendanceNotification) => {
-        const userName = payload.userName || 'Karyawan'
-        const message = `${userName} telah melakukan check-out`
-        
-        // Update badge and toast
-        setUnreadCount((prev) => prev + 1)
-        prevUnreadRef.current = prevUnreadRef.current + 1
-        showToast(message, { title: 'Check-out Karyawan', type: 'info', duration: 5000, idKey: `co-${payload.userId}-${Date.now()}` })
-        
-        if (soundEnabled && audioRef.current) {
-          audioRef.current.currentTime = 0
-          audioRef.current.play().catch(() => {})
-        }
-
-        // Desktop notification
-        if (notificationSupported && notificationPermission === 'granted') {
-          try {
-            if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
-              navigator.serviceWorker.ready.then((reg) => {
-                reg.showNotification('Check-out Karyawan', {
-                  body: message,
-                  icon: '/valprologo.webp',
-                  badge: '/valprologo.webp',
-                  tag: `co-${payload.userId}-${Date.now()}`,
-                  renotify: true,
-                  data: { url: '/admin/attendance' }
-                })
-              })
-            } else {
-              new Notification('Check-out Karyawan', { body: message, icon: '/valprologo.webp' })
-            }
-          } catch {}
-        }
-      })
+      // Remove attendance-related socket listeners
     } catch {}
 
     return () => {
       if (pollingRef.current) clearInterval(pollingRef.current)
       if (socketRef.current && !(window as any).socket) socketRef.current.disconnect()
     }
-  }, [fetchNotifications, fetchUnreadAndNotify, notificationSupported])
+  }, [fetchNotifications, fetchUnreadAndNotify, notificationSupported, isDev])
 
   const toggleDropdown = async () => {
     const newOpen = !isOpen
@@ -255,12 +177,6 @@ export default function NotificationDropdown() {
     try {
       const p = await Notification.requestPermission()
       setNotificationPermission(p)
-      if (p === 'granted' && 'serviceWorker' in navigator) {
-        const reg = await navigator.serviceWorker.getRegistration()
-        if (!reg) {
-          await navigator.serviceWorker.register('/sw.js', { scope: '/' })
-        }
-      }
       showToast(p === 'granted' ? 'Notifikasi desktop diaktifkan' : 'Notifikasi desktop tidak diaktifkan', {
         type: p === 'granted' ? 'success' : 'warning',
         duration: 3000,
@@ -383,60 +299,60 @@ export default function NotificationDropdown() {
       {isOpen && mounted && (
         <>
           <div className="fixed inset-0 z-10" onClick={() => setIsOpen(false)} />
-          <div className="absolute right-0 mt-2 w-96 bg-white rounded-lg shadow-lg border border-gray-200 z-20">
-            <div className="flex items-center justify-between p-4 border-b border-gray-100">
-              <h3 className="text-lg font-semibold text-gray-900">Notifikasi</h3>
+          <div className="absolute right-0 mt-2 w-96 bg-white dark:bg-neutral-900 rounded-lg shadow-lg dark:shadow-dark border border-gray-200 dark:border-neutral-800 z-[9999]">
+            <div className="flex items-center justify-between p-4 border-b border-gray-100 dark:border-neutral-800">
+              <h3 className="text-lg font-semibold text-gray-900 dark:text-neutral-100">Notifikasi</h3>
               <div className="flex items-center space-x-2">
                 {notificationSupported && notificationPermission !== 'granted' && (
-                  <button onClick={requestNotificationPermission} className="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded hover:bg-blue-200">
+                  <button onClick={requestNotificationPermission} className="text-xs bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 px-2 py-1 rounded hover:bg-blue-200 dark:hover:bg-blue-900/50">
                     Aktifkan Notifikasi
                   </button>
                 )}
-                <button onClick={toggleSound} className="p-1 text-gray-500 hover:text-gray-700">
+                <button onClick={toggleSound} className="p-1 text-gray-500 dark:text-neutral-400 hover:text-gray-700 dark:hover:text-neutral-200">
                   {soundEnabled ? <Volume2 className="h-4 w-4" /> : <VolumeX className="h-4 w-4" />}
                 </button>
                 {unreadCount > 0 && (
-                  <button onClick={markAllAsRead} className="text-sm text-blue-600 hover:text-blue-800">
+                  <button onClick={markAllAsRead} className="text-sm text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300">
                     Tandai Semua
                   </button>
                 )}
                 {notifications.length > 0 && (
-                  <button onClick={deleteAllNotifications} className="text-sm text-red-600 hover:text-red-700">
+                  <button onClick={deleteAllNotifications} className="text-sm text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300">
                     Hapus Semua
                   </button>
                 )}
-                <button onClick={() => setIsOpen(false)} className="text-gray-400 hover:text-gray-600">
+                <button onClick={() => setIsOpen(false)} className="text-gray-400 dark:text-neutral-500 hover:text-gray-600 dark:hover:text-neutral-300">
                   <X className="h-5 w-5" />
                 </button>
               </div>
             </div>
             <div className="max-h-96 overflow-y-auto">
               {loading ? (
-                <div className="p-4 text-center text-gray-500">Memuat notifikasi...</div>
+                <div className="p-4 text-center text-gray-500 dark:text-neutral-400">Memuat notifikasi...</div>
               ) : notifications.length === 0 ? (
-                <div className="p-6 text-center text-gray-500">Tidak ada notifikasi</div>
+                <div className="p-6 text-center text-gray-500 dark:text-neutral-400">Tidak ada notifikasi</div>
               ) : (
-                <div className="divide-y divide-gray-100">
+                <div className="divide-y divide-gray-100 dark:divide-neutral-800">
                   {notifications.map((n) => (
-                    <div key={n.id} className={`p-4 hover:bg-gray-50 transition-colors ${!n.isRead ? 'bg-gradient-to-r from-blue-50 to-white' : ''}`}>
+                    <div key={n.id} className={`p-4 hover:bg-gray-50 dark:hover:bg-neutral-800 transition-colors ${!n.isRead ? 'bg-gradient-to-r from-blue-50 to-white dark:from-blue-900/20 dark:to-neutral-900' : ''}`}>
                       <div className="flex flex-col">
                         <div className="flex items-center space-x-2">
-                          <h4 className={`text-sm font-medium ${!n.isRead ? 'text-gray-900' : 'text-gray-700'}`}>{n.title}</h4>
+                          <h4 className={`text-sm font-medium ${!n.isRead ? 'text-gray-900 dark:text-neutral-100' : 'text-gray-700 dark:text-neutral-300'}`}>{n.title}</h4>
                           {!n.isRead && <span className="w-2 h-2 bg-blue-500 rounded-full" />}
                         </div>
-                        <p className="text-sm text-gray-600 mt-1">{n.message}</p>
+                        <p className="text-sm text-gray-600 dark:text-neutral-400 mt-1">{n.message}</p>
                         <div className="flex items-center justify-between mt-2">
-                          <span className="text-xs text-gray-500">{formatDate(n.createdAt)}</span>
+                          <span className="text-xs text-gray-500 dark:text-neutral-500">{formatDate(n.createdAt)}</span>
                            <div className="flex items-center space-x-2">
                             {n.taskId && (
-                              <Link href="/admin/tasks" className="text-xs text-blue-600 hover:text-blue-800" onClick={() => setIsOpen(false)}>
+                              <Link href="/admin/tasks" className="text-xs text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300" onClick={() => setIsOpen(false)}>
                                 Lihat Tugas
                               </Link>
                             )}
                             {!n.isRead && (
-                              <button onClick={() => markAsRead(n.id)} className="text-xs text-gray-500 hover:text-gray-700">Tandai Dibaca</button>
+                              <button onClick={() => markAsRead(n.id)} className="text-xs text-gray-500 dark:text-neutral-400 hover:text-gray-700 dark:hover:text-neutral-200">Tandai Dibaca</button>
                             )}
-                             <button onClick={() => deleteNotification(n.id)} className="text-xs text-red-600 hover:text-red-700">Hapus</button>
+                             <button onClick={() => deleteNotification(n.id)} className="text-xs text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300">Hapus</button>
                           </div>
                         </div>
                       </div>
@@ -446,8 +362,8 @@ export default function NotificationDropdown() {
               )}
             </div>
             {notifications.length > 0 && (
-              <div className="p-3 border-t border-gray-100">
-                <Link href="/admin/notifications" className="block text-center text-sm text-blue-600 hover:text-blue-800" onClick={() => setIsOpen(false)}>
+              <div className="p-3 border-t border-gray-100 dark:border-neutral-800">
+                <Link href="/admin/notifications" className="block text-center text-sm text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300" onClick={() => setIsOpen(false)}>
                   Lihat Semua Notifikasi
                 </Link>
               </div>

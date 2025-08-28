@@ -1,0 +1,606 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id                String           @id @default(cuid())
+  email             String           @unique
+  password          String
+  fullName          String
+  address           String?
+  gender            Gender?
+  nikKtp            String?          @unique
+  phoneNumber       String?
+  bankAccountNumber String?
+  ewalletNumber     String?
+  profilePicture    String?
+  role              Role             @default(EMPLOYEE)
+  status            UserStatus       @default(PENDING)
+  createdAt         DateTime         @default(now())
+  updatedAt         DateTime         @updatedAt
+  notifications     Notification[]
+  taskSubmissions   TaskSubmission[]
+  assignedTasks     Task[]           @relation("TaskAssignee")
+  createdTasks      Task[]           @relation("TaskCreator")
+  transactions      Transaction[]
+
+  // Chat relationships
+  conversationParticipants ConversationParticipant[]
+  sentMessages             Message[]
+  messageReads             MessageRead[]
+  messageDeletes           MessageDelete[]
+  conversationDeletes      ConversationDelete[]
+
+  // Attendance & Leave relations
+  attendance              Attendance[]
+  leaveRequests           LeaveRequest[]        @relation("LeaveRequestUser")
+  decidedLeaveRequests    LeaveRequest[]        @relation("LeaveRequestDecider")
+  taskFeedbacks           TaskFeedback[]
+  wfhLogs                WfhLog[]
+
+  // Document repository relations
+  ownedDocuments          Document[]
+  documentAcls            DocumentAcl[]
+  documentDownloadLogs    DocumentDownloadLog[]
+
+  // Invoice relations
+  createdInvoices         Invoice[]           @relation("InvoiceCreator")
+  updatedInvoices         Invoice[]           @relation("InvoiceUpdater")
+  invoiceHistoryChanges   InvoiceHistory[]
+
+  @@map("users")
+}
+
+model Task {
+  id                String             @id @default(cuid())
+  title             String
+  description       String
+  dueDate           DateTime?
+  status            TaskStatus         @default(NOT_STARTED)
+  assignment        TaskAssignmentType
+  createdById       String
+  assigneeId        String?
+  validationMessage String?
+  createdAt         DateTime           @default(now())
+  updatedAt         DateTime           @updatedAt
+  notifications     Notification[]
+  submissions       TaskSubmission[]
+  feedbacks         TaskFeedback[]
+  assignee          User?              @relation("TaskAssignee", fields: [assigneeId], references: [id])
+  createdBy         User               @relation("TaskCreator", fields: [createdById], references: [id], onDelete: Cascade)
+
+  @@index([assigneeId], map: "tasks_assigneeId_fkey")
+  @@index([createdById], map: "tasks_createdById_fkey")
+  @@map("tasks")
+}
+
+model TaskSubmission {
+  id           String   @id @default(cuid())
+  taskId       String
+  userId       String
+  description  String?
+  documentUrl  String?
+  documentName String?
+  documentSize Int?
+  submittedAt  DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  task         Task     @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([taskId, userId])
+  @@index([userId], map: "task_submissions_userId_fkey")
+  @@map("task_submissions")
+}
+
+model Transaction {
+  id          String              @id @default(cuid())
+  type        TransactionType
+  category    TransactionCategory
+  amount      Decimal             @db.Decimal(15, 2)
+  description String
+  date        DateTime
+  createdById String
+  createdAt   DateTime            @default(now())
+  updatedAt   DateTime            @updatedAt
+  createdBy   User                @relation(fields: [createdById], references: [id], onDelete: Cascade)
+
+  @@index([createdById], map: "transactions_createdById_fkey")
+  @@map("transactions")
+}
+
+model Notification {
+  id        String   @id @default(cuid())
+  userId    String
+  taskId    String?
+  title     String
+  message   String
+  isRead    Boolean  @default(false)
+  createdAt DateTime @default(now())
+  task      Task?    @relation(fields: [taskId], references: [id])
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([taskId], map: "notifications_taskId_fkey")
+  @@index([userId], map: "notifications_userId_fkey")
+  @@map("notifications")
+}
+
+// Attendance & Leave Management Models
+model Attendance {
+  id          String            @id @default(cuid())
+  userId      String
+  checkInAt   DateTime?
+  checkOutAt  DateTime?
+  method      AttendanceMethod
+  ipAddress   String?
+  latitude    Float?
+  longitude   Float?
+  status      AttendanceStatus
+  notes       String?
+  createdAt   DateTime          @default(now())
+  updatedAt   DateTime          @updatedAt
+  user        User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId], map: "attendance_userId_idx")
+  @@index([checkInAt], map: "attendance_checkInAt_idx")
+  @@map("attendance")
+}
+
+model AttendanceConfig {
+  id               String   @id @default(cuid())
+  workStartHour    Int      @default(9)
+  workEndHour      Int      @default(17)
+  officeLat        Float?
+  officeLng        Float?
+  radiusMeters     Int      @default(200)
+  useGeofence      Boolean  @default(false)
+  enforceGeofence  Boolean  @default(false)
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  @@map("attendance_config")
+}
+
+model LeaveRequest {
+  id           String       @id @default(cuid())
+  userId       String
+  type         LeaveType
+  startDate    DateTime
+  endDate      DateTime
+  reason       String
+  status       LeaveStatus  @default(PENDING)
+  decidedById  String?
+  decidedAt    DateTime?
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+  user         User         @relation("LeaveRequestUser", fields: [userId], references: [id], onDelete: Cascade)
+  decidedBy    User?        @relation("LeaveRequestDecider", fields: [decidedById], references: [id])
+
+  @@index([userId], map: "leave_userId_idx")
+  @@index([status], map: "leave_status_idx")
+  @@map("leave_requests")
+}
+
+model TaskFeedback {
+  id        String   @id @default(cuid())
+  taskId    String
+  userId    String
+  message   String   @db.Text
+  createdAt DateTime @default(now())
+  task      Task     @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([taskId], map: "task_feedback_taskId_idx")
+  @@index([userId], map: "task_feedback_userId_idx")
+  @@map("task_feedback")
+}
+
+// Invoice System Models
+model Invoice {
+  id            String        @id @default(cuid())
+  invoiceNumber String        @unique
+  issueDate     DateTime
+  dueDate       DateTime
+  clientName    String
+  clientAddress String?       @db.Text
+  clientEmail   String?
+  clientPhone   String?
+  notes         String?       @db.Text
+  subtotal      Decimal       @db.Decimal(15, 2)
+  taxAmount     Decimal       @db.Decimal(15, 2) @default(0)
+  discountAmount Decimal      @db.Decimal(15, 2) @default(0)
+  grandTotal    Decimal       @db.Decimal(15, 2)
+  paidAmount    Decimal       @db.Decimal(15, 2) @default(0)
+  status        InvoiceStatus @default(UNPAID)
+  createdById   String
+  updatedById   String?
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+  
+  items         InvoiceItem[]
+  history       InvoiceHistory[]
+  createdBy     User          @relation("InvoiceCreator", fields: [createdById], references: [id])
+  updatedBy     User?         @relation("InvoiceUpdater", fields: [updatedById], references: [id])
+
+  @@index([invoiceNumber], map: "invoice_number_idx")
+  @@index([status], map: "invoice_status_idx")
+  @@index([dueDate], map: "invoice_dueDate_idx")
+  @@index([createdById], map: "invoice_createdById_idx")
+  @@map("invoices")
+}
+
+model InvoiceItem {
+  id          String   @id @default(cuid())
+  invoiceId   String
+  description String
+  quantity    Decimal  @db.Decimal(10, 2)
+  unitPrice   Decimal  @db.Decimal(15, 2)
+  total       Decimal  @db.Decimal(15, 2)
+  createdAt   DateTime @default(now())
+  
+  invoice     Invoice  @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+
+  @@index([invoiceId], map: "invoice_items_invoiceId_idx")
+  @@map("invoice_items")
+}
+
+model InvoiceHistory {
+  id          String        @id @default(cuid())
+  invoiceId   String
+  oldStatus   InvoiceStatus?
+  newStatus   InvoiceStatus
+  changedById String
+  notes       String?       @db.Text
+  changedAt   DateTime      @default(now())
+  
+  invoice     Invoice       @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  changedBy   User         @relation(fields: [changedById], references: [id])
+
+  @@index([invoiceId], map: "invoice_history_invoiceId_idx")
+  @@index([changedById], map: "invoice_history_changedById_idx")
+  @@map("invoice_history")
+}
+
+// Chat System Models
+model Conversation {
+  id          String                    @id @default(cuid())
+  name        String?                   // For group chats
+  type        ConversationType          @default(DIRECT)
+  isArchived  Boolean                   @default(false)
+  createdAt   DateTime                  @default(now())
+  updatedAt   DateTime                  @updatedAt
+  messages    Message[]
+  participants ConversationParticipant[]
+  deletedForUsers ConversationDelete[]
+
+  @@map("conversations")
+}
+
+model ConversationParticipant {
+  id             String       @id @default(cuid())
+  conversationId String
+  userId         String
+  role           ParticipantRole @default(MEMBER)
+  joinedAt       DateTime     @default(now())
+  leftAt         DateTime?
+  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  user           User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([conversationId, userId])
+  @@index([conversationId], map: "conversation_participants_conversationId_fkey")
+  @@index([userId], map: "conversation_participants_userId_fkey")
+  @@map("conversation_participants")
+}
+
+model Message {
+  id             String              @id @default(cuid())
+  conversationId String
+  senderId       String
+  content        String              @db.Text
+  messageType    MessageType         @default(TEXT)
+  isEdited       Boolean             @default(false)
+  isDeleted      Boolean             @default(false)
+  deletedAt      DateTime?
+  deletedBy      String?
+  createdAt      DateTime            @default(now())
+  updatedAt      DateTime            @updatedAt
+  conversation   Conversation        @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  sender         User                @relation(fields: [senderId], references: [id], onDelete: Cascade)
+  attachments    MessageAttachment[]
+  readReceipts   MessageRead[]
+  deletedForUsers MessageDelete[]
+
+  @@index([conversationId], map: "messages_conversationId_fkey")
+  @@index([senderId], map: "messages_senderId_fkey")
+  @@index([createdAt], map: "messages_createdAt_fkey")
+  @@map("messages")
+}
+
+model MessageAttachment {
+  id        String   @id @default(cuid())
+  messageId String
+  fileName  String
+  fileUrl   String
+  fileSize  Int
+  fileType  String
+  createdAt DateTime @default(now())
+  message   Message  @relation(fields: [messageId], references: [id], onDelete: Cascade)
+
+  @@index([messageId], map: "message_attachments_messageId_fkey")
+  @@map("message_attachments")
+}
+
+model MessageRead {
+  id        String   @id @default(cuid())
+  messageId String
+  userId    String
+  readAt    DateTime @default(now())
+  message   Message  @relation(fields: [messageId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([messageId, userId])
+  @@index([messageId], map: "message_reads_messageId_fkey")
+  @@index([userId], map: "message_reads_userId_fkey")
+  @@map("message_reads")
+}
+
+model MessageDelete {
+  id        String   @id @default(cuid())
+  messageId String
+  userId    String
+  deletedAt DateTime @default(now())
+  message   Message  @relation(fields: [messageId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([messageId, userId])
+  @@index([messageId], map: "message_deletes_messageId_fkey")
+  @@index([userId], map: "message_deletes_userId_fkey")
+  @@map("message_deletes")
+}
+
+model ConversationDelete {
+  id             String   @id @default(cuid())
+  conversationId String
+  userId         String
+  deletedAt      DateTime @default(now())
+  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([conversationId, userId])
+  @@index([conversationId], map: "conversation_deletes_conversationId_fkey")
+  @@index([userId], map: "conversation_deletes_userId_fkey")
+  @@map("conversation_deletes")
+}
+
+// Document Repository Models
+model Folder {
+  id        String   @id @default(cuid())
+  name      String
+  parentId  String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  parent    Folder?  @relation("FolderToFolder", fields: [parentId], references: [id])
+  children  Folder[] @relation("FolderToFolder")
+  documents Document[]
+
+  @@map("folders")
+}
+
+model Document {
+  id           String           @id @default(cuid())
+  title        String
+  description  String?
+  folderId     String?
+  ownerId      String
+  visibility   Visibility       @default(PRIVATE)
+  sizeBytes    Int
+  mimeType     String
+  currentVerId String? @unique
+  isArchived   Boolean          @default(false)
+  createdAt    DateTime         @default(now())
+  updatedAt    DateTime         @updatedAt
+
+  folder       Folder?          @relation(fields: [folderId], references: [id])
+  owner        User             @relation(fields: [ownerId], references: [id])
+  versions     DocumentVersion[]
+  tags         DocumentTag[]
+  acls         DocumentAcl[]
+  currentVer   DocumentVersion? @relation("CurrentVersion", fields: [currentVerId], references: [id])
+  downloadLogs DocumentDownloadLog[]
+
+  @@index([folderId], map: "documents_folderId_idx")
+  @@index([ownerId], map: "documents_ownerId_idx")
+  @@index([visibility], map: "documents_visibility_idx")
+  @@map("documents")
+}
+
+model DocumentVersion {
+  id          String   @id @default(cuid())
+  documentId  String
+  version     Int
+  fileUrl     String
+  uploadedAt  DateTime @default(now())
+  uploadedBy  String
+  document    Document @relation(fields: [documentId], references: [id])
+  currentFor  Document? @relation("CurrentVersion")
+
+  @@unique([documentId, version])
+  @@index([documentId], map: "document_versions_documentId_idx")
+  @@map("document_versions")
+}
+
+model DocumentTag {
+  id         String   @id @default(cuid())
+  name       String
+  documentId String
+  document   Document @relation(fields: [documentId], references: [id])
+
+  @@index([documentId], map: "document_tags_documentId_idx")
+  @@map("document_tags")
+}
+
+model DocumentAcl {
+  id         String   @id @default(cuid())
+  documentId String
+  userId     String?
+  role       String?
+  canView    Boolean  @default(true)
+  canEdit    Boolean  @default(false)
+
+  document   Document @relation(fields: [documentId], references: [id])
+  user       User?    @relation(fields: [userId], references: [id])
+
+  @@index([documentId], map: "document_acls_documentId_idx")
+  @@index([userId], map: "document_acls_userId_idx")
+  @@map("document_acls")
+}
+
+model DocumentDownloadLog {
+  id           String   @id @default(cuid())
+  documentId   String
+  userId       String
+  downloadedAt DateTime @default(now())
+
+  document Document @relation(fields: [documentId], references: [id])
+  user     User     @relation(fields: [userId], references: [id])
+
+  @@index([documentId], map: "document_downloads_documentId_idx")
+  @@index([userId], map: "document_downloads_userId_idx")
+  @@map("document_download_logs")
+}
+
+model WfhLog {
+  id               String           @id @default(cuid())
+  userId           String  
+  date             DateTime
+  description      String           @db.Text
+  screenshotUrl    String
+  locationNote     String?          @db.Text
+  status           ValidationStatus @default(PENDING)
+  validationMessage String?         @db.Text
+  createdAt        DateTime         @default(now())
+  updatedAt        DateTime         @updatedAt
+  user             User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId], map: "wfh_logs_userId_idx")
+  @@index([date], map: "wfh_logs_date_idx")
+  @@map("wfh_logs")
+}
+
+enum Role {
+  ADMIN
+  EMPLOYEE
+  CLIENT
+}
+
+enum Gender {
+  MALE
+  FEMALE
+}
+
+enum UserStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum TaskStatus {
+  NOT_STARTED
+  IN_PROGRESS
+  PENDING_VALIDATION
+  COMPLETED
+}
+
+enum TaskAssignmentType {
+  SPECIFIC
+  ALL_EMPLOYEES
+}
+
+enum TransactionType {
+  INCOME
+  EXPENSE
+}
+
+enum TransactionCategory {
+  SALARY
+  BONUS
+  COMMISSION
+  OTHER_INCOME
+  OFFICE_SUPPLIES
+  UTILITIES
+  RENT
+  MARKETING
+  TRAVEL
+  MEALS
+  EQUIPMENT
+  SOFTWARE
+  TRAINING
+  OTHER_EXPENSE
+}
+
+enum ConversationType {
+  DIRECT
+  GROUP
+}
+
+enum ParticipantRole {
+  ADMIN
+  MODERATOR
+  MEMBER
+}
+
+enum MessageType {
+  TEXT
+  FILE
+  IMAGE
+  AUDIO
+  VIDEO
+  DELETED
+}
+
+enum Visibility {
+  PRIVATE
+  PUBLIC
+}
+
+enum AttendanceMethod {
+  GPS
+  IP
+}
+
+enum AttendanceStatus {
+  ONTIME
+  LATE
+  ABSENT
+}
+
+enum LeaveType {
+  ANNUAL
+  SICK
+  PERMIT
+  OTHER
+}
+
+enum LeaveStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum InvoiceStatus {
+  UNPAID
+  PAID
+  OVERDUE
+  PARTIAL
+}
+
+enum ValidationStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}

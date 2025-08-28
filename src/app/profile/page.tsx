@@ -227,7 +227,7 @@ export default function ProfilePage() {
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
           {/* Foto Profil */}
-          <div className="lg:col-span-2 bg-white shadow rounded-lg p-6">
+          <div className="lg:col-span-2 bg-white dark:bg-neutral-900 shadow dark:shadow-dark rounded-lg p-6 border border-neutral-200 dark:border-neutral-800">
             <h2 className="text-xl font-semibold text-gray-900 mb-4">Foto Profil</h2>
             
             <div className="flex items-center space-x-6">
@@ -277,67 +277,67 @@ export default function ProfilePage() {
           </div>
 
           {/* Informasi Profil */}
-          <div className="bg-white shadow rounded-lg p-6">
+          <div className="bg-white dark:bg-neutral-900 shadow dark:shadow-dark rounded-lg p-6 border border-neutral-200 dark:border-neutral-800">
             <h2 className="text-xl font-semibold text-gray-900 mb-4">Informasi Profil</h2>
             
             <form onSubmit={handleUpdateProfile} className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700">Email</label>
+                <label className="block text-sm font-medium text-gray-700 dark:text-neutral-300">Email</label>
                 <input
                   type="email"
                   value={user.email}
                   disabled
-                  className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm bg-gray-50 text-gray-500"
+                  className="mt-1 block w-full px-3 py-2 border border-gray-300 dark:border-neutral-700 rounded-md shadow-sm bg-gray-50 dark:bg-neutral-800 text-gray-500 dark:text-neutral-100"
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700">Nama Lengkap</label>
+                <label className="block text-sm font-medium text-gray-700 dark:text-neutral-300">Nama Lengkap</label>
                 <input
                   type="text"
                   value={profileForm.fullName}
                   onChange={(e) => setProfileForm({ ...profileForm, fullName: e.target.value })}
-                  className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                  className="mt-1 block w-full px-3 py-2 border border-gray-300 dark:border-neutral-700 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 dark:bg-neutral-800 dark:text-neutral-100"
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700">Alamat</label>
+                <label className="block text-sm font-medium text-gray-700 dark:text-neutral-300">Alamat</label>
                 <textarea
                   value={profileForm.address}
                   onChange={(e) => setProfileForm({ ...profileForm, address: e.target.value })}
                   rows={3}
-                  className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                  className="mt-1 block w-full px-3 py-2 border border-gray-300 dark:border-neutral-700 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 dark:bg-neutral-800 dark:text-neutral-100"
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700">Nomor HP</label>
+                <label className="block text-sm font-medium text-gray-700 dark:text-neutral-300">Nomor HP</label>
                 <input
                   type="text"
                   value={profileForm.phoneNumber}
                   onChange={(e) => setProfileForm({ ...profileForm, phoneNumber: e.target.value })}
-                  className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                  className="mt-1 block w-full px-3 py-2 border border-gray-300 dark:border-neutral-700 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 dark:bg-neutral-800 dark:text-neutral-100"
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700">Nomor Rekening Bank</label>
+                <label className="block text-sm font-medium text-gray-700 dark:text-neutral-300">Nomor Rekening Bank</label>
                 <input
                   type="text"
                   value={profileForm.bankAccountNumber}
                   onChange={(e) => setProfileForm({ ...profileForm, bankAccountNumber: e.target.value })}
-                  className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                  className="mt-1 block w-full px-3 py-2 border border-gray-300 dark:border-neutral-700 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 dark:bg-neutral-800 dark:text-neutral-100"
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700">Nomor E-Wallet</label>
+                <label className="block text-sm font-medium text-gray-700 dark:text-neutral-300">Nomor E-Wallet</label>
                 <input
                   type="text"
                   value={profileForm.ewalletNumber}
                   onChange={(e) => setProfileForm({ ...profileForm, ewalletNumber: e.target.value })}
-                  className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                  className="mt-1 block w-full px-3 py-2 border border-gray-300 dark:border-neutral-700 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 dark:bg-neutral-800 dark:text-neutral-100"
                 />
               </div>
 
@@ -354,39 +354,39 @@ export default function ProfilePage() {
           {/* Informasi Akun & Keamanan */}
           <div className="space-y-6">
             {/* Detail Akun */}
-            <div className="bg-white shadow rounded-lg p-6">
+            <div className="bg-white dark:bg-neutral-900 shadow dark:shadow-dark rounded-lg p-6 border border-neutral-200 dark:border-neutral-800">
               <h2 className="text-xl font-semibold text-gray-900 mb-4">Detail Akun</h2>
               
               <div className="space-y-3">
                 <div>
-                  <span className="text-sm font-medium text-gray-700">NIK KTP:</span>
-                  <span className="ml-2 text-sm text-gray-900">{user.nikKtp}</span>
+                  <span className="text-sm font-medium text-gray-700 dark:text-neutral-300">NIK KTP:</span>
+                  <span className="ml-2 text-sm text-gray-900 dark:text-neutral-100">{user.nikKtp}</span>
                 </div>
                 <div>
-                  <span className="text-sm font-medium text-gray-700">Jenis Kelamin:</span>
-                  <span className="ml-2 text-sm text-gray-900">
+                  <span className="text-sm font-medium text-gray-700 dark:text-neutral-300">Jenis Kelamin:</span>
+                  <span className="ml-2 text-sm text-gray-900 dark:text-neutral-100">
                     {user.gender === 'MALE' ? 'Laki-laki' : 'Perempuan'}
                   </span>
                 </div>
                 <div>
-                  <span className="text-sm font-medium text-gray-700">Role:</span>
-                  <span className="ml-2 text-sm text-gray-900">
+                  <span className="text-sm font-medium text-gray-700 dark:text-neutral-300">Role:</span>
+                  <span className="ml-2 text-sm text-gray-900 dark:text-neutral-100">
                     {user.role === 'ADMIN' ? 'Administrator' : 'Karyawan'}
                   </span>
                 </div>
                 <div>
-                  <span className="text-sm font-medium text-gray-700">Status:</span>
+                  <span className="text-sm font-medium text-gray-700 dark:text-neutral-300">Status:</span>
                   <span className={`ml-2 text-sm ${
                     user.status === 'APPROVED' ? 'text-green-600' :
                     user.status === 'PENDING' ? 'text-yellow-600' : 'text-red-600'
-                  }`}>
+                  } dark:text-neutral-100`}>
                     {user.status === 'APPROVED' ? 'Disetujui' :
                      user.status === 'PENDING' ? 'Menunggu Persetujuan' : 'Ditolak'}
                   </span>
                 </div>
                 <div>
-                  <span className="text-sm font-medium text-gray-700">Bergabung:</span>
-                  <span className="ml-2 text-sm text-gray-900">
+                  <span className="text-sm font-medium text-gray-700 dark:text-neutral-300">Bergabung:</span>
+                  <span className="ml-2 text-sm text-gray-900 dark:text-neutral-100">
                     {new Date(user.createdAt).toLocaleDateString('id-ID')}
                   </span>
                 </div>
@@ -394,47 +394,47 @@ export default function ProfilePage() {
             </div>
 
             {/* Keamanan */}
-            <div className="bg-white shadow rounded-lg p-6">
+            <div className="bg-white dark:bg-neutral-900 shadow dark:shadow-dark rounded-lg p-6 border border-neutral-200 dark:border-neutral-800">
               <h2 className="text-xl font-semibold text-gray-900 mb-4">Keamanan</h2>
               
               {!showPasswordForm ? (
                 <button
                   onClick={() => setShowPasswordForm(true)}
-                  className="w-full flex justify-center py-2 px-4 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                  className="w-full flex justify-center py-2 px-4 border border-gray-300 dark:border-neutral-700 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 dark:bg-neutral-800 dark:text-neutral-100 dark:hover:bg-neutral-700"
                 >
                   Ubah Password
                 </button>
               ) : (
                 <form onSubmit={handleChangePassword} className="space-y-4">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700">Password Lama</label>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-neutral-300">Password Lama</label>
                     <input
                       type="password"
                       value={passwordForm.currentPassword}
                       onChange={(e) => setPasswordForm({ ...passwordForm, currentPassword: e.target.value })}
-                      className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                      className="mt-1 block w-full px-3 py-2 border border-gray-300 dark:border-neutral-700 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 dark:bg-neutral-800 dark:text-neutral-100"
                       required
                     />
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium text-gray-700">Password Baru</label>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-neutral-300">Password Baru</label>
                     <input
                       type="password"
                       value={passwordForm.newPassword}
                       onChange={(e) => setPasswordForm({ ...passwordForm, newPassword: e.target.value })}
-                      className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                      className="mt-1 block w-full px-3 py-2 border border-gray-300 dark:border-neutral-700 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 dark:bg-neutral-800 dark:text-neutral-100"
                       required
                     />
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium text-gray-700">Konfirmasi Password Baru</label>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-neutral-300">Konfirmasi Password Baru</label>
                     <input
                       type="password"
                       value={passwordForm.confirmPassword}
                       onChange={(e) => setPasswordForm({ ...passwordForm, confirmPassword: e.target.value })}
-                      className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                      className="mt-1 block w-full px-3 py-2 border border-gray-300 dark:border-neutral-700 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 dark:bg-neutral-800 dark:text-neutral-100"
                       required
                     />
                   </div>
@@ -457,7 +457,7 @@ export default function ProfilePage() {
                           confirmPassword: '',
                         })
                       }}
-                      className="flex-1 flex justify-center py-2 px-4 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                      className="flex-1 flex justify-center py-2 px-4 border border-gray-300 dark:border-neutral-700 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 dark:bg-neutral-800 dark:text-neutral-100 dark:hover:bg-neutral-700"
                     >
                       Batal
                     </button>

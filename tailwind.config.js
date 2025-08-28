@@ -5,22 +5,23 @@ module.exports = {
     './src/components/**/*.{js,ts,jsx,tsx,mdx}',
     './src/app/**/*.{js,ts,jsx,tsx,mdx}',
   ],
+  darkMode: 'class',
   theme: {
     extend: {
       colors: {
-        // Valpro Intertech inspired color palette
+        // Improved Valpro Intertech inspired color palette
         primary: {
-          50: '#eff6ff',
-          100: '#dbeafe',
-          200: '#bfdbfe',
-          300: '#93c5fd',
-          400: '#60a5fa',
-          500: '#3B4A9C', // Main navy blue from Valpro
-          600: '#2563eb',
-          700: '#1d4ed8',
-          800: '#1e40af',
-          900: '#1e3a8a',
-          950: '#172554',
+          50: '#f0f4ff',
+          100: '#e0e9ff',
+          200: '#c7d6ff',
+          300: '#a5b8ff',
+          400: '#8191ff',
+          500: '#6366f1', // Modern indigo
+          600: '#4f46e5',
+          700: '#4338ca',
+          800: '#3730a3',
+          900: '#312e81',
+          950: '#1e1b4b',
         },
         secondary: {
           50: '#f0fdf4',
@@ -28,7 +29,7 @@ module.exports = {
           200: '#bbf7d0',
           300: '#86efac',
           400: '#4ade80',
-          500: '#10B981', // Green from Valpro
+          500: '#22c55e', // Modern green
           600: '#16a34a',
           700: '#15803d',
           800: '#166534',
@@ -36,12 +37,12 @@ module.exports = {
           950: '#052e16',
         },
         accent: {
-          50: '#fefce8',
-          100: '#fef9c3',
-          200: '#fef08a',
-          300: '#fde047',
-          400: '#facc15',
-          500: '#F59E0B', // Orange from Valpro
+          50: '#fffbeb',
+          100: '#fef3c7',
+          200: '#fde68a',
+          300: '#fcd34d',
+          400: '#fbbf24',
+          500: '#f59e0b', // Modern amber
           600: '#d97706',
           700: '#b45309',
           800: '#92400e',
@@ -54,7 +55,7 @@ module.exports = {
           200: '#fecaca',
           300: '#fca5a5',
           400: '#f87171',
-          500: '#EF4444', // Red from Valpro
+          500: '#ef4444', // Modern red
           600: '#dc2626',
           700: '#b91c1c',
           800: '#991b1b',
@@ -62,19 +63,45 @@ module.exports = {
           950: '#450a0a',
         },
         info: {
-          50: '#f0fdfa',
-          100: '#ccfbf1',
-          200: '#99f6e4',
-          300: '#5eead4',
-          400: '#2dd4bf',
-          500: '#14B8A6', // Teal from Valpro
-          600: '#0d9488',
-          700: '#0f766e',
-          800: '#115e59',
-          900: '#134e4a',
-          950: '#042f2e',
+          50: '#ecfeff',
+          100: '#cffafe',
+          200: '#a5f3fc',
+          300: '#67e8f9',
+          400: '#22d3ee',
+          500: '#06b6d4', // Modern cyan
+          600: '#0891b2',
+          700: '#0e7490',
+          800: '#155e75',
+          900: '#164e63',
+          950: '#083344',
         },
-        // Color palette
+        // Neutral colors for better dark mode support
+        neutral: {
+          50: '#fafafa',
+          100: '#f5f5f5',
+          200: '#e5e5e5',
+          300: '#d4d4d4',
+          400: '#a3a3a3',
+          500: '#737373',
+          600: '#525252',
+          700: '#404040',
+          800: '#262626',
+          900: '#141414', // Updated to requested dark color
+          950: '#0f0f0f', // Slightly darker variant
+        },
+        // Background colors for dark mode
+        background: {
+          light: '#ffffff',
+          dark: '#141414', // Updated to requested dark color
+        },
+        surface: {
+          light: '#f8fafc',
+          dark: '#1e293b',
+        },
+        border: {
+          light: '#e2e8f0',
+          dark: '#334155',
+        },
       },
       fontFamily: {
         sans: ['Inter', 'ui-sans-serif', 'system-ui', 'sans-serif'],
@@ -83,6 +110,7 @@ module.exports = {
         'soft': '0 2px 15px -3px rgba(0, 0, 0, 0.07), 0 10px 20px -2px rgba(0, 0, 0, 0.04)',
         'medium': '0 4px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)',
         'strong': '0 10px 40px -10px rgba(0, 0, 0, 0.15), 0 4px 25px -5px rgba(0, 0, 0, 0.1)',
+        'dark': '0 4px 25px -5px rgba(0, 0, 0, 0.3), 0 10px 10px -5px rgba(0, 0, 0, 0.2)',
       },
       borderRadius: {
         'xl': '12px',

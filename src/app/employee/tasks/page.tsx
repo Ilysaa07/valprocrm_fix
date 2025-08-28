@@ -71,12 +71,15 @@ function EmployeeTasksPageInner() {
       const data = await response.json()
       
       if (response.ok) {
-        setTasks(data.tasks)
+        // Backend already returns transformed data, no need for conversion
+        setTasks(data.tasks || [])
       } else {
         console.error('Error fetching tasks:', data.error)
+        alert(data.error || 'Gagal mengambil data tugas')
       }
     } catch (error) {
       console.error('Error fetching tasks:', error)
+      alert('Terjadi kesalahan jaringan')
     } finally {
       setIsLoading(false)
     }
@@ -188,10 +191,10 @@ function EmployeeTasksPageInner() {
 
   const getStatusBadge = (status: string) => {
     const styles = {
-      NOT_STARTED: 'bg-gray-100 text-gray-800',
-      IN_PROGRESS: 'bg-yellow-100 text-yellow-800',
-      COMPLETED: 'bg-green-100 text-green-800',
-      PENDING_VALIDATION: 'bg-blue-100 text-blue-800'
+      NOT_STARTED: 'bg-neutral-100 text-neutral-800 dark:bg-neutral-800 dark:text-neutral-300',
+      IN_PROGRESS: 'bg-primary-100 text-primary-800 dark:bg-primary-900/30 dark:text-primary-300',
+      COMPLETED: 'bg-secondary-100 text-secondary-800 dark:bg-secondary-900/30 dark:text-secondary-300',
+      PENDING_VALIDATION: 'bg-accent-100 text-accent-800 dark:bg-accent-900/30 dark:text-accent-300'
     }
     
     const labels = {
@@ -230,30 +233,43 @@ function EmployeeTasksPageInner() {
   return (
     <EmployeeLayout>
       <div className="space-y-6">
-        {/* Header */}
-        <div className="bg-white rounded-lg shadow-sm p-6">
-          <h1 className="text-2xl font-bold text-gray-900 mb-4">Tugas Saya</h1>
-          
-          {/* Filters */}
+        {/* Welcome Section */}
+        <div className="relative overflow-hidden rounded-2xl border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 p-6">
+          <div className="relative z-10 flex items-center justify-between">
+            <div>
+              <h2 className="text-xl md:text-2xl font-bold text-neutral-900 dark:text-neutral-100">Selamat Datang, {typeof window !== 'undefined' ? (JSON.parse(sessionStorage.getItem('next-auth-session') || '{}')?.user?.fullName || 'Karyawan') : 'Karyawan'}</h2>
+              <p className="text-sm text-neutral-600 dark:text-neutral-400 mt-1">Role: Karyawan • Lihat dan kerjakan tugas Anda</p>
+            </div>
+          </div>
+          <span className="pointer-events-none absolute -inset-20 bg-gradient-to-r from-primary-500/10 via-secondary-500/10 to-accent-500/10 blur-3xl" />
+          <style jsx>{`
+            div:global(.animated-bg) { position: absolute; inset: -50%; background: radial-gradient(600px at 20% 20%, rgba(99,102,241,0.15), transparent 60%), radial-gradient(600px at 80% 0%, rgba(34,197,94,0.12), transparent 60%), radial-gradient(800px at 50% 100%, rgba(245,158,11,0.1), transparent 60%); filter: blur(40px); animation: floatGlow 12s ease-in-out infinite alternate; }
+            @keyframes floatGlow { 0% { transform: translate3d(-2%, -2%, 0) scale(1); } 100% { transform: translate3d(2%, 2%, 0) scale(1.05); } }
+          `}</style>
+        </div>
+
+        {/* Header + Filters */}
+        <div className="bg-white dark:bg-neutral-900 rounded-2xl shadow-sm p-6 border border-neutral-200 dark:border-neutral-800">
+          <h1 className="text-2xl font-bold text-neutral-900 dark:text-neutral-100 mb-4">Tugas Saya</h1>
           <div className="flex flex-col sm:flex-row gap-4">
             <div className="flex-1">
               <div className="relative">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-neutral-400 h-4 w-4" />
                 <input
                   type="text"
                   placeholder="Cari tugas..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pl-10 pr-4 py-2 w-full border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                  className="pl-10 pr-4 py-2 w-full border border-neutral-300 dark:border-neutral-700 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent dark:bg-neutral-800 dark:text-neutral-100"
                 />
               </div>
             </div>
             <div className="flex items-center space-x-2">
-              <Filter className="h-4 w-4 text-gray-500" />
+              <Filter className="h-4 w-4 text-neutral-500 dark:text-neutral-400" />
               <select
                 value={statusFilter}
                 onChange={(e) => setStatusFilter(e.target.value)}
-                className="border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                className="border border-neutral-300 dark:border-neutral-700 rounded-lg px-3 py-2 focus:ring-2 focus:ring-primary-500 focus:border-transparent dark:bg-neutral-800 dark:text-neutral-100"
               >
                 <option value="ALL">Semua Status</option>
                 <option value="NOT_STARTED">Belum Dikerjakan</option>
@@ -269,49 +285,49 @@ function EmployeeTasksPageInner() {
         <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
           {isLoading ? (
             <div className="col-span-full flex items-center justify-center h-64">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-green-600"></div>
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600"></div>
             </div>
           ) : filteredTasks.length === 0 ? (
-            <div className="col-span-full text-center py-12">
-              <CheckSquare className="mx-auto h-12 w-12 text-gray-400" />
-              <h3 className="mt-2 text-sm font-medium text-gray-900">Tidak ada tugas</h3>
-              <p className="mt-1 text-sm text-gray-500">
+            <div className="col-span-full text-center py-12 bg-white dark:bg-neutral-900 rounded-2xl border border-neutral-200 dark:border-neutral-800">
+              <CheckSquare className="mx-auto h-12 w-12 text-neutral-400" />
+              <h3 className="mt-2 text-sm font-medium text-neutral-900 dark:text-neutral-100">Tidak ada tugas</h3>
+              <p className="mt-1 text-sm text-neutral-600 dark:text-neutral-400">
                 {searchTerm ? 'Tidak ada tugas yang sesuai dengan pencarian.' : 'Belum ada tugas yang diberikan.'}
               </p>
             </div>
           ) : (
             filteredTasks.map((task) => (
-              <div key={task.id} className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+              <div key={task.id} className="bg-white dark:bg-neutral-900 rounded-2xl shadow-sm border border-neutral-200 dark:border-neutral-800 p-6 transition-all hover:shadow-medium">
                 <div className="flex items-start justify-between mb-4">
                   <div className="flex items-center space-x-2">
                     {getStatusIcon(task.status)}
-                    <h3 className="text-lg font-semibold text-gray-900 truncate">{task.title}</h3>
+                    <h3 className="text-lg font-semibold text-neutral-900 dark:text-neutral-100 truncate">{task.title}</h3>
                   </div>
                   <button
                     onClick={() => setSelectedTask(task)}
-                    className="text-gray-400 hover:text-gray-600"
+                    className="text-neutral-400 hover:text-neutral-600 dark:text-neutral-500 dark:hover:text-neutral-300"
                   >
                     <Eye className="h-4 w-4" />
                   </button>
                 </div>
                 
-                <p className="text-gray-600 text-sm mb-4 line-clamp-3">{task.description}</p>
+                <p className="text-neutral-600 dark:text-neutral-400 text-sm mb-4 line-clamp-3">{task.description}</p>
                 
                 <div className="space-y-3">
                   <div className="flex items-center justify-between">
-                    <span className="text-xs text-gray-500">Status</span>
+                    <span className="text-xs text-neutral-500 dark:text-neutral-400">Status</span>
                     {getStatusBadge(task.status)}
                   </div>
                   
                   <div className="flex items-center justify-between">
-                    <span className="text-xs text-gray-500">Penugasan</span>
+                    <span className="text-xs text-neutral-500 dark:text-neutral-400">Penugasan</span>
                     <div className="flex items-center space-x-1">
                       {task.assignment === 'ALL_EMPLOYEES' ? (
-                        <Users className="h-3 w-3 text-blue-500" />
+                        <Users className="h-3 w-3 text-primary-500" />
                       ) : (
-                        <User className="h-3 w-3 text-green-500" />
+                        <User className="h-3 w-3 text-secondary-500" />
                       )}
-                      <span className="text-xs text-gray-700">
+                      <span className="text-xs text-neutral-700 dark:text-neutral-300">
                         {task.assignment === 'ALL_EMPLOYEES' 
                           ? 'Semua Karyawan' 
                           : 'Tugas Khusus'
@@ -322,10 +338,10 @@ function EmployeeTasksPageInner() {
                   
                   {task.dueDate && (
                     <div className="flex items-center justify-between">
-                      <span className="text-xs text-gray-500">Deadline</span>
+                      <span className="text-xs text-neutral-500 dark:text-neutral-400">Deadline</span>
                       <div className="flex items-center space-x-1">
-                        <Calendar className="h-3 w-3 text-orange-500" />
-                        <span className="text-xs text-gray-700">
+                        <Calendar className="h-3 w-3 text-accent-600" />
+                        <span className="text-xs text-neutral-700 dark:text-neutral-300">
                           {new Date(task.dueDate).toLocaleDateString('id-ID')}
                         </span>
                       </div>
@@ -333,13 +349,13 @@ function EmployeeTasksPageInner() {
                   )}
                   
                   <div className="flex items-center justify-between">
-                    <span className="text-xs text-gray-500">Pemberi Tugas</span>
-                    <span className="text-xs text-gray-700">{task.createdBy.fullName}</span>
+                    <span className="text-xs text-neutral-500 dark:text-neutral-400">Pemberi Tugas</span>
+                    <span className="text-xs text-neutral-700 dark:text-neutral-300">{task.createdBy.fullName}</span>
                   </div>
                   
                   <div className="flex items-center justify-between">
-                    <span className="text-xs text-gray-500">Status Pengumpulan</span>
-                    <span className={`text-xs font-medium ${hasSubmission(task) ? 'text-green-600' : 'text-gray-500'}`}>
+                    <span className="text-xs text-neutral-500 dark:text-neutral-400">Status Pengumpulan</span>
+                    <span className={`text-xs font-medium ${hasSubmission(task) ? 'text-secondary-600 dark:text-secondary-400' : 'text-neutral-500 dark:text-neutral-400'}`}>
                       {hasSubmission(task) ? 'Sudah Dikumpulkan' : 'Belum Dikumpulkan'}
                     </span>
                   </div>
@@ -349,7 +365,7 @@ function EmployeeTasksPageInner() {
                   {task.status === 'NOT_STARTED' && (
                     <button
                       onClick={() => handleUpdateStatus(task.id, 'IN_PROGRESS')}
-                      className="w-full bg-yellow-600 text-white px-3 py-2 rounded-lg hover:bg-yellow-700 focus:ring-2 focus:ring-yellow-500 focus:ring-offset-2 text-sm"
+                      className="w-full bg-primary-600 text-white px-3 py-2 rounded-lg hover:bg-primary-700 focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 text-sm"
                     >
                       Mulai Mengerjakan
                     </button>
@@ -362,14 +378,14 @@ function EmployeeTasksPageInner() {
                           setSelectedTask(task)
                           setShowSubmitModal(true)
                         }}
-                        className="w-full bg-green-600 text-white px-3 py-2 rounded-lg hover:bg-green-700 focus:ring-2 focus:ring-green-500 focus:ring-offset-2 text-sm flex items-center justify-center space-x-1"
+                        className="w-full bg-secondary-600 text-white px-3 py-2 rounded-lg hover:bg-secondary-700 focus:ring-2 focus:ring-secondary-500 focus:ring-offset-2 text-sm flex items-center justify-center space-x-1"
                       >
                         <Upload className="h-4 w-4" />
                         <span>{hasSubmission(task) ? 'Update Pengumpulan' : 'Kumpulkan Tugas'}</span>
                       </button>
                       <button
                         onClick={() => handleUpdateStatus(task.id, 'NOT_STARTED')}
-                        className="w-full bg-gray-300 text-gray-700 px-3 py-2 rounded-lg hover:bg-gray-400 focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 text-sm"
+                        className="w-full bg-neutral-300 text-neutral-700 dark:bg-neutral-700 dark:text-neutral-200 px-3 py-2 rounded-lg hover:bg-neutral-400 dark:hover:bg-neutral-600 focus:ring-2 focus:ring-neutral-500 focus:ring-offset-2 text-sm"
                       >
                         Batalkan
                       </button>
@@ -377,8 +393,8 @@ function EmployeeTasksPageInner() {
                   )}
                   
                   {task.status === 'PENDING_VALIDATION' && (
-                    <div className="w-full bg-blue-50 border border-blue-200 rounded-lg p-3 text-center">
-                      <p className="text-sm text-blue-800 font-medium">Tugas sedang menunggu validasi dari admin</p>
+                    <div className="w-full bg-accent-50 dark:bg-accent-900/20 border border-accent-200 dark:border-accent-800 rounded-lg p-3 text-center">
+                      <p className="text-sm text-accent-800 dark:text-accent-300 font-medium">Tugas sedang menunggu validasi dari admin</p>
                     </div>
                   )}
                   
@@ -388,7 +404,7 @@ function EmployeeTasksPageInner() {
                         setSelectedTask(task)
                         setShowSubmitModal(true)
                       }}
-                      className="w-full bg-blue-600 text-white px-3 py-2 rounded-lg hover:bg-blue-700 focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 text-sm flex items-center justify-center space-x-1"
+                      className="w-full bg-primary-600 text-white px-3 py-2 rounded-lg hover:bg-primary-700 focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 text-sm flex items-center justify-center space-x-1"
                     >
                       <FileText className="h-4 w-4" />
                       <span>Update Pengumpulan</span>

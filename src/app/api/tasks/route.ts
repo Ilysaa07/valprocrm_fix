@@ -8,8 +8,12 @@ const createTaskSchema = z.object({
   title: z.string().min(1, 'Judul tugas harus diisi'),
   description: z.string().min(1, 'Deskripsi tugas harus diisi'),
   dueDate: z.string().optional(),
+  priority: z.enum(['LOW', 'MEDIUM', 'HIGH', 'URGENT']).default('MEDIUM'),
   assignment: z.enum(['SPECIFIC', 'ALL_EMPLOYEES']),
   assigneeId: z.string().optional(),
+  tags: z.array(z.string()).default([]),
+  projectId: z.string().optional(),
+  contactId: z.string().optional(),
 })
 
 export async function GET(request: NextRequest) {
@@ -24,81 +28,108 @@ export async function GET(request: NextRequest) {
     }
 
     const { searchParams } = new URL(request.url)
-    const status = searchParams.get('status')
     const page = parseInt(searchParams.get('page') || '1')
     const limit = parseInt(searchParams.get('limit') || '10')
+    const search = searchParams.get('search') || ''
+    const status = searchParams.get('status') || ''
+    const priority = searchParams.get('priority') || ''
+    const assignment = searchParams.get('assignment') || ''
+    const projectId = searchParams.get('projectId') || ''
+    const contactId = searchParams.get('contactId') || ''
+
     const skip = (page - 1) * limit
 
-    let where: any = {}
+    const where: any = {}
 
-    if (session.user.role === 'EMPLOYEE') {
-      // Employee can only see tasks assigned to them or all employees
-      where = {
-        OR: [
-          { assigneeId: session.user.id },
-          { assignment: 'ALL_EMPLOYEES' }
-        ]
-      }
+    // Role-based filtering
+    if (session.user.role !== 'ADMIN') {
+      where.OR = [
+        { assigneeId: session.user.id },
+        { createdById: session.user.id }
+      ]
     }
 
-    if (status) {
-      where.status = status
+    if (search) {
+      where.OR = [
+        ...(where.OR || []),
+        { title: { contains: search, mode: 'insensitive' } },
+        { description: { contains: search, mode: 'insensitive' } }
+      ]
     }
+
+    if (status) where.status = status
+    if (priority) where.priority = priority
+    if (assignment) where.assignment = assignment
+    if (projectId) where.projectId = projectId
+    if (contactId) where.contactId = contactId
 
     const [tasks, total] = await Promise.all([
       prisma.task.findMany({
         where,
-        skip,
-        take: limit,
-        orderBy: { createdAt: 'desc' },
         include: {
-          createdBy: {
-            select: {
-              id: true,
-              fullName: true,
-              email: true
-            }
-          },
           assignee: {
-            select: {
-              id: true,
-              fullName: true,
-              email: true
-            }
+            select: { id: true, fullName: true, email: true }
           },
-          submissions: {
-            where: session.user.role === 'EMPLOYEE' 
-              ? { userId: session.user.id }
-              : {},
-            include: {
-              user: {
-                select: {
-                  id: true,
-                  fullName: true,
-                  email: true
-                }
-              }
+          createdBy: {
+            select: { id: true, fullName: true, email: true }
+          },
+          project: {
+            select: { id: true, name: true, status: true }
+          },
+          contact: {
+            select: { id: true, fullName: true, companyName: true }
+          },
+          milestone: {
+            select: { id: true, name: true, status: true }
+          },
+          _count: {
+            select: {
+              submissions: true,
+              feedbacks: true
             }
           }
-        }
+        },
+        orderBy: { createdAt: 'desc' },
+        skip,
+        take: limit
       }),
       prisma.task.count({ where })
     ])
 
+    // Transform tasks to frontend format
+    const transformedTasks = tasks.map(task => ({
+      id: task.id,
+      title: task.title,
+      description: task.description,
+      status: task.status,
+      priority: task.priority,
+      assignment: task.assignment,
+      assigneeId: task.assigneeId,
+      assignee: task.assignee?.fullName || null,
+      dueDate: task.dueDate,
+      tags: task.tags ? JSON.parse(task.tags) : [],
+      createdAt: task.createdAt,
+      createdBy: task.createdBy,
+      project: task.project,
+      contact: task.contact,
+      milestone: task.milestone,
+      submissions: task._count.submissions,
+      feedbacks: task._count.feedbacks,
+    }))
+
     return NextResponse.json({
-      tasks,
+      tasks: transformedTasks,
       pagination: {
         page,
         limit,
         total,
-        totalPages: Math.ceil(total / limit)
+        pages: Math.ceil(total / limit)
       }
     })
-
   } catch (error) {
-    console.error('Get tasks error:', error)
+    console.error('Error fetching tasks:', error)
     return NextResponse.json(
-      { error: 'Terjadi kesalahan server' },
+      { error: 'Internal server error' },
       { status: 500 }
     )
   }
@@ -116,9 +147,10 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json()
+    console.log('Creating task with data:', body)
+    
     const validatedData = createTaskSchema.parse(body)
 
-    // Validate assignee if specific assignment
     if (validatedData.assignment === 'SPECIFIC' && !validatedData.assigneeId) {
       return NextResponse.json(
         { error: 'Assignee harus dipilih untuk tugas spesifik' },
@@ -148,8 +180,12 @@ export async function POST(request: NextRequest) {
         title: validatedData.title,
         description: validatedData.description,
         dueDate: validatedData.dueDate ? new Date(validatedData.dueDate) : null,
+        priority: validatedData.priority,
         assignment: validatedData.assignment,
         assigneeId: validatedData.assignment === 'SPECIFIC' ? validatedData.assigneeId : null,
+        projectId: validatedData.projectId || null,
+        contactId: validatedData.contactId || null,
+        tags: JSON.stringify(validatedData.tags),
         createdById: session.user.id,
       },
       include: {
@@ -170,45 +206,35 @@ export async function POST(request: NextRequest) {
       }
     })
 
-    // Create notifications
-    let notificationUsers: string[] = []
-    
-    if (validatedData.assignment === 'SPECIFIC' && validatedData.assigneeId) {
-      notificationUsers = [validatedData.assigneeId]
-    } else {
-      // Get all approved employees
-      const employees = await prisma.user.findMany({
-        where: { 
-          role: 'EMPLOYEE',
-          status: 'APPROVED'
-        },
-        select: { id: true }
-      })
-      notificationUsers = employees.map(emp => emp.id)
+    // Transform the created task
+    const transformedTask = {
+      id: task.id,
+      title: task.title,
+      description: task.description,
+      status: task.status,
+      priority: task.priority,
+      assignment: task.assignment,
+      assigneeId: task.assigneeId,
+      assignee: task.assignee?.fullName || null,
+      dueDate: task.dueDate,
+      tags: task.tags ? JSON.parse(task.tags) : [],
+      createdAt: task.createdAt,
+      createdBy: task.createdBy
     }
 
-    // Create notifications for assigned users
-    const notifications = notificationUsers.map(userId => ({
-      userId,
-      taskId: task.id,
-      title: 'Tugas Baru',
-      message: `Anda mendapat tugas baru: ${task.title}`
-    }))
-
-    await prisma.notification.createMany({
-      data: notifications
-    })
+    console.log('Task created successfully:', transformedTask)
 
     return NextResponse.json(
       { 
         message: 'Tugas berhasil dibuat',
-        task
+        task: transformedTask
       },
       { status: 201 }
     )
 
   } catch (error) {
     if (error instanceof z.ZodError) {
+      console.error('Validation error:', error.errors)
       return NextResponse.json(
         { error: 'Validasi gagal', details: error.errors },
         { status: 400 }

@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { 
   LineChart, 
   Line, 
@@ -49,11 +49,7 @@ export default function TransactionChart() {
   const [period, setPeriod] = useState('6months')
   const [activeChart, setActiveChart] = useState<'trend' | 'income' | 'expense'>('trend')
 
-  useEffect(() => {
-    fetchChartData()
-  }, [period])
-
-  const fetchChartData = async () => {
+  const fetchChartData = useCallback(async () => {
     try {
       setLoading(true)
       const response = await fetch(`/api/transactions/chart?period=${period}`)
@@ -68,7 +64,11 @@ export default function TransactionChart() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [period])
+
+  useEffect(() => {
+    fetchChartData()
+  }, [fetchChartData])
 
   const formatCurrency = (value: number) => {
     return new Intl.NumberFormat('id-ID', {
@@ -92,69 +92,97 @@ export default function TransactionChart() {
 
   if (loading) {
     return (
-      <div className="bg-white rounded-lg shadow-sm p-6">
-        <div className="animate-pulse">
-          <div className="h-4 bg-gray-200 rounded w-1/4 mb-4"></div>
-          <div className="h-64 bg-gray-200 rounded"></div>
-        </div>
+      <div className="animate-pulse">
+        <div className="h-4 bg-neutral-200 dark:bg-neutral-700 rounded w-1/4 mb-4"></div>
+        <div className="h-64 bg-neutral-200 dark:bg-neutral-700 rounded-xl"></div>
       </div>
     )
   }
 
   if (!data) {
     return (
-      <div className="bg-white rounded-lg shadow-sm p-6">
-        <p className="text-gray-500 text-center">Gagal memuat data chart</p>
+      <div className="text-center py-8">
+        <p className="text-neutral-500 dark:text-neutral-400">Gagal memuat data chart</p>
       </div>
     )
   }
 
   return (
     <div className="space-y-6">
-      {/* Summary Cards */}
+      {/* Trading-Style Summary Cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <div className="bg-white rounded-lg shadow-sm p-6">
+        <div className="bg-white/95 dark:bg-neutral-900/95 rounded-xl border border-neutral-200/50 dark:border-neutral-700/50 p-6 shadow-xl backdrop-blur-sm">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm font-medium text-gray-600">Total Pemasukan</p>
-              <p className="text-2xl font-bold text-green-600">
+              <p className="text-sm font-medium text-neutral-600 dark:text-neutral-400">Total Pemasukan</p>
+              <p className="text-2xl font-bold text-secondary-600 dark:text-secondary-400">
                 {formatCurrencyShort(data.summary.totalIncome)}
               </p>
+              <div className="flex items-center mt-1">
+                <div className="w-2 h-2 bg-secondary-500 rounded-full mr-2"></div>
+                <span className="text-xs text-neutral-500 dark:text-neutral-400">Positif</span>
+              </div>
             </div>
-            <div className="p-3 bg-green-100 rounded-lg">
-              <svg className="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <div className="p-3 bg-secondary-500/20 rounded-xl border border-secondary-500/30">
+              <svg className="w-6 h-6 text-secondary-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 11l5-5m0 0l5 5m-5-5v12" />
               </svg>
             </div>
           </div>
         </div>
 
-        <div className="bg-white rounded-lg shadow-sm p-6">
+        <div className="bg-white/95 dark:bg-neutral-900/95 rounded-xl border border-neutral-200/50 dark:border-neutral-700/50 p-6 shadow-xl backdrop-blur-sm">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm font-medium text-gray-600">Total Pengeluaran</p>
-              <p className="text-2xl font-bold text-red-600">
+              <p className="text-sm font-medium text-neutral-600 dark:text-neutral-400">Total Pengeluaran</p>
+              <p className="text-2xl font-bold text-danger-600 dark:text-danger-400">
                 {formatCurrencyShort(data.summary.totalExpense)}
               </p>
+              <div className="flex items-center mt-1">
+                <div className="w-2 h-2 bg-danger-500 rounded-full mr-2"></div>
+                <span className="text-xs text-neutral-500 dark:text-neutral-400">Negatif</span>
+              </div>
             </div>
-            <div className="p-3 bg-red-100 rounded-lg">
-              <svg className="w-6 h-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <div className="p-3 bg-danger-500/20 rounded-xl border border-danger-500/30">
+              <svg className="w-6 h-6 text-danger-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 13l-5 5m0 0l-5-5m5 5V6" />
               </svg>
             </div>
           </div>
         </div>
 
-        <div className="bg-white rounded-lg shadow-sm p-6">
+        <div className={`bg-white/95 dark:bg-neutral-900/95 rounded-xl border p-6 shadow-xl backdrop-blur-sm ${
+          data.summary.netIncome >= 0 
+            ? 'border-secondary-500/30' 
+            : 'border-danger-500/30'
+        }`}>
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm font-medium text-gray-600">Keuntungan Bersih</p>
-              <p className={`text-2xl font-bold ${data.summary.netIncome >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+              <p className="text-sm font-medium text-neutral-600 dark:text-neutral-400">Laba Bersih</p>
+              <p className={`text-2xl font-bold ${
+                data.summary.netIncome >= 0 
+                  ? 'text-secondary-600 dark:text-secondary-400' 
+                  : 'text-danger-600 dark:text-danger-400'
+              }`}>
                 {formatCurrencyShort(data.summary.netIncome)}
               </p>
+              <div className="flex items-center mt-1">
+                <div className={`w-2 h-2 rounded-full mr-2 ${
+                  data.summary.netIncome >= 0 ? 'bg-secondary-500' : 'bg-danger-500'
+                }`}></div>
+                <span className="text-xs text-neutral-500 dark:text-neutral-400">
+                  {data.summary.netIncome >= 0 ? 'Untung' : 'Rugi'}
+                </span>
+              </div>
             </div>
-            <div className={`p-3 rounded-lg ${data.summary.netIncome >= 0 ? 'bg-green-100' : 'bg-red-100'}`}>
-              <svg className={`w-6 h-6 ${data.summary.netIncome >= 0 ? 'text-green-600' : 'text-red-600'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <div className={`p-3 rounded-xl border ${
+              data.summary.netIncome >= 0 
+                ? 'bg-secondary-500/20 border-secondary-500/30' 
+                : 'bg-danger-500/20 border-danger-500/30'
+            }`}>
+              <svg className={`w-6 h-6 ${
+                data.summary.netIncome >= 0 ? 'text-secondary-500' : 'text-danger-500'
+              }`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1" />
               </svg>
             </div>
@@ -162,80 +190,120 @@ export default function TransactionChart() {
         </div>
       </div>
 
-      {/* Chart Controls */}
-      <div className="bg-white rounded-lg shadow-sm p-6">
+      {/* Trading-Style Chart Controls */}
+      <div className="bg-white/95 dark:bg-neutral-900/95 rounded-xl border border-neutral-200/50 dark:border-neutral-700/50 p-6 shadow-xl backdrop-blur-sm">
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 space-y-4 sm:space-y-0">
-          <h3 className="text-lg font-semibold text-gray-900">Analisis Keuangan</h3>
+          <div className="flex items-center space-x-3">
+            <div className="w-3 h-3 bg-primary-500 rounded-full animate-pulse"></div>
+            <h3 className="text-lg font-semibold text-neutral-900 dark:text-neutral-100">Dashboard Keuangan</h3>
+          </div>
           
           <div className="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-4">
             <select
               value={period}
               onChange={(e) => setPeriod(e.target.value)}
-              className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              className="px-3 py-2 border border-slate-600 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent bg-slate-800 text-slate-100"
             >
-              <option value="6months">6 Bulan Terakhir</option>
-              <option value="1year">1 Tahun Terakhir</option>
-              <option value="all">Semua Data</option>
+              <option value="6months">6M</option>
+              <option value="1year">1Y</option>
+              <option value="all">ALL</option>
             </select>
             
-            <div className="flex bg-gray-100 rounded-lg p-1">
+            <div className="flex bg-slate-800 rounded-lg p-1 border border-slate-600">
               <button
                 onClick={() => setActiveChart('trend')}
-                className={`px-3 py-1 rounded-md text-sm font-medium transition-colors ${
+                className={`px-3 py-1 rounded-md text-sm font-medium transition-all duration-200 ${
                   activeChart === 'trend' 
-                    ? 'bg-white text-blue-600 shadow-sm' 
-                    : 'text-gray-600 hover:text-gray-900'
+                    ? 'bg-emerald-500 text-slate-900 shadow-sm' 
+                    : 'text-slate-400 hover:text-slate-100'
                 }`}
               >
-                Tren
+                Chart
               </button>
               <button
                 onClick={() => setActiveChart('income')}
-                className={`px-3 py-1 rounded-md text-sm font-medium transition-colors ${
+                className={`px-3 py-1 rounded-md text-sm font-medium transition-all duration-200 ${
                   activeChart === 'income' 
-                    ? 'bg-white text-blue-600 shadow-sm' 
-                    : 'text-gray-600 hover:text-gray-900'
+                    ? 'bg-emerald-500 text-slate-900 shadow-sm' 
+                    : 'text-slate-400 hover:text-slate-100'
                 }`}
               >
-                Pemasukan
+                Income
               </button>
               <button
                 onClick={() => setActiveChart('expense')}
-                className={`px-3 py-1 rounded-md text-sm font-medium transition-colors ${
+                className={`px-3 py-1 rounded-md text-sm font-medium transition-all duration-200 ${
                   activeChart === 'expense' 
-                    ? 'bg-white text-blue-600 shadow-sm' 
-                    : 'text-gray-600 hover:text-gray-900'
+                    ? 'bg-emerald-500 text-slate-900 shadow-sm' 
+                    : 'text-slate-400 hover:text-slate-100'
                 }`}
               >
-                Pengeluaran
+                Expense
               </button>
             </div>
           </div>
         </div>
 
-        {/* Charts */}
-        <div className="h-80">
+        {/* Trading-Style Charts */}
+        <div className="h-80 bg-slate-900 rounded-lg border border-slate-700/50 p-4">
           {activeChart === 'trend' && (
             <ResponsiveContainer width="100%" height="100%">
               <LineChart data={data.chartData}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="month" />
-                <YAxis tickFormatter={formatCurrencyShort} />
-                <Tooltip formatter={(value: number) => [formatCurrency(value), '']} />
-                <Legend />
+                <defs>
+                  <linearGradient id="incomeGradient" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="#10B981" stopOpacity={0.8}/>
+                    <stop offset="95%" stopColor="#10B981" stopOpacity={0.1}/>
+                  </linearGradient>
+                  <linearGradient id="expenseGradient" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="#EF4444" stopOpacity={0.8}/>
+                    <stop offset="95%" stopColor="#EF4444" stopOpacity={0.1}/>
+                  </linearGradient>
+                </defs>
+                <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
+                <XAxis 
+                  dataKey="month" 
+                  stroke="#9CA3AF"
+                  fontSize={12}
+                  tickLine={false}
+                />
+                <YAxis 
+                  tickFormatter={formatCurrencyShort} 
+                  stroke="#9CA3AF"
+                  fontSize={12}
+                  tickLine={false}
+                />
+                <Tooltip 
+                  formatter={(value: number) => [formatCurrency(value), '']}
+                  contentStyle={{
+                    backgroundColor: '#1F2937',
+                    border: '1px solid #374151',
+                    borderRadius: '8px',
+                    color: '#F9FAFB'
+                  }}
+                />
+                <Legend 
+                  wrapperStyle={{
+                    color: '#F9FAFB',
+                    fontSize: '12px'
+                  }}
+                />
                 <Line 
                   type="monotone" 
                   dataKey="income" 
                   stroke="#10B981" 
-                  strokeWidth={2}
-                  name="Pemasukan"
+                  strokeWidth={3}
+                  name="Income"
+                  dot={{ fill: '#10B981', strokeWidth: 2, r: 4 }}
+                  activeDot={{ r: 6, stroke: '#10B981', strokeWidth: 2 }}
                 />
                 <Line 
                   type="monotone" 
                   dataKey="expense" 
                   stroke="#EF4444" 
-                  strokeWidth={2}
-                  name="Pengeluaran"
+                  strokeWidth={3}
+                  name="Expense"
+                  dot={{ fill: '#EF4444', strokeWidth: 2, r: 4 }}
+                  activeDot={{ r: 6, stroke: '#EF4444', strokeWidth: 2 }}
                 />
               </LineChart>
             </ResponsiveContainer>
@@ -255,10 +323,23 @@ export default function TransactionChart() {
                   dataKey="amount"
                 >
                   {data.incomeCategories.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                    <Cell 
+                      key={`cell-${index}`} 
+                      fill={COLORS[index % COLORS.length]}
+                      stroke="#1F2937"
+                      strokeWidth={2}
+                    />
                   ))}
                 </Pie>
-                <Tooltip formatter={(value: number) => [formatCurrency(value), 'Jumlah']} />
+                <Tooltip 
+                  formatter={(value: number) => [formatCurrency(value), 'Amount']}
+                  contentStyle={{
+                    backgroundColor: '#1F2937',
+                    border: '1px solid #374151',
+                    borderRadius: '8px',
+                    color: '#F9FAFB'
+                  }}
+                />
               </PieChart>
             </ResponsiveContainer>
           )}
@@ -266,11 +347,42 @@ export default function TransactionChart() {
           {activeChart === 'expense' && (
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={data.expenseCategories}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="name" angle={-45} textAnchor="end" height={80} />
-                <YAxis tickFormatter={formatCurrencyShort} />
-                <Tooltip formatter={(value: number) => [formatCurrency(value), 'Jumlah']} />
-                <Bar dataKey="amount" fill="#EF4444" />
+                <defs>
+                  <linearGradient id="expenseBarGradient" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="#EF4444" stopOpacity={0.8}/>
+                    <stop offset="95%" stopColor="#EF4444" stopOpacity={0.4}/>
+                  </linearGradient>
+                </defs>
+                <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
+                <XAxis 
+                  dataKey="name" 
+                  angle={-45} 
+                  textAnchor="end" 
+                  height={80}
+                  stroke="#9CA3AF"
+                  fontSize={12}
+                  tickLine={false}
+                />
+                <YAxis 
+                  tickFormatter={formatCurrencyShort}
+                  stroke="#9CA3AF"
+                  fontSize={12}
+                  tickLine={false}
+                />
+                <Tooltip 
+                  formatter={(value: number) => [formatCurrency(value), 'Amount']}
+                  contentStyle={{
+                    backgroundColor: '#1F2937',
+                    border: '1px solid #374151',
+                    borderRadius: '8px',
+                    color: '#F9FAFB'
+                  }}
+                />
+                <Bar 
+                  dataKey="amount" 
+                  fill="url(#expenseBarGradient)"
+                  radius={[4, 4, 0, 0]}
+                />
               </BarChart>
             </ResponsiveContainer>
           )}

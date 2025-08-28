@@ -8,7 +8,11 @@ const updateTaskSchema = z.object({
   title: z.string().min(1).optional(),
   description: z.string().min(1).optional(),
   dueDate: z.string().optional(),
+  priority: z.enum(['LOW', 'MEDIUM', 'HIGH', 'URGENT']).optional(),
   status: z.enum(['NOT_STARTED', 'IN_PROGRESS', 'COMPLETED', 'PENDING_VALIDATION']).optional(),
+  assignment: z.enum(['SPECIFIC', 'ALL_EMPLOYEES']).optional(),
+  assigneeId: z.string().optional(),
+  tags: z.array(z.string()).optional(),
   validationMessage: z.string().optional(),
 })
 
@@ -44,17 +48,6 @@ export async function GET(
             fullName: true,
             email: true
           }
-        },
-        submissions: {
-          include: {
-            user: {
-              select: {
-                id: true,
-                fullName: true,
-                email: true
-              }
-            }
-          }
         }
       }
     })
@@ -77,7 +70,23 @@ export async function GET(
       }
     }
 
-    return NextResponse.json({ task })
+    // Transform the task to ensure consistent data structure
+    const transformedTask = {
+      id: task.id,
+      title: task.title,
+      description: task.description,
+      status: task.status,
+      priority: task.priority,
+      assignment: task.assignment,
+      assigneeId: task.assigneeId,
+      assignee: task.assignee?.fullName || null,
+      dueDate: task.dueDate,
+      tags: task.tags ? JSON.parse(task.tags) : [],
+      createdAt: task.createdAt,
+      createdBy: task.createdBy
+    }
+
+    return NextResponse.json({ task: transformedTask })
 
   } catch (error) {
     console.error('Get task error:', error)
@@ -86,6 +95,13 @@ export async function GET(
       { status: 500 }
     )
   }
+}
+
+export async function PUT(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  return PATCH(request, { params })
 }
 
 export async function PATCH(
@@ -104,6 +120,8 @@ export async function PATCH(
 
     const { id } = await params
     const body = await request.json()
+    console.log('Updating task:', id, body)
+    
     const validatedData = updateTaskSchema.parse(body)
 
     const task = await prisma.task.findUnique({
@@ -152,12 +170,16 @@ export async function PATCH(
       }
     }
 
-    const updateData: any = {}
+    const updateData: Record<string, any> = {}
     
     if (validatedData.title) updateData.title = validatedData.title
     if (validatedData.description) updateData.description = validatedData.description
     if (validatedData.dueDate) updateData.dueDate = new Date(validatedData.dueDate)
+    if (validatedData.priority) updateData.priority = validatedData.priority
     if (validatedData.status) updateData.status = validatedData.status
+    if (validatedData.assignment) updateData.assignment = validatedData.assignment
+    if (validatedData.assigneeId !== undefined) updateData.assigneeId = validatedData.assigneeId || null
+    if (validatedData.tags) updateData.tags = JSON.stringify(validatedData.tags)
     if (validatedData.validationMessage) updateData.validationMessage = validatedData.validationMessage
 
     const updatedTask = await prisma.task.update({
@@ -181,39 +203,32 @@ export async function PATCH(
       }
     })
 
-    // Create notification if status changed
-    if (validatedData.status) {
-      if (session.user.role === 'EMPLOYEE') {
-        await prisma.notification.create({
-          data: {
-            userId: task.createdById,
-            taskId: task.id,
-            title: 'Status Tugas Diperbarui',
-            message: `Status tugas "${task.title}" diubah menjadi ${validatedData.status === 'IN_PROGRESS' ? 'Sedang Dikerjakan' : 'Belum Dikerjakan'}`
-          }
-        })
-      } else if (session.user.role === 'ADMIN' && validatedData.status === 'COMPLETED' && task.status === 'PENDING_VALIDATION') {
-        // Notify employee that task has been validated and completed
-        if (task.assigneeId) {
-          await prisma.notification.create({
-            data: {
-              userId: task.assigneeId,
-              taskId: task.id,
-              title: 'Tugas Divalidasi',
-              message: `Tugas "${task.title}" telah divalidasi dan dinyatakan selesai${validatedData.validationMessage ? `: ${validatedData.validationMessage}` : ''}`
-            }
-          })
-        }
-      }
+    // Transform the updated task to ensure consistent data structure
+    const transformedTask = {
+      id: updatedTask.id,
+      title: updatedTask.title,
+      description: updatedTask.description,
+      status: updatedTask.status,
+      priority: updatedTask.priority,
+      assignment: updatedTask.assignment,
+      assigneeId: updatedTask.assigneeId,
+      assignee: updatedTask.assignee?.fullName || null,
+      dueDate: updatedTask.dueDate,
+      tags: updatedTask.tags ? JSON.parse(updatedTask.tags) : [],
+      createdAt: updatedTask.createdAt,
+      createdBy: updatedTask.createdBy
     }
+
+    console.log('Task updated successfully:', transformedTask)
 
     return NextResponse.json({
       message: 'Tugas berhasil diperbarui',
-      task: updatedTask
+      task: transformedTask
     })
 
   } catch (error) {
     if (error instanceof z.ZodError) {
+      console.error('Validation error:', error.errors)
       return NextResponse.json(
         { error: 'Validasi gagal', details: error.errors },
         { status: 400 }

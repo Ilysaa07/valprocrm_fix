@@ -52,7 +52,12 @@ export default function LocationMap({
   const [position, setPosition] = useState<[number, number]>(
     [latitude || -6.2, longitude || 106.8]
   )
+  const [isClient, setIsClient] = useState(false)
   const mapRef = useRef<L.Map>(null)
+
+  useEffect(() => {
+    setIsClient(true)
+  }, [])
 
   useEffect(() => {
     if (latitude && longitude) {
@@ -68,6 +73,17 @@ export default function LocationMap({
         onLocationChange(lat, lng)
       }
     }
+  }
+
+  // Don't render map until client-side
+  if (!isClient) {
+    return (
+      <div style={{ height, width }} className={`${className} bg-gray-100 rounded animate-pulse`}>
+        <div className="flex items-center justify-center h-full text-gray-500">
+          Loading map...
+        </div>
+      </div>
+    )
   }
 
   return (

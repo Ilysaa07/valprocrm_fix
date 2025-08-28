@@ -73,7 +73,9 @@ async function main() {
       assignment: 'SPECIFIC',
       assigneeId: employee.id,
       createdById: admin.id,
-      status: 'NOT_STARTED'
+      status: 'NOT_STARTED',
+      priority: 'HIGH',
+      tags: JSON.stringify(['laporan', 'bulanan', 'penting'])
     }
   })
 
@@ -86,7 +88,9 @@ async function main() {
       description: 'Persiapkan materi untuk meeting mingguan tim. Siapkan presentasi dan agenda.',
       assignment: 'ALL_EMPLOYEES',
       createdById: admin.id,
-      status: 'IN_PROGRESS'
+      status: 'IN_PROGRESS',
+      priority: 'MEDIUM',
+      tags: JSON.stringify(['meeting', 'presentasi'])
     }
   })
 
@@ -101,7 +105,9 @@ async function main() {
       assignment: 'SPECIFIC',
       assigneeId: employee.id,
       createdById: admin.id,
-      status: 'COMPLETED'
+      status: 'COMPLETED',
+      priority: 'URGENT',
+      tags: JSON.stringify(['database', 'backup', 'urgent'])
     }
   })
 

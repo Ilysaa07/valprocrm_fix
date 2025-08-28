@@ -261,13 +261,13 @@ export default function AdminFinancePage() {
 
         {/* Summary Cards */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          <div className="bg-white p-6 rounded-lg shadow">
+          <div className="rounded-lg shadow p-6 border border-black/10 dark:border-white/10 bg-white dark:bg-black/30">
             <div className="flex items-center">
               <div className="p-2 bg-green-100 rounded-lg">
                 <TrendingUp className="h-6 w-6 text-green-600" />
               </div>
               <div className="ml-4">
-                <p className="text-sm font-medium text-gray-600">Total Pemasukan</p>
+                <p className="text-sm font-medium text-gray-600 dark:text-gray-300">Total Pemasukan</p>
                 <p className="text-2xl font-bold text-green-600">
                   {formatCurrency(summary.totalIncome)}
                 </p>
@@ -275,13 +275,13 @@ export default function AdminFinancePage() {
             </div>
           </div>
 
-          <div className="bg-white p-6 rounded-lg shadow">
+          <div className="rounded-lg shadow p-6 border border-black/10 dark:border-white/10 bg-white dark:bg-black/30">
             <div className="flex items-center">
               <div className="p-2 bg-red-100 rounded-lg">
                 <TrendingDown className="h-6 w-6 text-red-600" />
               </div>
               <div className="ml-4">
-                <p className="text-sm font-medium text-gray-600">Total Pengeluaran</p>
+                <p className="text-sm font-medium text-gray-600 dark:text-gray-300">Total Pengeluaran</p>
                 <p className="text-2xl font-bold text-red-600">
                   {formatCurrency(summary.totalExpense)}
                 </p>
@@ -289,13 +289,13 @@ export default function AdminFinancePage() {
             </div>
           </div>
 
-          <div className="bg-white p-6 rounded-lg shadow">
+          <div className="rounded-lg shadow p-6 border border-black/10 dark:border-white/10 bg-white dark:bg-black/30">
             <div className="flex items-center">
               <div className="p-2 bg-blue-100 rounded-lg">
                 <DollarSign className="h-6 w-6 text-blue-600" />
               </div>
               <div className="ml-4">
-                <p className="text-sm font-medium text-gray-600">Saldo Bersih</p>
+                <p className="text-sm font-medium text-gray-600 dark:text-gray-300">Saldo Bersih</p>
                 <p className={`text-2xl font-bold ${summary.netIncome >= 0 ? 'text-green-600' : 'text-red-600'}`}>
                   {formatCurrency(summary.netIncome)}
                 </p>
@@ -305,14 +305,14 @@ export default function AdminFinancePage() {
         </div>
 
         {/* Filters */}
-        <div className="bg-white p-6 rounded-lg shadow">
+        <div className="rounded-lg shadow p-6 border border-black/10 dark:border-white/10 bg-white dark:bg-black/30">
           <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Tipe</label>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Tipe</label>
               <select
                 value={filters.type}
                 onChange={(e) => setFilters({ ...filters, type: e.target.value })}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                className="w-full px-3 py-2 border border-gray-300 dark:border-white/10 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 bg-white dark:bg-black/20 text-gray-900 dark:text-gray-200"
               >
                 <option value="">Semua Tipe</option>
                 <option value="INCOME">Pemasukan</option>
@@ -321,11 +321,11 @@ export default function AdminFinancePage() {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Kategori</label>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Kategori</label>
               <select
                 value={filters.category}
                 onChange={(e) => setFilters({ ...filters, category: e.target.value })}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                className="w-full px-3 py-2 border border-gray-300 dark:border-white/10 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 bg-white dark:bg-black/20 text-gray-900 dark:text-gray-200"
               >
                 <option value="">Semua Kategori</option>
                 <optgroup label="Pemasukan">
@@ -342,22 +342,22 @@ export default function AdminFinancePage() {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Tanggal Mulai</label>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Tanggal Mulai</label>
               <input
                 type="date"
                 value={filters.startDate}
                 onChange={(e) => setFilters({ ...filters, startDate: e.target.value })}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                className="w-full px-3 py-2 border border-gray-300 dark:border-white/10 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 bg-white dark:bg-black/20 text-gray-900 dark:text-gray-200"
               />
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Tanggal Akhir</label>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Tanggal Akhir</label>
               <input
                 type="date"
                 value={filters.endDate}
                 onChange={(e) => setFilters({ ...filters, endDate: e.target.value })}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                className="w-full px-3 py-2 border border-gray-300 dark:border-white/10 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 bg-white dark:bg-black/20 text-gray-900 dark:text-gray-200"
               />
             </div>
 
@@ -374,38 +374,38 @@ export default function AdminFinancePage() {
         </div>
 
         {/* Transactions Table */}
-        <div className="bg-white shadow rounded-lg overflow-hidden">
+        <div className="rounded-lg shadow overflow-hidden border border-black/10 dark:border-white/10 bg-white dark:bg-black/30">
           <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-gray-200">
-              <thead className="bg-gray-50">
+            <table className="min-w-full divide-y divide-gray-200 dark:divide-white/10">
+              <thead className="bg-gray-50 dark:bg-black/20">
                 <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
                     Tanggal
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
                     Tipe
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
                     Kategori
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
                     Deskripsi
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
                     Jumlah
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
                     Dibuat Oleh
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
                     Aksi
                   </th>
                 </tr>
               </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
+              <tbody className="bg-white dark:bg-black/10 divide-y divide-gray-200 dark:divide-white/10">
                 {transactions.map((transaction) => (
-                  <tr key={transaction.id} className="hover:bg-gray-50">
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                  <tr key={transaction.id} className="hover:bg-gray-50 dark:hover:bg-white/10">
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-200">
                       {new Date(transaction.date).toLocaleDateString('id-ID')}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
@@ -417,10 +417,10 @@ export default function AdminFinancePage() {
                         {transaction.type === 'INCOME' ? 'Pemasukan' : 'Pengeluaran'}
                       </span>
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-200">
                       {getCategoryLabel(transaction.category)}
                     </td>
-                    <td className="px-6 py-4 text-sm text-gray-900">
+                    <td className="px-6 py-4 text-sm text-gray-900 dark:text-gray-200">
                       {transaction.description}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
@@ -428,7 +428,7 @@ export default function AdminFinancePage() {
                         {transaction.type === 'INCOME' ? '+' : '-'}{formatCurrency(transaction.amount)}
                       </span>
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-200">
                       {transaction.createdBy.fullName}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
@@ -464,7 +464,7 @@ export default function AdminFinancePage() {
 
           {transactions.length === 0 && (
             <div className="text-center py-12">
-              <p className="text-gray-500">Belum ada transaksi</p>
+              <p className="text-gray-500 dark:text-gray-400">Belum ada transaksi</p>
             </div>
           )}
         </div>
@@ -472,12 +472,12 @@ export default function AdminFinancePage() {
         {/* Create Transaction Modal */}
         {showCreateModal && (
           <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-            <div className="bg-white rounded-lg p-6 w-full max-w-md">
+            <div className="bg-white dark:bg-black/30 rounded-lg p-6 w-full max-w-md border border-black/10 dark:border-white/10">
               <h2 className="text-lg font-semibold mb-4">Tambah Transaksi</h2>
               
               <form onSubmit={handleCreateTransaction} className="space-y-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Tipe</label>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Tipe</label>
                   <select
                     value={formData.type}
                     onChange={(e) => setFormData({ 
@@ -485,7 +485,7 @@ export default function AdminFinancePage() {
                       type: e.target.value as 'INCOME' | 'EXPENSE',
                       category: '' // Reset category when type changes
                     })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                    className="w-full px-3 py-2 border border-gray-300 dark:border-white/10 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 bg-white dark:bg-black/20 text-gray-900 dark:text-gray-200"
                     required
                   >
                     <option value="INCOME">Pemasukan</option>
@@ -494,11 +494,11 @@ export default function AdminFinancePage() {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Kategori</label>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Kategori</label>
                   <select
                     value={formData.category}
                     onChange={(e) => setFormData({ ...formData, category: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                    className="w-full px-3 py-2 border border-gray-300 dark:border-white/10 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 bg-white dark:bg-black/20 text-gray-900 dark:text-gray-200"
                     required
                   >
                     <option value="">Pilih Kategori</option>
@@ -509,35 +509,35 @@ export default function AdminFinancePage() {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Jumlah</label>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Jumlah</label>
                   <input
                     type="number"
                     step="0.01"
                     value={formData.amount}
                     onChange={(e) => setFormData({ ...formData, amount: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                    className="w-full px-3 py-2 border border-gray-300 dark:border-white/10 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 bg-white dark:bg-black/20 text-gray-900 dark:text-gray-200"
                     required
                   />
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Deskripsi</label>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Deskripsi</label>
                   <textarea
                     value={formData.description}
                     onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                     rows={3}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                    className="w-full px-3 py-2 border border-gray-300 dark:border-white/10 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 bg-white dark:bg-black/20 text-gray-900 dark:text-gray-200"
                     required
                   />
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Tanggal</label>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Tanggal</label>
                   <input
                     type="date"
                     value={formData.date}
                     onChange={(e) => setFormData({ ...formData, date: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                    className="w-full px-3 py-2 border border-gray-300 dark:border-white/10 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 bg-white dark:bg-black/20 text-gray-900 dark:text-gray-200"
                     required
                   />
                 </div>
@@ -552,7 +552,7 @@ export default function AdminFinancePage() {
                   <button
                     type="button"
                     onClick={() => setShowCreateModal(false)}
-                    className="flex-1 bg-gray-300 text-gray-700 py-2 px-4 rounded-md hover:bg-gray-400"
+                    className="flex-1 bg-gray-300 text-gray-700 dark:bg-gray-600 dark:text-gray-100 py-2 px-4 rounded-md hover:bg-gray-400"
                   >
                     Batal
                   </button>
@@ -565,12 +565,12 @@ export default function AdminFinancePage() {
         {/* Edit Transaction Modal */}
         {editingTransaction && (
           <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-            <div className="bg-white rounded-lg p-6 w-full max-w-md">
+            <div className="bg-white dark:bg-black/30 rounded-lg p-6 w-full max-w-md border border-black/10 dark:border-white/10">
               <h2 className="text-lg font-semibold mb-4">Edit Transaksi</h2>
               
               <form onSubmit={handleUpdateTransaction} className="space-y-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Tipe</label>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Tipe</label>
                   <select
                     value={editFormData.type}
                     onChange={(e) => setEditFormData({ 
@@ -578,7 +578,7 @@ export default function AdminFinancePage() {
                       type: e.target.value as 'INCOME' | 'EXPENSE',
                       category: '' // Reset category when type changes
                     })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                    className="w-full px-3 py-2 border border-gray-300 dark:border-white/10 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 bg-white dark:bg-black/20 text-gray-900 dark:text-gray-200"
                     required
                   >
                     <option value="INCOME">Pemasukan</option>
@@ -587,11 +587,11 @@ export default function AdminFinancePage() {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Kategori</label>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Kategori</label>
                   <select
                     value={editFormData.category}
                     onChange={(e) => setEditFormData({ ...editFormData, category: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                    className="w-full px-3 py-2 border border-gray-300 dark:border-white/10 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 bg-white dark:bg-black/20 text-gray-900 dark:text-gray-200"
                     required
                   >
                     <option value="">Pilih Kategori</option>
@@ -602,35 +602,35 @@ export default function AdminFinancePage() {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Jumlah</label>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Jumlah</label>
                   <input
                     type="number"
                     step="0.01"
                     value={editFormData.amount}
                     onChange={(e) => setEditFormData({ ...editFormData, amount: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                    className="w-full px-3 py-2 border border-gray-300 dark:border-white/10 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 bg-white dark:bg-black/20 text-gray-900 dark:text-gray-200"
                     required
                   />
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Deskripsi</label>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Deskripsi</label>
                   <textarea
                     value={editFormData.description}
                     onChange={(e) => setEditFormData({ ...editFormData, description: e.target.value })}
                     rows={3}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                    className="w-full px-3 py-2 border border-gray-300 dark:border-white/10 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 bg-white dark:bg-black/20 text-gray-900 dark:text-gray-200"
                     required
                   />
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Tanggal</label>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Tanggal</label>
                   <input
                     type="date"
                     value={editFormData.date}
                     onChange={(e) => setEditFormData({ ...editFormData, date: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                    className="w-full px-3 py-2 border border-gray-300 dark:border-white/10 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 bg-white dark:bg-black/20 text-gray-900 dark:text-gray-200"
                     required
                   />
                 </div>
@@ -645,7 +645,7 @@ export default function AdminFinancePage() {
                   <button
                     type="button"
                     onClick={() => setEditingTransaction(null)}
-                    className="flex-1 bg-gray-300 text-gray-700 py-2 px-4 rounded-md hover:bg-gray-400"
+                    className="flex-1 bg-gray-300 text-gray-700 dark:bg-gray-600 dark:text-gray-100 py-2 px-4 rounded-md hover:bg-gray-400"
                   >
                     Batal
                   </button>

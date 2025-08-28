@@ -3,6 +3,7 @@
 import { ReactNode } from 'react'
 import { SessionProvider } from './SessionProvider'
 import { ToastProvider } from './ToastProvider'
+import ThemeProvider from '@/components/layout/ThemeProvider'
 
 interface ProvidersProps {
   children: ReactNode
@@ -11,9 +12,11 @@ interface ProvidersProps {
 export function Providers({ children }: ProvidersProps) {
   return (
     <SessionProvider>
-      <ToastProvider>
-        {children}
-      </ToastProvider>
+      <ThemeProvider>
+        <ToastProvider>
+          {children}
+        </ToastProvider>
+      </ThemeProvider>
     </SessionProvider>
   )
 }

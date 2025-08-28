@@ -1,381 +1,519 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useSession } from 'next-auth/react'
+import { redirect } from 'next/navigation'
+import { 
+  DashboardLayout, 
+  TwoColumnLayout,
+  DashboardSection,
+  StatCard, 
+  employeeStatConfigs,
+  QuickActions,
+  employeeQuickActions,
+  ActivityFeed,
+  employeeActivityFeed,
+  WelcomeSection,
+  employeeWelcomeConfig,
+  SummaryCards,
+  employeeSummaryCards,
+  ChartSummary,
+  attendanceChartConfig,
+  taskProgressChartConfig,
+  leaveStatusChartConfig,
+  QuickStats,
+  employeeQuickStats,
+  ProgressOverview,
+  taskProgressConfig,
+  attendanceProgressConfig,
+  OverviewCards,
+  attendanceOverviewConfig,
+  leaveOverviewConfig,
+  wfhOverviewConfig,
+  RecentTasks,
+  NotificationsSummary,
+  AttendanceStatus,
+  DashboardCalendar,
+  attendanceCalendarConfig,
+  generateSampleEvents
+} from '@/components/dashboard'
+import type { ActivityItem, Task, Notification, AttendanceData, CalendarEvent } from '@/components/dashboard/types'
 import EmployeeLayout from '@/components/layout/EmployeeLayout'
-import { CheckSquare, Clock, AlertCircle, Bell, Calendar, User } from 'lucide-react'
-import Link from 'next/link'
 
-interface DashboardStats {
+interface EmployeeStats {
   totalTasks: number
-  notStartedTasks: number
-  inProgressTasks: number
   completedTasks: number
+  pendingTasks: number
+  todayPresent: boolean
+  checkInTime?: string
+  checkOutTime?: string
+  pendingLeaveRequests: number
+  approvedLeaveRequests: number
+  rejectedLeaveRequests: number
+  pendingWFHLogs: number
+  approvedWFHLogs: number
+  rejectedWFHLogs: number
   unreadNotifications: number
 }
 
-interface RecentTask {
-  id: string
-  title: string
-  status: string
-  dueDate: string | null
-  createdAt: string
-}
-
 export default function EmployeeDashboard() {
-  const { data: session } = useSession() // Add this line
-  
-  const [stats, setStats] = useState<DashboardStats>({
-    totalTasks: 0,
-    notStartedTasks: 0,
-    inProgressTasks: 0,
-    completedTasks: 0,
-    unreadNotifications: 0
-  })
-  
-  const [recentTasks, setRecentTasks] = useState<RecentTask[]>([])
+  const { data: session, status } = useSession()
+  const [stats, setStats] = useState<EmployeeStats | null>(null)
   const [isLoading, setIsLoading] = useState(true)
+  const [recentActivities, setRecentActivities] = useState<ActivityItem[]>([])
+  const [recentTasks, setRecentTasks] = useState<Task[]>([])
+  const [notifications, setNotifications] = useState<Notification[]>([])
+  const [attendanceData, setAttendanceData] = useState<AttendanceData | null>(null)
+  const [calendarEvents, setCalendarEvents] = useState<CalendarEvent[]>([])
+  const pollingRef = useRef<NodeJS.Timeout | null>(null)
+  type MinimalSocket = { on: (event: string, handler: (...args: unknown[]) => void) => void; disconnect: () => void }
+  const socketRef = useRef<MinimalSocket | null>(null)
+
+  const appUrl = useMemo(() => process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000', [])
 
   useEffect(() => {
-    fetchDashboardData()
-  }, [])
+    if (status === 'loading') return
+    
+    if (!session) {
+      redirect('/auth/signin')
+    }
 
-  const fetchDashboardData = async () => {
+    if (session.user.role !== 'EMPLOYEE') {
+      redirect('/admin')
+    }
+
+    refreshAll()
+
+    // polling for freshness
+    pollingRef.current = setInterval(() => {
+      refreshAll()
+    }, 30000)
+
+    // socket trigger to refresh on important events
+    ;(async () => {
+      try {
+        const mod = (await import('socket.io-client')) as unknown as { io?: (url: string, opts: Record<string, unknown>) => MinimalSocket; default?: (url: string, opts: Record<string, unknown>) => MinimalSocket }
+        const factory: (url: string, opts: Record<string, unknown>) => MinimalSocket = (mod.io || mod.default) as (url: string, opts: Record<string, unknown>) => MinimalSocket
+        const s = factory(appUrl, { path: '/socket.io' })
+        socketRef.current = s
+        const refresh = () => refreshAll()
+        s.on('task_updated', refresh)
+        s.on('task_created', refresh)
+        s.on('notification', refresh)
+        s.on('attendance_updated', refresh)
+        s.on('leave_status_changed', refresh)
+      } catch {}
+    })()
+
+    return () => {
+      if (pollingRef.current) clearInterval(pollingRef.current)
+      if (socketRef.current) socketRef.current.disconnect()
+    }
+  }, [session, status, appUrl])
+
+  const refreshAll = () => {
+    fetchEmployeeStats()
+    fetchRecentActivities()
+    fetchRecentTasks()
+    fetchNotifications()
+    fetchAttendanceData()
+    fetchCalendarEvents()
+  }
+
+  const fetchEmployeeStats = async () => {
     try {
-      const [tasksResponse, notificationsResponse] = await Promise.all([
-        fetch('/api/tasks?limit=5'),
-        fetch('/api/notifications?unread=true')
+      setIsLoading(true)
+
+      // Use the new employee dashboard stats API
+      const statsRes = await fetch('/api/employee/dashboard-stats')
+      
+      if (statsRes.ok) {
+        const statsData = await statsRes.json()
+        if (statsData.success && statsData.data) {
+          setStats(statsData.data)
+          setIsLoading(false)
+          return
+        }
+      }
+
+      // Fallback to individual API calls if new endpoint fails
+      const [tasksRes, notifsRes, attendanceRes, leavesRes, wfhRes] = await Promise.all([
+        fetch('/api/tasks?limit=100'),
+        fetch('/api/notifications?unread=true&limit=1'),
+        fetch('/api/attendance/today'),
+        fetch('/api/leave-requests/me'),
+        fetch('/api/wfh-logs/me')
       ])
 
-      let taskStats = {
-        totalTasks: 0,
-        notStartedTasks: 0,
-        inProgressTasks: 0,
-        completedTasks: 0
+      let totalTasks = 0
+      let completedTasks = 0
+      let pendingTasks = 0
+      if (tasksRes.ok) {
+        const tasksJson = await tasksRes.json()
+        const tasks: any[] = tasksJson.tasks || tasksJson.data || []
+        totalTasks = tasks.length
+        completedTasks = tasks.filter(t => t.status === 'COMPLETED').length
+        pendingTasks = tasks.filter(t => t.status === 'NOT_STARTED' || t.status === 'IN_PROGRESS').length
       }
-      
-      let notificationStats = {
-        unreadNotifications: 0
+
+      let unreadNotifications = 0
+      if (notifsRes.ok) {
+        const nj = await notifsRes.json()
+        unreadNotifications = typeof nj.unreadCount === 'number' ? nj.unreadCount : (nj.notifications?.filter((n: any) => !n.isRead).length || 0)
       }
-      
-      // Process tasks data
-      if (tasksResponse.ok) {
-        const tasksData = await tasksResponse.json()
-        const tasks = tasksData.tasks || []
-        setRecentTasks(tasks)
-        
-        // Ensure all values are valid numbers
-        const notStarted = tasks.filter((t: any) => t.status === 'NOT_STARTED').length
-        const inProgress = tasks.filter((t: any) => t.status === 'IN_PROGRESS').length
-        const completed = tasks.filter((t: any) => t.status === 'COMPLETED').length
-        
-        taskStats = {
-          totalTasks: tasks.length || 0,
-          notStartedTasks: notStarted || 0,
-          inProgressTasks: inProgress || 0,
-          completedTasks: completed || 0
+
+      let todayPresent = false
+      let checkInTime: string | undefined = undefined
+      let checkOutTime: string | undefined = undefined
+      if (attendanceRes.ok) {
+        const aj = await attendanceRes.json()
+        const today = (aj.data || aj.attendance || aj || []) as any[]
+        const latest = Array.isArray(today) && today.length > 0 ? today[0] : null
+        if (latest) {
+          todayPresent = latest.status === 'PRESENT' || latest.status === 'WFH' || latest.status === 'LEAVE' || latest.status === 'SICK'
+          checkInTime = latest.checkInTime
+          checkOutTime = latest.checkOutTime
         }
-      } else {
-        console.error('Error fetching tasks:', tasksResponse.statusText)
       }
-      
-      // Process notifications data
-      if (notificationsResponse.ok) {
-        const notificationsData = await notificationsResponse.json()
-        const unreadCount = parseInt(notificationsData.unreadCount) || 0
-        notificationStats = {
-          unreadNotifications: isNaN(unreadCount) ? 0 : unreadCount
-        }
-      } else {
-        console.error('Error fetching notifications:', notificationsResponse.statusText)
+
+      let pendingLeaveRequests = 0
+      let approvedLeaveRequests = 0
+      let rejectedLeaveRequests = 0
+      if (leavesRes.ok) {
+        const lj = await leavesRes.json()
+        const leaves: any[] = lj.data || lj.leaveRequests || []
+        pendingLeaveRequests = leaves.filter(l => l.status === 'PENDING').length
+        approvedLeaveRequests = leaves.filter(l => l.status === 'APPROVED').length
+        rejectedLeaveRequests = leaves.filter(l => l.status === 'REJECTED').length
       }
-      
-      // Update stats with real data and ensure all values are valid
-      setStats({
-        totalTasks: taskStats.totalTasks || 0,
-        notStartedTasks: taskStats.notStartedTasks || 0,
-        inProgressTasks: taskStats.inProgressTasks || 0,
-        completedTasks: taskStats.completedTasks || 0,
-        unreadNotifications: notificationStats.unreadNotifications || 0
-      })
+
+      let pendingWFHLogs = 0
+      let approvedWFHLogs = 0
+      let rejectedWFHLogs = 0
+      if (wfhRes.ok) {
+        const wj = await wfhRes.json()
+        const logs: any[] = wj.data || []
+        pendingWFHLogs = logs.filter(l => l.status === 'PENDING').length
+        approvedWFHLogs = logs.filter(l => l.status === 'APPROVED').length
+        rejectedWFHLogs = logs.filter(l => l.status === 'REJECTED').length
+      }
+
+      const computed: EmployeeStats = {
+        totalTasks,
+        completedTasks,
+        pendingTasks,
+        todayPresent,
+        checkInTime,
+        checkOutTime,
+        pendingLeaveRequests,
+        approvedLeaveRequests,
+        rejectedLeaveRequests,
+        pendingWFHLogs,
+        approvedWFHLogs,
+        rejectedWFHLogs,
+        unreadNotifications
+      }
+      setStats(computed)
     } catch (error) {
-      console.error('Error fetching dashboard data:', error)
-      // Set default values on error
-      setStats({
-        totalTasks: 0,
-        notStartedTasks: 0,
-        inProgressTasks: 0,
-        completedTasks: 0,
-        unreadNotifications: 0
-      })
+      console.error('Error fetching employee stats:', error)
     } finally {
       setIsLoading(false)
     }
   }
 
-  const statCards = [
-    {
-      title: 'Total Tugas',
-      value: stats.totalTasks || 0,
-      icon: CheckSquare,
-      color: 'bg-blue-500',
-      textColor: 'text-blue-600'
-    },
-    {
-      title: 'Belum Dikerjakan',
-      value: stats.notStartedTasks || 0,
-      icon: AlertCircle,
-      color: 'bg-gray-500',
-      textColor: 'text-gray-600'
-    },
-    {
-      title: 'Sedang Dikerjakan',
-      value: stats.inProgressTasks || 0,
-      icon: Clock,
-      color: 'bg-yellow-500',
-      textColor: 'text-yellow-600'
-    },
-    {
-      title: 'Selesai',
-      value: stats.completedTasks || 0,
-      icon: CheckSquare,
-      color: 'bg-green-500',
-      textColor: 'text-green-600'
+  const fetchRecentActivities = async () => {
+    try {
+      const res = await fetch('/api/notifications?limit=10')
+      if (res.ok) {
+        const data = await res.json()
+        const items: ActivityItem[] = (data.notifications || []).map((n: any) => ({
+          id: n.id,
+          type: n.category || 'notification',
+          title: n.title,
+          description: n.message,
+          timestamp: n.createdAt,
+          user: session?.user?.name || 'Anda',
+          icon: 'Bell',
+          color: n.isRead ? 'bg-gray-100 text-gray-800' : 'bg-blue-100 text-blue-800',
+          metadata: { isRead: n.isRead }
+        }))
+        setRecentActivities(items)
+      }
+    } catch (error) {
+      console.error('Error fetching recent activities:', error)
     }
-  ]
+  }
 
-  const getStatusBadge = (status: string) => {
-    const styles = {
-      NOT_STARTED: 'bg-gray-100 text-gray-800',
-      IN_PROGRESS: 'bg-yellow-100 text-yellow-800',
-      COMPLETED: 'bg-green-100 text-green-800'
+  const fetchRecentTasks = async () => {
+    try {
+      const res = await fetch('/api/tasks?limit=5&sort=createdAt:desc')
+      if (res.ok) {
+        const data = await res.json()
+        setRecentTasks((data.tasks || data.data || []).slice(0, 5))
+      }
+    } catch (error) {
+      console.error('Error fetching recent tasks:', error)
     }
-    
-    const labels = {
-      NOT_STARTED: 'Belum Dikerjakan',
-      IN_PROGRESS: 'Sedang Dikerjakan',
-      COMPLETED: 'Selesai'
-    }
+  }
 
+  const fetchNotifications = async () => {
+    try {
+      const res = await fetch('/api/notifications?limit=5')
+      if (res.ok) {
+        const data = await res.json()
+        setNotifications(data.notifications || [])
+      }
+    } catch (error) {
+      console.error('Error fetching notifications:', error)
+    }
+  }
+
+  const fetchAttendanceData = async () => {
+    try {
+      const res = await fetch('/api/attendance/today')
+      if (res.ok) {
+        const data = await res.json()
+        const list: any[] = data.data || data.attendance || []
+        const latest = Array.isArray(list) && list.length > 0 ? list[0] : null
+        if (latest) {
+          const mapped: AttendanceData = {
+            userId: session?.user?.id || '',
+            userName: session?.user?.name || 'Anda',
+            status: latest.status,
+            checkInTime: latest.checkInTime,
+            checkOutTime: latest.checkOutTime,
+            location: latest.checkInLatitude && latest.checkInLongitude ? `${latest.checkInLatitude}, ${latest.checkInLongitude}` : undefined,
+            notes: latest.notes,
+          }
+          setAttendanceData(mapped)
+        } else {
+          setAttendanceData(null)
+        }
+      }
+    } catch (error) {
+      console.error('Error fetching attendance data:', error)
+    }
+  }
+
+  const fetchCalendarEvents = async () => {
+    try {
+      const now = new Date()
+      const month = now.getMonth() + 1
+      const year = now.getFullYear()
+      const res = await fetch(`/api/attendance/calendar?month=${month}&year=${year}`)
+      if (res.ok) {
+        const data = await res.json()
+        const events: CalendarEvent[] = []
+        const attendance = data?.data?.attendance || []
+        for (const a of attendance) {
+          events.push({
+            id: a.id,
+            title: a.status,
+            date: a.checkInTime,
+            type: 'attendance'
+          })
+        }
+        setCalendarEvents(events)
+      } else {
+        const events = generateSampleEvents()
+        setCalendarEvents(events)
+      }
+    } catch {
+      const events = generateSampleEvents()
+      setCalendarEvents(events)
+    }
+  }
+
+  if (status === 'loading' || isLoading) {
     return (
-      <span className={`px-2 py-1 text-xs font-medium rounded-full ${styles[status as keyof typeof styles]}`}>
-        {labels[status as keyof typeof labels]}
-      </span>
+      <div className="flex items-center justify-center min-h-screen bg-gray-50 dark:bg-[#121212]">
+        <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-blue-600 dark:border-blue-400"></div>
+      </div>
     )
   }
 
-  if (isLoading) {
+  if (!stats) {
     return (
-      <EmployeeLayout>
-        <div className="flex items-center justify-center h-64">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-green-600"></div>
+      <div className="flex items-center justify-center min-h-screen bg-gray-50 dark:bg-[#121212]">
+        <div className="text-center">
+          <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-4">
+            Gagal memuat data dashboard
+          </h2>
+          <button
+            onClick={fetchEmployeeStats}
+            className="px-4 py-2 bg-blue-600 dark:bg-blue-500 text-white rounded-lg hover:bg-blue-700 dark:hover:bg-blue-600 transition-colors duration-200"
+          >
+            Coba Lagi
+          </button>
         </div>
-      </EmployeeLayout>
+      </div>
     )
+  }
+
+  // Generate configurations using the new dashboard components
+  const statConfigs = employeeStatConfigs(stats)
+  const summaryCards = employeeSummaryCards(stats)
+  const quickStatsConfig = employeeQuickStats(stats)
+  const progressItems = {
+    tasks: stats ? taskProgressConfig(stats) : [],
+    attendance: stats ? attendanceProgressConfig(stats) : []
+  }
+  
+  // Ensure progressItems.tasks is always an array
+  const safeProgressItems = {
+    tasks: Array.isArray(progressItems?.tasks) ? progressItems.tasks : [],
+    attendance: Array.isArray(progressItems?.attendance) ? progressItems.attendance : []
+  }
+  const overviewItems = {
+    attendance: { items: stats ? attendanceOverviewConfig(stats) : [] },
+    leave: { items: stats ? leaveOverviewConfig(stats) : [] },
+    wfh: { items: stats ? wfhOverviewConfig(stats) : [] }
+  }
+  const activities = employeeActivityFeed(recentActivities)
+  const welcomeConfig = {
+    ...employeeWelcomeConfig(session?.user, new Date()),
+    user: session?.user
+  }
+
+  // Mock chart data for employee
+  const chartData = {
+    attendance: {
+      labels: ['Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat'],
+      datasets: [{
+        label: 'Kehadiran',
+        data: [1, 1, 1, 1, 1], // Present for all days
+        backgroundColor: ['#10B981', '#10B981', '#10B981', '#10B981', '#10B981'],
+        borderColor: ['#059669', '#059669', '#059669', '#059669', '#059669'],
+        borderWidth: 2
+      }]
+    },
+    tasks: {
+      labels: ['Belum Dimulai', 'Dalam Proses', 'Selesai'],
+      datasets: [{
+        label: 'Tugas',
+        data: [0, stats.pendingTasks, stats.completedTasks],
+        backgroundColor: ['#F59E0B', '#3B82F6', '#10B981'],
+        borderColor: ['#D97706', '#2563EB', '#059669'],
+        borderWidth: 2
+      }]
+    },
+    leave: {
+      labels: ['Menunggu', 'Disetujui', 'Ditolak'],
+      datasets: [{
+        label: 'Permohonan Izin',
+        data: [stats.pendingLeaveRequests, stats.approvedLeaveRequests, stats.rejectedLeaveRequests],
+        backgroundColor: ['#F59E0B', '#10B981', '#EF4444'],
+        borderColor: ['#D97706', '#059669', '#DC2626'],
+        borderWidth: 2
+      }]
+    }
   }
 
   return (
     <EmployeeLayout>
-      <div className="space-y-6">
-        {/* Welcome Section */}
-        <div className="bg-white rounded-lg shadow-sm p-6">
-          <h1 className="text-2xl font-bold text-gray-900 mb-2">
-            Selamat Datang, {session?.user?.name || 'Pengguna'}
-          </h1>
-          <p className="text-gray-600">
-            Ini adalah dashboard karyawan untuk mengelola tugas dan aktivitas Anda.
-          </p>
-        </div>
+    <DashboardLayout>
+      {/* Welcome Section */}
+      <DashboardSection>
+        <WelcomeSection {...welcomeConfig} />
+      </DashboardSection>
 
-        {/* Stats Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-          {statCards.map((card, index) => (
-            <div key={index} className="bg-white rounded-lg shadow-sm p-6">
-              <div className="flex items-center">
-                <card.icon className="h-10 w-10 mr-4" />
-                <div>
-                  <p className="text-sm font-medium text-gray-600">{card.title}</p>
-                  <p className={`text-2xl font-bold ${card.textColor}`}>{card.value}</p>
-                </div>
-              </div>
+      {/* Main Dashboard Grid */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        {/* Left Column - Quick Stats */}
+        <div className="lg:col-span-2 space-y-6">
+          {/* Quick Stats */}
+          <DashboardSection title="Statistik Cepat">
+            <QuickStats items={quickStatsConfig.items} />
+          </DashboardSection>
+
+          {/* Charts Section */}
+          <DashboardSection title="Analisis Performa">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <ChartSummary {...attendanceChartConfig(stats)} />
+              <ChartSummary {...taskProgressChartConfig(stats)} />
             </div>
-          ))}
+          </DashboardSection>
+
+          {/* Progress Overview */}
+          <DashboardSection title="Progress Tugas">
+            <ProgressOverview items={safeProgressItems.tasks} />
+          </DashboardSection>
         </div>
 
-        {/* Content Grid */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Right Column - Actions and Status */}
+        <div className="space-y-6">
+          {/* Quick Actions */}
+          <DashboardSection title="Aksi Cepat">
+            <QuickActions actions={employeeQuickActions} />
+          </DashboardSection>
+
+          {/* Attendance Status */}
+          <DashboardSection title="Status Kehadiran">
+            <AttendanceStatus 
+              attendanceData={attendanceData}
+              showActions={true}
+              showLocation={true}
+            />
+          </DashboardSection>
+
+          {/* Notifications Summary */}
+          <DashboardSection title="Notifikasi">
+            <NotificationsSummary 
+              notifications={notifications}
+              maxItems={3}
+              showMarkAsRead={true}
+            />
+          </DashboardSection>
+
           {/* Recent Tasks */}
-          <div className="bg-white rounded-lg shadow-sm p-6">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-semibold text-gray-900">Tugas Terbaru</h3>
-              <Link href="/employee/tasks" className="text-sm text-green-600 hover:text-green-700 font-medium">
-                Lihat Semua
-              </Link>
-            </div>
-            
-            {recentTasks.length === 0 ? (
-              <div className="text-center py-8">
-                <CheckSquare className="mx-auto h-12 w-12 text-gray-400" />
-                <h4 className="mt-2 text-sm font-medium text-gray-900">Belum ada tugas</h4>
-                <p className="mt-1 text-sm text-gray-500">
-                  Tugas yang diberikan akan muncul di sini.
-                </p>
-              </div>
-            ) : (
-              <div className="space-y-4">
-                {recentTasks.slice(0, 3).map((task) => (
-                  <div key={task.id} className="border border-gray-200 rounded-lg p-4">
-                    <div className="flex justify-between">
-                      <h4 className="font-medium text-gray-900 truncate">{task.title}</h4>
-                      {getStatusBadge(task.status)}
-                    </div>
-                    <div className="flex items-center text-sm text-gray-500 space-x-4">
-                      <div className="flex items-center">
-                        <Calendar className="h-4 w-4 mr-1" />
-                        <span>{task.dueDate ? new Date(task.dueDate).toLocaleDateString() : 'Tidak ada tenggat'}</span>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-
-          {/* Quick Actions & Notifications */}
-          <div className="space-y-6">
-            {/* Quick Actions */}
-            <div className="bg-white rounded-lg shadow-sm p-6">
-              <h3 className="text-lg font-semibold text-gray-900 mb-4">Aksi Cepat</h3>
-              <div className="space-y-3">
-                <Link href="/employee/tasks?status=NOT_STARTED">
-                  <div className="flex items-center p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
-                    <AlertCircle className="h-5 w-5 text-gray-600 mr-3" />
-                    <div>
-                      <p className="font-medium text-gray-900">Tugas Belum Dikerjakan</p>
-                      <p className="text-sm text-gray-600">{(stats.notStartedTasks || 0)} tugas menunggu</p>
-                    </div>
-                  </div>
-                </Link>
-                <Link href="/employee/tasks?status=IN_PROGRESS">
-                  <div className="flex items-center p-3 bg-yellow-50 rounded-lg hover:bg-yellow-100 transition-colors">
-                    <Clock className="h-5 w-5 text-yellow-600 mr-3" />
-                    <div>
-                      <p className="font-medium text-gray-900">Tugas Sedang Dikerjakan</p>
-                      <p className="text-sm text-gray-600">{(stats.inProgressTasks || 0)} tugas dalam progress</p>
-                    </div>
-                  </div>
-                </Link>
-              </div>
-            </div>
-
-            {/* Notifications Summary */}
-            <div className="bg-white rounded-lg shadow-sm p-6">
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="text-lg font-semibold text-gray-900">Notifikasi</h3>
-                <Link href="/employee/notifications" className="text-sm text-green-600 hover:text-green-700 font-medium">
-                  Lihat Semua
-                </Link>
-              </div>
-              
-              <div className="flex items-center p-3 bg-blue-50 rounded-lg">
-                <Bell className="h-5 w-5 text-blue-600 mr-3" />
-                <div>
-                  <p className="font-medium text-gray-900">Notifikasi Belum Dibaca</p>
-                  <p className="text-sm text-gray-600">
-                    Anda memiliki {(stats.unreadNotifications || 0)} notifikasi belum dibaca
-                  </p>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Progress Overview */}
-        <div className="bg-white rounded-lg shadow-sm p-6">
-          <h3 className="text-lg font-semibold text-gray-900 mb-4">Progress Tugas</h3>
-          <div className="space-y-4">
-            <div>
-              <div className="flex justify-between text-sm text-gray-600">
-                <span>Tugas Selesai</span>
-                <span>{stats.completedTasks || 0}/{stats.totalTasks || 0}</span>
-              </div>
-              <div className="w-full bg-gray-200 rounded-full h-2">
-                <div
-                  className="bg-green-500 h-2 rounded-full"
-                  style={{ 
-                    width: `${(() => {
-                      const total = stats.totalTasks || 0
-                      const completed = stats.completedTasks || 0
-                      if (total <= 0) return 0
-                      const percentage = Math.round((completed / total) * 100)
-                      return isNaN(percentage) || !isFinite(percentage) ? 0 : percentage
-                    })()}%` 
-                  }}
-                ></div>
-              </div>
-            </div>
-            <div>
-              <div className="flex justify-between text-sm text-gray-600">
-                <span>Tugas Dalam Progress</span>
-                <span>{stats.inProgressTasks || 0}/{stats.totalTasks || 0}</span>
-              </div>
-              <div className="w-full bg-gray-200 rounded-full h-2">
-                <div
-                  className="bg-yellow-500 h-2 rounded-full"
-                  style={{ 
-                    width: `${(() => {
-                      const total = stats.totalTasks || 0
-                      const inProgress = stats.inProgressTasks || 0
-                      if (total <= 0) return 0
-                      const percentage = Math.round((inProgress / total) * 100)
-                      return isNaN(percentage) || !isFinite(percentage) ? 0 : percentage
-                    })()}%` 
-                  }}
-                ></div>
-              </div>
-            </div>
-            <div>
-              <div className="flex justify-between text-sm text-gray-600">
-                <span>Tugas Belum Dimulai</span>
-                <span>{stats.notStartedTasks || 0}/{stats.totalTasks || 0}</span>
-              </div>
-              <div className="w-full bg-gray-200 rounded-full h-2">
-                <div
-                  className="bg-gray-500 h-2 rounded-full"
-                  style={{ 
-                    width: `${(() => {
-                      const total = stats.totalTasks || 0
-                      const notStarted = stats.notStartedTasks || 0
-                      if (total <= 0) return 0
-                      const percentage = Math.round((notStarted / total) * 100)
-                      return isNaN(percentage) || !isFinite(percentage) ? 0 : percentage
-                    })()}%` 
-                  }}
-                ></div>
-              </div>
-            </div>
-          </div>
-          
-          {stats.totalTasks > 0 ? (
-            <p className="text-lg font-semibold text-green-600 mt-4 text-center">
-              {(() => {
-                const total = stats.totalTasks || 0
-                const completed = stats.completedTasks || 0
-                if (total <= 0) return 0
-                const percentage = Math.round((completed / total) * 100)
-                return isNaN(percentage) || !isFinite(percentage) ? 0 : percentage
-              })()}% tugas selesai
-            </p>
-          ) : (
-            <div className="text-center py-4 mt-4">
-              <CheckSquare className="mx-auto h-12 w-12 text-gray-400" />
-              <p className="mt-2 text-sm text-gray-500">
-                Belum ada tugas yang diberikan
-              </p>
-            </div>
-          )}
+          <DashboardSection title="Tugas Terbaru">
+            <RecentTasks 
+              tasks={recentTasks}
+              maxItems={3}
+              showAssignee={false}
+              showProgress={true}
+            />
+          </DashboardSection>
         </div>
       </div>
+
+      {/* Overview Cards Section */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <DashboardSection title="Kehadiran">
+          <OverviewCards {...overviewItems.attendance} />
+        </DashboardSection>
+        
+        <DashboardSection title="Izin">
+          <OverviewCards {...overviewItems.leave} />
+        </DashboardSection>
+        
+        <DashboardSection title="WFH">
+          <OverviewCards {...overviewItems.wfh} />
+        </DashboardSection>
+      </div>
+
+      {/* Detailed Analytics */}
+      <DashboardSection title="Analisis Detail">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <div className="bg-white/95 dark:bg-neutral-900/95 rounded-2xl border border-neutral-200/50 dark:border-neutral-700/50 p-6 backdrop-blur-sm">
+            <ChartSummary {...leaveStatusChartConfig(stats)} />
+          </div>
+          <div className="bg-white/95 dark:bg-neutral-900/95 rounded-2xl border border-neutral-200/50 dark:border-neutral-700/50 p-6 backdrop-blur-sm">
+            <DashboardCalendar 
+              events={calendarEvents}
+              {...attendanceCalendarConfig}
+            />
+          </div>
+        </div>
+      </DashboardSection>
+
+      {/* Activity Feed */}
+      <DashboardSection title="Aktivitas Terbaru">
+        <div className="bg-white/95 dark:bg-neutral-900/95 rounded-2xl border border-neutral-200/50 dark:border-neutral-700/50 p-6 backdrop-blur-sm">
+          <ActivityFeed activities={activities || []} />
+        </div>
+      </DashboardSection>
+    </DashboardLayout>
     </EmployeeLayout>
   )
 }

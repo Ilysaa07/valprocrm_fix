@@ -6,8 +6,18 @@ import { Providers } from '@/components/providers'
 const inter = Inter({ subsets: ['latin'] })
 
 export const metadata: Metadata = {
-  title: 'Valpro Dashboard - Sistem Manajemen Perusahaan',
-  description: 'Sistem manajemen karyawan dengan role-based dashboard untuk admin dan karyawan',
+  title: 'Internal System Web - Valpro Intertech',
+  description: 'Comprehensive CRM system for employee management, task tracking, and business analytics',
+  themeColor: '#6366f1',
+  viewport: 'width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no',
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: 'default',
+    title: 'CRM System',
+  },
+  formatDetection: {
+    telephone: false,
+  },
 }
 
 export default function RootLayout({

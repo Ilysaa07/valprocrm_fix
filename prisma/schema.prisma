@@ -8,38 +8,53 @@ datasource db {
 }
 
 model User {
-  id                String           @id @default(cuid())
-  email             String           @unique
-  password          String
-  fullName          String
-  address           String?
-  gender            Gender?
-  nikKtp            String?          @unique
-  phoneNumber       String?
-  bankAccountNumber String?
-  ewalletNumber     String?
-  profilePicture    String?
-  role              Role             @default(EMPLOYEE)
-  status            UserStatus       @default(PENDING)
-  createdAt         DateTime         @default(now())
-  updatedAt         DateTime         @updatedAt
-  notifications     Notification[]
-  taskSubmissions   TaskSubmission[]
-  assignedTasks     Task[]           @relation("TaskAssignee")
-  createdTasks      Task[]           @relation("TaskCreator")
-  transactions      Transaction[]
-  // Chat relationships
-  conversationParticipants ConversationParticipant[]
-  sentMessages             Message[]
-  messageReads             MessageRead[]
-  messageDeletes           MessageDelete[]
+  id                       String                    @id @default(cuid())
+  email                    String                    @unique
+  password                 String
+  fullName                 String
+  address                  String?
+  gender                   Gender?
+  nikKtp                   String?                   @unique
+  phoneNumber              String?
+  bankAccountNumber        String?
+  ewalletNumber            String?
+  profilePicture           String?
+  role                     Role                      @default(EMPLOYEE)
+  status                   UserStatus                @default(PENDING)
+  createdAt                DateTime                  @default(now())
+  updatedAt                DateTime                  @updatedAt
+  attendance               Attendance[]
   conversationDeletes      ConversationDelete[]
-
-  // Attendance & Leave relations
-  attendance              Attendance[]
-  leaveRequests           LeaveRequest[]        @relation("LeaveRequestUser")
-  decidedLeaveRequests    LeaveRequest[]        @relation("LeaveRequestDecider")
-  taskFeedbacks           TaskFeedback[]
+  conversationParticipants ConversationParticipant[]
+  documentAcls             DocumentAcl[]
+  documentDownloadLogs     DocumentDownloadLog[]
+  ownedDocuments           Document[]
+  invoiceHistoryChanges    InvoiceHistory[]
+  createdInvoices          Invoice[]                 @relation("InvoiceCreator")
+  updatedInvoices          Invoice[]                 @relation("InvoiceUpdater")
+  decidedLeaveRequests     LeaveRequest[]            @relation("LeaveRequestDecider")
+  leaveRequests            LeaveRequest[]            @relation("LeaveRequestUser")
+  messageDeletes           MessageDelete[]
+  messageReads             MessageRead[]
+  sentMessages             Message[]
+  notifications            Notification[]
+  taskFeedbacks            TaskFeedback[]
+  taskSubmissions          TaskSubmission[]
+  assignedTasks            Task[]                    @relation("TaskAssignee")
+  createdTasks             Task[]                    @relation("TaskCreator")
+  transactions             Transaction[]
+  wfhLogs                  WfhLog[]
+  createdContacts          Contact[]                 @relation("ContactCreator")
+  updatedContacts          Contact[]                 @relation("ContactUpdater")
+  contactActivities        ContactActivity[]
+  createdProjects          Project[]                 @relation("ProjectCreator")
+  updatedProjects          Project[]                 @relation("ProjectUpdater")
+  projectMembers           ProjectMember[]
+  projectMilestones        ProjectMilestone[]
+  projectTemplates         ProjectTemplate[]         @relation("ProjectTemplateCreator")
+  createdEvents            CalendarEvent[]           @relation("EventCreator")
+  updatedEvents            CalendarEvent[]           @relation("EventUpdater")
+  eventAttendees           EventAttendee[]           @relation("EventAttendeeUser")
 
   @@map("users")
 }
@@ -50,20 +65,32 @@ model Task {
   description       String
   dueDate           DateTime?
   status            TaskStatus         @default(NOT_STARTED)
+  priority          TaskPriority       @default(MEDIUM)
   assignment        TaskAssignmentType
   createdById       String
   assigneeId        String?
+  projectId         String?            // Link to project
+  contactId         String?            // Link to contact/client
+  milestoneId       String?            // Link to project milestone
   validationMessage String?
+  tags              String             @default("[]")
   createdAt         DateTime           @default(now())
   updatedAt         DateTime           @updatedAt
   notifications     Notification[]
-  submissions       TaskSubmission[]
   feedbacks         TaskFeedback[]
+  submissions       TaskSubmission[]
   assignee          User?              @relation("TaskAssignee", fields: [assigneeId], references: [id])
   createdBy         User               @relation("TaskCreator", fields: [createdById], references: [id], onDelete: Cascade)
+  project           Project?           @relation(fields: [projectId], references: [id], onDelete: SetNull)
+  contact           Contact?           @relation(fields: [contactId], references: [id], onDelete: SetNull)
+  milestone         ProjectMilestone?  @relation(fields: [milestoneId], references: [id], onDelete: SetNull)
+  events            CalendarEvent[]    // Events related to this task
 
   @@index([assigneeId], map: "tasks_assigneeId_fkey")
   @@index([createdById], map: "tasks_createdById_fkey")
+  @@index([projectId])
+  @@index([contactId])
+  @@index([milestoneId])
   @@map("tasks")
 }
 
@@ -117,60 +144,78 @@ model Notification {
   @@map("notifications")
 }
 
-// Attendance & Leave Management Models
-model Attendance {
-  id          String            @id @default(cuid())
-  userId      String
-  checkInAt   DateTime?
-  checkOutAt  DateTime?
-  method      AttendanceMethod
-  ipAddress   String?
-  latitude    Float?
-  longitude   Float?
-  status      AttendanceStatus
-  notes       String?
-  createdAt   DateTime          @default(now())
-  updatedAt   DateTime          @updatedAt
-  user        User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+model OfficeLocation {
+  id        String   @id @default(cuid())
+  name      String
+  latitude  Float
+  longitude Float
+  radius    Int      @default(50)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
-  @@index([userId], map: "attendance_userId_idx")
-  @@index([checkInAt], map: "attendance_checkInAt_idx")
+  @@map("office_locations")
+}
+
+model Attendance {
+  id               String           @id @default(cuid())
+  userId           String
+  status           AttendanceStatus
+  notes            String?
+  createdAt        DateTime         @default(now())
+  updatedAt        DateTime         @updatedAt
+  checkInLatitude  Float?
+  checkInLongitude Float?
+  checkInTime      DateTime?
+  checkOutTime     DateTime?
+  user             User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([checkInTime])
   @@map("attendance")
 }
 
-model AttendanceConfig {
-  id               String   @id @default(cuid())
-  workStartHour    Int      @default(9)
-  workEndHour      Int      @default(17)
-  officeLat        Float?
-  officeLng        Float?
-  radiusMeters     Int      @default(200)
-  useGeofence      Boolean  @default(false)
-  enforceGeofence  Boolean  @default(false)
-  createdAt        DateTime @default(now())
-  updatedAt        DateTime @updatedAt
-
-  @@map("attendance_config")
-}
-
 model LeaveRequest {
-  id           String       @id @default(cuid())
-  userId       String
-  type         LeaveType
-  startDate    DateTime
-  endDate      DateTime
-  reason       String
-  status       LeaveStatus  @default(PENDING)
-  decidedById  String?
-  decidedAt    DateTime?
-  createdAt    DateTime     @default(now())
-  updatedAt    DateTime     @updatedAt
-  user         User         @relation("LeaveRequestUser", fields: [userId], references: [id], onDelete: Cascade)
-  decidedBy    User?        @relation("LeaveRequestDecider", fields: [decidedById], references: [id])
+  id          String      @id @default(cuid())
+  userId      String
+  type        LeaveType
+  startDate   DateTime
+  endDate     DateTime
+  reason      String
+  status      LeaveStatus @default(PENDING)
+  decidedById String?
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+  adminNotes  String?
+  decidedBy   User?       @relation("LeaveRequestDecider", fields: [decidedById], references: [id])
+  user        User        @relation("LeaveRequestUser", fields: [userId], references: [id], onDelete: Cascade)
+  wfhLogs     WfhLog[]
 
   @@index([userId], map: "leave_userId_idx")
   @@index([status], map: "leave_status_idx")
+  @@index([decidedById], map: "leave_requests_decidedById_fkey")
   @@map("leave_requests")
+}
+
+model WfhLog {
+  id                  String           @id @default(cuid())
+  userId              String
+  screenshotUrl       String
+  status              ValidationStatus @default(PENDING)
+  createdAt           DateTime         @default(now())
+  updatedAt           DateTime         @updatedAt
+  activityDescription String           @db.Text
+  adminNotes          String?          @db.Text
+  latitude            Float
+  leaveRequestId      String?
+  logTime             DateTime
+  longitude           Float
+  leaveRequest        LeaveRequest?    @relation(fields: [leaveRequestId], references: [id])
+  user                User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([logTime])
+  @@index([leaveRequestId], map: "wfh_logs_leaveRequestId_fkey")
+  @@map("wfh_logs")
 }
 
 model TaskFeedback {
@@ -182,35 +227,97 @@ model TaskFeedback {
   task      Task     @relation(fields: [taskId], references: [id], onDelete: Cascade)
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  @@index([taskId], map: "task_feedback_taskId_idx")
-  @@index([userId], map: "task_feedback_userId_idx")
+  @@index([taskId])
+  @@index([userId])
   @@map("task_feedback")
 }
 
-// Chat System Models
+model Invoice {
+  id             String           @id @default(cuid())
+  invoiceNumber  String           @unique
+  issueDate      DateTime
+  dueDate        DateTime
+  clientName     String
+  clientAddress  String?          @db.Text
+  clientEmail    String?
+  clientPhone    String?
+  notes          String?          @db.Text
+  subtotal       Decimal          @db.Decimal(15, 2)
+  taxAmount      Decimal          @default(0.00) @db.Decimal(15, 2)
+  discountAmount Decimal          @default(0.00) @db.Decimal(15, 2)
+  grandTotal     Decimal          @db.Decimal(15, 2)
+  paidAmount     Decimal          @default(0.00) @db.Decimal(15, 2)
+  status         InvoiceStatus    @default(UNPAID)
+  createdById    String
+  updatedById    String?
+  createdAt      DateTime         @default(now())
+  updatedAt      DateTime         @updatedAt
+  history        InvoiceHistory[]
+  items          InvoiceItem[]
+  createdBy      User             @relation("InvoiceCreator", fields: [createdById], references: [id])
+  updatedBy      User?            @relation("InvoiceUpdater", fields: [updatedById], references: [id])
+
+  @@index([invoiceNumber], map: "invoice_number_idx")
+  @@index([status], map: "invoice_status_idx")
+  @@index([dueDate], map: "invoice_dueDate_idx")
+  @@index([createdById], map: "invoice_createdById_idx")
+  @@index([updatedById], map: "invoices_updatedById_fkey")
+  @@map("invoices")
+}
+
+model InvoiceItem {
+  id          String   @id @default(cuid())
+  invoiceId   String
+  description String
+  quantity    Decimal  @db.Decimal(10, 2)
+  unitPrice   Decimal  @db.Decimal(15, 2)
+  total       Decimal  @db.Decimal(15, 2)
+  createdAt   DateTime @default(now())
+  invoice     Invoice  @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+
+  @@index([invoiceId])
+  @@map("invoice_items")
+}
+
+model InvoiceHistory {
+  id          String         @id @default(cuid())
+  invoiceId   String
+  oldStatus   InvoiceStatus?
+  newStatus   InvoiceStatus
+  changedById String
+  notes       String?        @db.Text
+  changedAt   DateTime       @default(now())
+  changedBy   User           @relation(fields: [changedById], references: [id])
+  invoice     Invoice        @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+
+  @@index([invoiceId])
+  @@index([changedById])
+  @@map("invoice_history")
+}
+
 model Conversation {
-  id          String                    @id @default(cuid())
-  name        String?                   // For group chats
-  type        ConversationType          @default(DIRECT)
-  isArchived  Boolean                   @default(false)
-  createdAt   DateTime                  @default(now())
-  updatedAt   DateTime                  @updatedAt
-  messages    Message[]
-  participants ConversationParticipant[]
+  id              String                    @id @default(cuid())
+  name            String?
+  type            ConversationType          @default(DIRECT)
+  isArchived      Boolean                   @default(false)
+  createdAt       DateTime                  @default(now())
+  updatedAt       DateTime                  @updatedAt
   deletedForUsers ConversationDelete[]
+  participants    ConversationParticipant[]
+  messages        Message[]
 
   @@map("conversations")
 }
 
 model ConversationParticipant {
-  id             String       @id @default(cuid())
+  id             String          @id @default(cuid())
   conversationId String
   userId         String
   role           ParticipantRole @default(MEMBER)
-  joinedAt       DateTime     @default(now())
+  joinedAt       DateTime        @default(now())
   leftAt         DateTime?
-  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
-  user           User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  conversation   Conversation    @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  user           User            @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([conversationId, userId])
   @@index([conversationId], map: "conversation_participants_conversationId_fkey")
@@ -219,22 +326,22 @@ model ConversationParticipant {
 }
 
 model Message {
-  id             String              @id @default(cuid())
-  conversationId String
-  senderId       String
-  content        String              @db.Text
-  messageType    MessageType         @default(TEXT)
-  isEdited       Boolean             @default(false)
-  isDeleted      Boolean             @default(false)
-  deletedAt      DateTime?
-  deletedBy      String?
-  createdAt      DateTime            @default(now())
-  updatedAt      DateTime            @updatedAt
-  conversation   Conversation        @relation(fields: [conversationId], references: [id], onDelete: Cascade)
-  sender         User                @relation(fields: [senderId], references: [id], onDelete: Cascade)
-  attachments    MessageAttachment[]
-  readReceipts   MessageRead[]
+  id              String              @id @default(cuid())
+  conversationId  String
+  senderId        String
+  content         String              @db.Text
+  messageType     MessageType         @default(TEXT)
+  isEdited        Boolean             @default(false)
+  isDeleted       Boolean             @default(false)
+  deletedAt       DateTime?
+  deletedBy       String?
+  createdAt       DateTime            @default(now())
+  updatedAt       DateTime            @updatedAt
+  attachments     MessageAttachment[]
   deletedForUsers MessageDelete[]
+  readReceipts    MessageRead[]
+  conversation    Conversation        @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  sender          User                @relation(fields: [senderId], references: [id], onDelete: Cascade)
 
   @@index([conversationId], map: "messages_conversationId_fkey")
   @@index([senderId], map: "messages_senderId_fkey")
@@ -285,12 +392,12 @@ model MessageDelete {
 }
 
 model ConversationDelete {
-  id             String   @id @default(cuid())
+  id             String       @id @default(cuid())
   conversationId String
   userId         String
-  deletedAt      DateTime @default(now())
+  deletedAt      DateTime     @default(now())
   conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
-  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user           User         @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([conversationId, userId])
   @@index([conversationId], map: "conversation_deletes_conversationId_fkey")
@@ -298,6 +405,99 @@ model ConversationDelete {
   @@map("conversation_deletes")
 }
 
+model Folder {
+  id        String     @id @default(cuid())
+  name      String
+  parentId  String?
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+  documents Document[]
+  parent    Folder?    @relation("FolderToFolder", fields: [parentId], references: [id])
+  children  Folder[]   @relation("FolderToFolder")
+
+  @@index([parentId], map: "folders_parentId_fkey")
+  @@map("folders")
+}
+
+model Document {
+  id           String                @id @default(cuid())
+  title        String
+  description  String?
+  folderId     String?
+  ownerId      String
+  visibility   Visibility            @default(PRIVATE)
+  sizeBytes    Int
+  mimeType     String
+  currentVerId String?               @unique
+  isArchived   Boolean               @default(false)
+  createdAt    DateTime              @default(now())
+  updatedAt    DateTime              @updatedAt
+  acls         DocumentAcl[]
+  downloadLogs DocumentDownloadLog[]
+  tags         DocumentTag[]
+  versions     DocumentVersion[]
+  currentVer   DocumentVersion?      @relation("CurrentVersion", fields: [currentVerId], references: [id])
+  folder       Folder?               @relation(fields: [folderId], references: [id])
+  owner        User                  @relation(fields: [ownerId], references: [id])
+
+  @@index([folderId])
+  @@index([ownerId])
+  @@index([visibility])
+  @@map("documents")
+}
+
+model DocumentVersion {
+  id         String    @id @default(cuid())
+  documentId String
+  version    Int
+  fileUrl    String
+  uploadedAt DateTime  @default(now())
+  uploadedBy String
+  document   Document  @relation(fields: [documentId], references: [id])
+  currentFor Document? @relation("CurrentVersion")
+
+  @@unique([documentId, version])
+  @@index([documentId])
+  @@map("document_versions")
+}
+
+model DocumentTag {
+  id         String   @id @default(cuid())
+  name       String
+  documentId String
+  document   Document @relation(fields: [documentId], references: [id])
+
+  @@index([documentId])
+  @@map("document_tags")
+}
+
+model DocumentAcl {
+  id         String   @id @default(cuid())
+  documentId String
+  userId     String?
+  role       String?
+  canView    Boolean  @default(true)
+  canEdit    Boolean  @default(false)
+  document   Document @relation(fields: [documentId], references: [id])
+  user       User?    @relation(fields: [userId], references: [id])
+
+  @@index([documentId])
+  @@index([userId])
+  @@map("document_acls")
+}
+
+model DocumentDownloadLog {
+  id           String   @id @default(cuid())
+  documentId   String
+  userId       String
+  downloadedAt DateTime @default(now())
+  document     Document @relation(fields: [documentId], references: [id])
+  user         User     @relation(fields: [userId], references: [id])
+
+  @@index([documentId], map: "document_downloads_documentId_idx")
+  @@index([userId], map: "document_downloads_userId_idx")
+  @@map("document_download_logs")
+}
 
 enum Role {
   ADMIN
@@ -321,6 +521,13 @@ enum TaskStatus {
   IN_PROGRESS
   PENDING_VALIDATION
   COMPLETED
+}
+
+enum TaskPriority {
+  LOW
+  MEDIUM
+  HIGH
+  URGENT
 }
 
 enum TaskAssignmentType {
@@ -370,26 +577,322 @@ enum MessageType {
   DELETED
 }
 
-enum AttendanceMethod {
-  GPS
-  IP
+enum Visibility {
+  PRIVATE
+  PUBLIC
 }
 
 enum AttendanceStatus {
-  ONTIME
-  LATE
+  PRESENT
   ABSENT
+  SICK
+  LEAVE
+  WFH
 }
 
 enum LeaveType {
-  ANNUAL
   SICK
-  PERMIT
-  OTHER
+  LEAVE
+  WFH
 }
 
 enum LeaveStatus {
   PENDING
   APPROVED
   REJECTED
+}
+
+enum InvoiceStatus {
+  UNPAID
+  PAID
+  OVERDUE
+  PARTIAL
+}
+
+enum ValidationStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+model Contact {
+  id              String            @id @default(cuid())
+  fullName        String
+  phoneNumber     String?
+  whatsappNumber  String?
+  instagram       String?
+  address         String?           @db.Text
+  companyName     String?
+  position        String?
+  notes           String?           @db.Text
+  clientStatus    ClientStatus      @default(PROSPECT)
+  serviceType     String?
+  followUpDate    DateTime?
+  createdById     String
+  updatedById     String?
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+  activityLogs    ContactActivity[]
+  projects        Project[]
+  tasks           Task[]            // Tasks related to this contact
+  events          CalendarEvent[]   // Events related to this contact
+  createdBy       User              @relation("ContactCreator", fields: [createdById], references: [id])
+  updatedBy       User?             @relation("ContactUpdater", fields: [updatedById], references: [id])
+
+  @@index([createdById])
+  @@index([updatedById])
+  @@index([clientStatus])
+  @@index([companyName])
+  @@map("contacts")
+}
+
+model ContactActivity {
+  id          String   @id @default(cuid())
+  contactId   String
+  userId      String
+  action      String
+  oldData     String?  @db.Text
+  newData     String?  @db.Text
+  description String?
+  createdAt   DateTime @default(now())
+  contact     Contact  @relation(fields: [contactId], references: [id], onDelete: Cascade)
+  user        User     @relation(fields: [userId], references: [id])
+
+  @@index([contactId])
+  @@index([userId])
+  @@map("contact_activities")
+}
+
+enum ClientStatus {
+  PROSPECT
+  ACTIVE
+  INACTIVE
+  COMPLETED
+}
+
+enum ProjectStatus {
+  ONGOING
+  PENDING
+  COMPLETED
+  CANCELLED
+}
+
+enum MilestoneStatus {
+  NOT_STARTED
+  IN_PROGRESS
+  COMPLETED
+  OVERDUE
+}
+
+model Project {
+  id              String            @id @default(cuid())
+  name            String
+  description     String?           @db.Text
+  contactId       String
+  serviceType     String
+  startDate       DateTime
+  endDate         DateTime
+  status          ProjectStatus     @default(ONGOING)
+  notes           String?           @db.Text
+  createdById     String
+  updatedById     String?
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+  contact         Contact           @relation(fields: [contactId], references: [id], onDelete: Cascade)
+  createdBy       User              @relation("ProjectCreator", fields: [createdById], references: [id])
+  updatedBy       User?             @relation("ProjectUpdater", fields: [updatedById], references: [id])
+  members         ProjectMember[]
+  milestones      ProjectMilestone[]
+  tasks           Task[]            // Tasks related to this project
+  events          CalendarEvent[]   // Events related to this project
+
+  @@index([contactId])
+  @@index([createdById])
+  @@index([status])
+  @@index([startDate])
+  @@index([endDate])
+  @@map("projects")
+}
+
+model ProjectMember {
+  id        String   @id @default(cuid())
+  projectId String
+  userId    String
+  role      String?
+  joinedAt  DateTime @default(now())
+  project   Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id])
+
+  @@unique([projectId, userId])
+  @@index([projectId])
+  @@index([userId])
+  @@map("project_members")
+}
+
+model ProjectMilestone {
+  id          String          @id @default(cuid())
+  projectId   String
+  name        String
+  description String?         @db.Text
+  startDate   DateTime
+  endDate     DateTime
+  status      MilestoneStatus @default(NOT_STARTED)
+  order       Int             @default(0)
+  createdById String
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+  project     Project         @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  createdBy   User            @relation(fields: [createdById], references: [id])
+  tasks       Task[]          // Tasks related to this milestone
+  events      CalendarEvent[] // Events related to this milestone
+
+  @@index([projectId])
+  @@index([createdById])
+  @@index([startDate])
+  @@index([endDate])
+  @@map("project_milestones")
+}
+
+model ProjectTemplate {
+  id          String   @id @default(cuid())
+  name        String
+  description String?  @db.Text
+  serviceType String
+  milestones  Json     // Array of milestone templates
+  createdById String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  createdBy   User     @relation("ProjectTemplateCreator", fields: [createdById], references: [id])
+
+  @@index([createdById])
+  @@index([serviceType])
+  @@map("project_templates")
+}
+
+model CalendarEvent {
+  id              String              @id @default(cuid())
+  title           String
+  description     String?             @db.Text
+  startTime       DateTime
+  endTime         DateTime
+  allDay          Boolean             @default(false)
+  location        String?
+  meetingLink     String?
+  category        EventCategory       @default(MEETING)
+  priority        EventPriority       @default(MEDIUM)
+  status          EventStatus         @default(CONFIRMED)
+  visibility      EventVisibility     @default(PRIVATE)
+  recurrenceRule  String?             // RRULE format for recurring events
+  recurrenceEnd   DateTime?
+  parentEventId   String?             // For recurring event instances
+  createdById     String
+  updatedById     String?
+  projectId       String?             // Link to project
+  contactId       String?             // Link to contact/client
+  taskId          String?             // Link to task
+  milestoneId     String?             // Link to project milestone
+  createdAt       DateTime            @default(now())
+  updatedAt       DateTime            @updatedAt
+  attendees       EventAttendee[]
+  reminders       EventReminder[]
+  parentEvent     CalendarEvent?      @relation("EventRecurrence", fields: [parentEventId], references: [id])
+  childEvents     CalendarEvent[]     @relation("EventRecurrence")
+  createdBy       User                @relation("EventCreator", fields: [createdById], references: [id])
+  updatedBy       User?               @relation("EventUpdater", fields: [updatedById], references: [id])
+  project         Project?            @relation(fields: [projectId], references: [id], onDelete: SetNull)
+  contact         Contact?            @relation(fields: [contactId], references: [id], onDelete: SetNull)
+  task            Task?               @relation(fields: [taskId], references: [id], onDelete: SetNull)
+  milestone       ProjectMilestone?   @relation(fields: [milestoneId], references: [id], onDelete: SetNull)
+
+  @@index([createdById])
+  @@index([updatedById])
+  @@index([startTime])
+  @@index([endTime])
+  @@index([category])
+  @@index([projectId])
+  @@index([contactId])
+  @@index([taskId])
+  @@index([milestoneId])
+  @@index([parentEventId])
+  @@map("calendar_events")
+}
+
+model EventAttendee {
+  id              String              @id @default(cuid())
+  eventId         String
+  userId          String?
+  email           String?
+  name            String?
+  status          AttendeeStatus      @default(PENDING)
+  isOrganizer     Boolean             @default(false)
+  createdAt       DateTime            @default(now())
+  updatedAt       DateTime            @updatedAt
+  event           CalendarEvent       @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  user            User?               @relation("EventAttendeeUser", fields: [userId], references: [id])
+
+  @@index([eventId])
+  @@index([userId])
+  @@index([email])
+  @@map("event_attendees")
+}
+
+model EventReminder {
+  id              String              @id @default(cuid())
+  eventId         String
+  reminderTime    DateTime
+  reminderType    ReminderType        @default(NOTIFICATION)
+  message         String?
+  isSent          Boolean             @default(false)
+  sentAt          DateTime?
+  createdAt       DateTime            @default(now())
+  event           CalendarEvent       @relation(fields: [eventId], references: [id], onDelete: Cascade)
+
+  @@index([eventId])
+  @@index([reminderTime])
+  @@index([isSent])
+  @@map("event_reminders")
+}
+
+enum EventCategory {
+  MEETING
+  DEADLINE
+  REMINDER
+  INTERNAL
+  CLIENT
+  PROJECT
+  PERSONAL
+  HOLIDAY
+}
+
+enum EventPriority {
+  LOW
+  MEDIUM
+  HIGH
+  URGENT
+}
+
+enum EventStatus {
+  CONFIRMED
+  TENTATIVE
+  CANCELLED
+}
+
+enum EventVisibility {
+  PUBLIC
+  PRIVATE
+  CONFIDENTIAL
+}
+
+enum AttendeeStatus {
+  PENDING
+  ACCEPTED
+  DECLINED
+  TENTATIVE
+}
+
+enum ReminderType {
+  NOTIFICATION
+  EMAIL
+  SMS
+  WHATSAPP
 }

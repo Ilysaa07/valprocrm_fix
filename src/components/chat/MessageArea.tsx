@@ -319,30 +319,25 @@ export default function MessageArea({
   const startRecording = async () => {
     if (isRecording) return
     try {
-      console.log('Starting voice recording...')
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
       mediaStreamRef.current = stream
       
       const mimeTypes = ['audio/webm;codecs=opus', 'audio/ogg;codecs=opus', 'audio/webm', 'audio/ogg', 'audio/wav']
       const mime = mimeTypes.find((t) => (window as any).MediaRecorder && (window as any).MediaRecorder.isTypeSupported && (window as any).MediaRecorder.isTypeSupported(t)) || 'audio/webm;codecs=opus'
       
-      console.log('Using MIME type:', mime)
       const rec: any = new (window as any).MediaRecorder(stream, { mimeType: mime })
       recordChunksRef.current = []
       
       rec.ondataavailable = (e: BlobEvent) => { 
-        console.log('Data available:', e.data.size, 'bytes')
         if (e.data && e.data.size > 0) {
           recordChunksRef.current.push(e.data)
         }
       }
       
       rec.onstart = () => {
-        console.log('Recording started')
       }
       
       rec.onstop = async () => {
-        console.log('Recording stopped, chunks:', recordChunksRef.current.length)
         setIsRecording(false)
         if (recordTimerRef.current) { 
           window.clearInterval(recordTimerRef.current); 
@@ -354,15 +349,12 @@ export default function MessageArea({
         
         // Check if we have any data
         if (recordChunksRef.current.length === 0) {
-          console.error('No audio data recorded')
           return
         }
         
         const blob = new Blob(recordChunksRef.current, { type: rec.mimeType || 'audio/webm' })
-        console.log('Blob created:', blob.size, 'bytes, type:', blob.type)
         
         if (blob.size === 0) {
-          console.error('Blob size is 0')
           return
         }
         
@@ -371,17 +363,12 @@ export default function MessageArea({
         const form = new FormData()
         form.append('file', file)
         
-        console.log('Sending voice note to server...')
         try {
         const res = await fetch(`/api/chat/conversations/${conversation.id}/voice`, { method: 'POST', body: form })
-        if (!res.ok) {
-            const errorText = await res.text()
-            console.error('Failed to send voice note:', res.status, errorText)
-          } else {
-            console.log('Voice note sent successfully')
+        if (res.ok) {
+          // Voice note sent successfully
         }
         } catch (error) {
-          console.error('Error sending voice note:', error)
       }
       }
       
@@ -391,24 +378,20 @@ export default function MessageArea({
       const startAt = Date.now()
       recordTimerRef.current = window.setInterval(() => setRecordMs(Date.now() - startAt), 200)
     } catch (e) {
-      console.error('Recording failed', e)
     }
   }
 
   const stopRecording = () => {
     const rec = mediaRecorderRef.current
     if (rec && isRecording) {
-      console.log('Stopping recording...')
       try { 
         // Request any remaining data before stopping
         rec.requestData()
         // Small delay to ensure data is processed
         setTimeout(() => {
-          console.log('Stopping MediaRecorder after delay')
           rec.stop()
         }, 100)
       } catch (error) {
-        console.error('Error stopping recording:', error)
         rec.stop()
       }
     }
@@ -436,7 +419,6 @@ export default function MessageArea({
           rec.stop()
         }, 50)
       } catch (error) {
-        console.error('Error canceling recording:', error)
         rec.stop()
       }
       recordChunksRef.current = []
@@ -510,11 +492,7 @@ export default function MessageArea({
       
       // Check if attachments exist and have the right structure
       if (msg.attachments && msg.attachments.length > 0) {
-        console.log('First attachment:', msg.attachments[0])
-        console.log('Attachment fileUrl:', msg.attachments[0].fileUrl)
-        console.log('Attachment fileType:', msg.attachments[0].fileType)
       } else {
-        console.warn('No attachments found for AUDIO message')
       }
     }
 
@@ -925,18 +903,16 @@ export default function MessageArea({
       const form = new FormData();
       form.append('file', file);
 
-      console.log('Sending voice note to server...');
       try {
         fetch(`/api/chat/conversations/${conversation.id}/voice`, { method: 'POST', body: form })
           .then(res => res.json())
           .then(data => {
-            if (res.ok && data.file?.url) {
+            if (data.file?.url) {
               onSendMessage('', [{ fileName: data.file.name, fileUrl: data.file.url, fileSize: data.file.size, fileType: data.file.type } as any]);
             }
           })
-          .catch(error => console.error('Error sending voice note:', error));
+          .catch(error => {});
       } catch (error) {
-        console.error('Error sending voice note:', error);
       }
     } else {
       handleSendMessage();

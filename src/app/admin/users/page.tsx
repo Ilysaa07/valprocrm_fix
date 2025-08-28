@@ -92,7 +92,13 @@ function UsersPageInner() {
       const data = await response.json()
       
       if (response.ok) {
-        setUsers(data.users)
+        // Accept both { users: [...] } and { data: [...] } response shapes
+        const usersArray = Array.isArray(data?.users)
+          ? data.users
+          : Array.isArray(data?.data)
+            ? data.data
+            : []
+        setUsers(usersArray)
       } else {
         console.error('Error fetching users:', data.error)
       }
@@ -379,12 +385,12 @@ function UsersPageInner() {
     <AdminLayout>
       <div className="space-y-6">
         {/* Header */}
-        <div className="bg-white rounded-lg shadow-sm p-6">
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-6 transition-colors duration-200">
           <div className="flex justify-between items-center mb-4">
-            <h1 className="text-2xl font-bold text-gray-900">Kelola Karyawan</h1>
+            <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Kelola Karyawan</h1>
             <button
               onClick={handleOpenAddModal}
-              className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg flex items-center gap-2"
+              className="bg-blue-600 hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-600 text-white px-4 py-2 rounded-lg flex items-center gap-2 transition-colors duration-200"
             >
               <UserPlus className="h-4 w-4" />
               Tambah Karyawan
@@ -401,7 +407,7 @@ function UsersPageInner() {
                   placeholder="Cari nama atau email..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pl-10 pr-4 py-2 w-full border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  className="pl-10 pr-4 py-2 w-full border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors duration-200"
                 />
               </div>
             </div>
@@ -410,7 +416,7 @@ function UsersPageInner() {
               <select
                 value={statusFilter}
                 onChange={(e) => setStatusFilter(e.target.value)}
-                className="border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                className="border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors duration-200"
               >
                 <option value="ALL">Semua Status</option>
                 <option value="PENDING">Menunggu Persetujuan</option>
@@ -422,7 +428,7 @@ function UsersPageInner() {
         </div>
 
         {/* Users List */}
-        <div className="bg-white rounded-lg shadow-sm">
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm transition-colors duration-200">
           {isLoading ? (
             <div className="flex items-center justify-center h-64">
               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
@@ -430,7 +436,7 @@ function UsersPageInner() {
           ) : (
             <div className="overflow-x-auto">
               <table className="min-w-full divide-y divide-gray-200">
-                <thead className="bg-gray-50">
+                <thead className="bg-gray-50 dark:bg-gray-700">
                   <tr>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Karyawan
@@ -449,9 +455,9 @@ function UsersPageInner() {
                     </th>
                   </tr>
                 </thead>
-                <tbody className="bg-white divide-y divide-gray-200">
+                <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
                   {filteredUsers.map((user) => (
-                    <tr key={user.id} className="hover:bg-gray-50">
+                    <tr key={user.id} className="hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors duration-200">
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div className="flex items-center">
                           <div className="flex-shrink-0 h-10 w-10">
@@ -460,19 +466,19 @@ function UsersPageInner() {
                             </div>
                           </div>
                           <div className="ml-4">
-                            <div className="text-sm font-medium text-gray-900">{user.fullName}</div>
-                            <div className="text-sm text-gray-500">{user.email}</div>
+                            <div className="text-sm font-medium text-gray-900 dark:text-white">{user.fullName}</div>
+                            <div className="text-sm text-gray-500 dark:text-gray-400">{user.email}</div>
                           </div>
                         </div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm text-gray-900">{user.phoneNumber}</div>
-                        <div className="text-sm text-gray-500">{user.gender === 'MALE' ? 'Laki-laki' : 'Perempuan'}</div>
+                        <div className="text-sm text-gray-900 dark:text-white">{user.phoneNumber}</div>
+                        <div className="text-sm text-gray-500 dark:text-gray-400">{user.gender === 'MALE' ? 'Laki-laki' : 'Perempuan'}</div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         {getStatusBadge(user.status)}
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
                         {new Date(user.createdAt).toLocaleDateString('id-ID')}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm font-medium space-x-2">
@@ -523,8 +529,8 @@ function UsersPageInner() {
               {filteredUsers.length === 0 && (
                 <div className="text-center py-12">
                   <User className="mx-auto h-12 w-12 text-gray-400" />
-                  <h3 className="mt-2 text-sm font-medium text-gray-900">Tidak ada karyawan</h3>
-                  <p className="mt-1 text-sm text-gray-500">
+                  <h3 className="mt-2 text-sm font-medium text-gray-900 dark:text-white">Tidak ada karyawan</h3>
+                  <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
                     {searchTerm ? 'Tidak ada karyawan yang sesuai dengan pencarian.' : 'Belum ada karyawan yang terdaftar.'}
                   </p>
                 </div>

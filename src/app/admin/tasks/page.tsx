@@ -1,595 +1,556 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useState, useEffect } from 'react'
+import { useSession } from 'next-auth/react'
+import { redirect } from 'next/navigation'
 import AdminLayout from '@/components/layout/AdminLayout'
+import KanbanBoard from '@/components/tasks/KanbanBoard'
+import TaskModal from '@/components/tasks/TaskModal'
+import { Card, CardBody } from '@/components/ui/Card'
+import { Button } from '@/components/ui/Button'
 import { 
   Plus, 
   Search, 
-  Filter, 
-  Calendar,
-  User,
-  Users,
-  CheckSquare,
-  Clock,
-  AlertCircle,
-  Eye,
-  Edit,
-  Trash2
+  Grid3X3, 
+  List
 } from 'lucide-react'
 
 interface Task {
   id: string
   title: string
   description: string
-  dueDate: string | null
-  status: 'NOT_STARTED' | 'IN_PROGRESS' | 'COMPLETED' | 'PENDING_VALIDATION'
+  status: 'NOT_STARTED' | 'IN_PROGRESS' | 'PENDING_VALIDATION' | 'COMPLETED'
+  priority: 'LOW' | 'MEDIUM' | 'HIGH' | 'URGENT'
   assignment: 'SPECIFIC' | 'ALL_EMPLOYEES'
+  assigneeId?: string
+  assignee?: string
+  dueDate?: string
+  tags: string[]
   createdAt: string
   createdBy: {
     id: string
     fullName: string
     email: string
   }
-  assignee?: {
-    id: string
-    fullName: string
-    email: string
-  }
-  submissions: any[]
+}
+
+interface User {
+  id: string
+  fullName: string
+  email: string
+  role: string
+  status: string
 }
 
 export default function TasksPage() {
+  const { data: session, status } = useSession()
+  
   const [tasks, setTasks] = useState<Task[]>([])
-  const [isLoading, setIsLoading] = useState(true)
-  const [showCreateModal, setShowCreateModal] = useState(false)
-  const [selectedTask, setSelectedTask] = useState<Task | null>(null)
-  const [statusFilter, setStatusFilter] = useState('ALL')
-  const [searchTerm, setSearchTerm] = useState('')
-  const [employees, setEmployees] = useState<any[]>([])
-
-  const [formData, setFormData] = useState({
-    title: '',
-    description: '',
-    dueDate: '',
-    assignment: 'ALL_EMPLOYEES' as 'SPECIFIC' | 'ALL_EMPLOYEES',
-    assigneeId: '',
+  const [users, setUsers] = useState<User[]>([])
+  const [isModalOpen, setIsModalOpen] = useState(false)
+  const [editingTask, setEditingTask] = useState<Task | undefined>()
+  const [viewMode, setViewMode] = useState<'kanban' | 'list'>('kanban')
+  const [filters, setFilters] = useState({
+    status: '',
+    priority: '',
+    assignee: '',
+    search: ''
   })
+  const [loading, setLoading] = useState(true)
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
+
+  const isSelected = (id: string) => selectedIds.has(id)
+  const toggleSelect = (id: string) => {
+    setSelectedIds(prev => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      return next
+    })
+  }
+  const selectAll = (ids: string[]) => setSelectedIds(new Set(ids))
+  const clearSelection = () => setSelectedIds(new Set())
 
   useEffect(() => {
+    if (status === 'loading') return
+    
+    if (!session?.user?.id) {
+      redirect('/auth/signin')
+    }
+
+    if (session.user.role !== 'ADMIN') {
+      redirect('/employee')
+    }
+
     fetchTasks()
-    fetchEmployees()
-  }, [statusFilter])
+    fetchUsers()
+  }, [session, status])
 
   const fetchTasks = async () => {
     try {
-      setIsLoading(true)
-      const params = new URLSearchParams()
-      if (statusFilter !== 'ALL') {
-        params.append('status', statusFilter)
-      }
-      
-      const response = await fetch(`/api/tasks?${params}`)
-      const data = await response.json()
-      
+      setLoading(true)
+      const response = await fetch('/api/tasks')
       if (response.ok) {
-        setTasks(data.tasks)
+        const data = await response.json()
+        setTasks(data.tasks || [])
       } else {
-        console.error('Error fetching tasks:', data.error)
       }
     } catch (error) {
-      console.error('Error fetching tasks:', error)
     } finally {
-      setIsLoading(false)
+      setLoading(false)
     }
   }
 
-  const fetchEmployees = async () => {
+  const fetchUsers = async () => {
     try {
-      const response = await fetch('/api/admin/users?status=APPROVED')
-      const data = await response.json()
-      
+      const response = await fetch('/api/users?role=EMPLOYEE&status=APPROVED')
       if (response.ok) {
-        setEmployees(data.users.filter((user: any) => user.role === 'EMPLOYEE'))
+        const data = await response.json()
+        setUsers(data.users || [])
+      } else {
       }
     } catch (error) {
-      console.error('Error fetching employees:', error)
     }
   }
 
-  const handleCreateTask = async (e: React.FormEvent) => {
-    e.preventDefault()
-    
+  const handleTaskCreate = async (taskData: Omit<Task, 'id' | 'createdAt' | 'createdBy'>) => {
     try {
       const response = await fetch('/api/tasks', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify(formData),
+        body: JSON.stringify(taskData),
       })
 
-      const data = await response.json()
-
       if (response.ok) {
-        fetchTasks()
-        setShowCreateModal(false)
-        setFormData({
-          title: '',
-          description: '',
-          dueDate: '',
-          assignment: 'ALL_EMPLOYEES',
-          assigneeId: '',
-        })
-        alert(data.message)
+        const result = await response.json()
+        setTasks(prev => [...prev, result.task])
+        setIsModalOpen(false)
       } else {
-        alert(data.error)
+        const errorData = await response.json()
+        alert(errorData.error || 'Gagal membuat tugas')
       }
     } catch (error) {
       alert('Terjadi kesalahan jaringan')
     }
   }
 
-  const handleDeleteTask = async (taskId: string) => {
-    if (!confirm('Apakah Anda yakin ingin menghapus tugas ini?')) return
-
+  const handleTaskUpdate = async (taskId: string, updates: Partial<Task>) => {
     try {
-      const response = await fetch(`/api/tasks/${taskId}`, {
-        method: 'DELETE',
-      })
-
-      const data = await response.json()
-
-      if (response.ok) {
-        fetchTasks()
-        alert(data.message)
-      } else {
-        alert(data.error)
-      }
-    } catch (error) {
-      alert('Terjadi kesalahan jaringan')
-    }
-  }
-
-  const handleValidateTask = async (taskId: string, isValid: boolean) => {
-    try {
-      const validationMessage = (document.getElementById('validationMessage') as HTMLTextAreaElement)?.value || ''
-      
       const response = await fetch(`/api/tasks/${taskId}`, {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({
-          status: isValid ? 'COMPLETED' : 'IN_PROGRESS',
-          validationMessage: validationMessage
-        }),
+        body: JSON.stringify(updates),
       })
 
-      const data = await response.json()
-
       if (response.ok) {
-        fetchTasks()
-        setSelectedTask(null)
-        alert(isValid ? 'Tugas berhasil divalidasi dan diselesaikan' : 'Tugas dikembalikan ke status Sedang Dikerjakan')
+        const result = await response.json()
+        setTasks(prev => prev.map(task => 
+          task.id === taskId ? result.task : task
+        ))
       } else {
-        alert(data.error)
+        const errorData = await response.json()
+        alert(errorData.error || 'Gagal memperbarui tugas')
       }
     } catch (error) {
       alert('Terjadi kesalahan jaringan')
     }
   }
 
-  const filteredTasks = tasks.filter(task =>
-    task.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    task.description.toLowerCase().includes(searchTerm.toLowerCase())
-  )
-
-  const getStatusBadge = (status: string) => {
-    const styles = {
-      NOT_STARTED: 'bg-gray-100 text-gray-800',
-      IN_PROGRESS: 'bg-yellow-100 text-yellow-800',
-      COMPLETED: 'bg-green-100 text-green-800',
-      PENDING_VALIDATION: 'bg-blue-100 text-blue-800'
+  const bulkUpdateStatus = async (newStatus: Task['status']) => {
+    if (selectedIds.size === 0) return
+    try {
+      const ids = Array.from(selectedIds)
+      await Promise.all(
+        ids.map(id => fetch(`/api/tasks/${id}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ status: newStatus })
+        }))
+      )
+      // Refresh tasks
+      await fetchTasks()
+      clearSelection()
+      alert(`Berhasil memperbarui ${ids.length} tugas ke ${newStatus}`)
+    } catch (e) {
+      alert('Gagal melakukan bulk update')
     }
-    
-    const labels = {
-      NOT_STARTED: 'Belum Dikerjakan',
-      IN_PROGRESS: 'Sedang Dikerjakan',
-      COMPLETED: 'Selesai',
-      PENDING_VALIDATION: 'Menunggu Validasi'
-    }
-
-    return (
-      <span className={`px-2 py-1 text-xs font-medium rounded-full ${styles[status as keyof typeof styles]}`}>
-        {labels[status as keyof typeof labels]}
-      </span>
-    )
   }
 
-  const getStatusIcon = (status: string) => {
-    switch (status) {
-      case 'NOT_STARTED':
-        return <AlertCircle className="h-4 w-4 text-gray-500" />
-      case 'IN_PROGRESS':
-        return <Clock className="h-4 w-4 text-yellow-500" />
-      case 'COMPLETED':
-        return <CheckSquare className="h-4 w-4 text-green-500" />
-      case 'PENDING_VALIDATION':
-        return <Eye className="h-4 w-4 text-blue-500" />
-      default:
-        return <AlertCircle className="h-4 w-4 text-gray-500" />
+  const bulkValidatePending = async () => {
+    if (selectedIds.size === 0) return
+    try {
+      const ids = Array.from(selectedIds)
+      // Only validate those currently pending
+      const pendingIds = tasks.filter(t => ids.includes(t.id) && t.status === 'PENDING_VALIDATION').map(t => t.id)
+      await Promise.all(
+        pendingIds.map(id => fetch(`/api/tasks/${id}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ status: 'COMPLETED' })
+        }))
+      )
+      await fetchTasks()
+      clearSelection()
+      alert(`Berhasil memvalidasi ${pendingIds.length} tugas`)
+    } catch (e) {
+      alert('Gagal memvalidasi tugas')
     }
+  }
+
+  const handleTaskDelete = async (taskId: string) => {
+    try {
+      const response = await fetch(`/api/tasks/${taskId}`, {
+        method: 'DELETE',
+      })
+
+      if (response.ok) {
+        setTasks(prev => prev.filter(task => task.id !== taskId))
+      } else {
+        const errorData = await response.json()
+        alert(errorData.error || 'Gagal menghapus tugas')
+      }
+    } catch (error) {
+      alert('Terjadi kesalahan jaringan')
+    }
+  }
+
+  const openCreateModal = () => {
+    setEditingTask(undefined)
+    setIsModalOpen(true)
+  }
+
+  const openEditModal = (task: Task) => {
+    setEditingTask(task)
+    setIsModalOpen(true)
+  }
+
+  const closeModal = () => {
+    setIsModalOpen(false)
+    setEditingTask(undefined)
+  }
+
+  const filteredTasks = tasks.filter(task => {
+    if (filters.status && task.status !== filters.status) return false
+    if (filters.priority && task.priority !== filters.priority) return false
+    if (filters.assignee && task.assigneeId !== filters.assignee) return false
+    if (filters.search && !task.title.toLowerCase().includes(filters.search.toLowerCase())) return false
+    return true
+  })
+
+  const getTaskStats = () => {
+    const total = tasks.length
+    const notStarted = tasks.filter(t => t.status === 'NOT_STARTED').length
+    const inProgress = tasks.filter(t => t.status === 'IN_PROGRESS').length
+    const pendingValidation = tasks.filter(t => t.status === 'PENDING_VALIDATION').length
+    const completed = tasks.filter(t => t.status === 'COMPLETED').length
+    const overdue = tasks.filter(t => t.dueDate && new Date(t.dueDate) < new Date()).length
+
+    return { total, notStarted, inProgress, pendingValidation, completed, overdue }
+  }
+
+  const stats = getTaskStats()
+
+  if (status === 'loading') {
+    return (
+      <AdminLayout>
+        <div className="flex items-center justify-center h-64">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 dark:border-blue-400"></div>
+        </div>
+      </AdminLayout>
+    )
   }
 
   return (
     <AdminLayout>
       <div className="space-y-6">
+        
+        
         {/* Header */}
-        <div className="bg-white rounded-lg shadow-sm p-6">
-          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-            <h1 className="text-2xl font-bold text-gray-900">Kelola Tugas</h1>
-            <button
-              onClick={() => setShowCreateModal(true)}
-              className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 flex items-center space-x-2"
-            >
-              <Plus className="h-4 w-4" />
-              <span>Buat Tugas Baru</span>
-            </button>
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Manajemen Tugas</h1>
+            <p className="text-gray-600 dark:text-gray-300">
+              Kelola dan pantau semua tugas tim Anda
+            </p>
           </div>
-          
-          {/* Filters */}
-          <div className="flex flex-col sm:flex-row gap-4 mt-4">
-            <div className="flex-1">
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+          <Button 
+            variant="primary" 
+            icon={<Plus className="w-4 h-4" />}
+            onClick={openCreateModal}
+          >
+            Buat Tugas
+          </Button>
+        </div>
+
+        {/* Stats Cards */}
+        <div className="grid grid-cols-2 md:grid-cols-6 gap-4">
+          <Card className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700">
+            <CardBody className="p-4">
+              <div className="text-center">
+                <p className="text-2xl font-bold text-gray-900 dark:text-white">{stats.total}</p>
+                <p className="text-sm text-gray-600 dark:text-gray-300">Total</p>
+              </div>
+            </CardBody>
+          </Card>
+          <Card className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700">
+            <CardBody className="p-4">
+              <div className="text-center">
+                <p className="text-2xl font-bold text-gray-900 dark:text-white">{stats.notStarted}</p>
+                <p className="text-sm text-gray-600 dark:text-gray-300">Belum Dimulai</p>
+              </div>
+            </CardBody>
+          </Card>
+          <Card className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700">
+            <CardBody className="p-4">
+              <div className="text-center">
+                <p className="text-2xl font-bold text-blue-600 dark:text-blue-400">{stats.inProgress}</p>
+                <p className="text-sm text-gray-600 dark:text-gray-300">Sedang Berlangsung</p>
+              </div>
+            </CardBody>
+          </Card>
+          <Card className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700">
+            <CardBody className="p-4">
+              <div className="text-center">
+                <p className="text-2xl font-bold text-amber-600 dark:text-amber-400">{stats.pendingValidation}</p>
+                <p className="text-sm text-gray-600 dark:text-gray-300">Menunggu Validasi</p>
+              </div>
+            </CardBody>
+          </Card>
+          <Card className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700">
+            <CardBody className="p-4">
+              <div className="text-center">
+                <p className="text-2xl font-bold text-green-600 dark:text-green-400">{stats.completed}</p>
+                <p className="text-sm text-gray-600 dark:text-gray-300">Selesai</p>
+              </div>
+            </CardBody>
+          </Card>
+          <Card className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700">
+            <CardBody className="p-4">
+              <div className="text-center">
+                <p className="text-2xl font-bold text-red-600 dark:text-red-400">{stats.overdue}</p>
+                <p className="text-sm text-gray-600 dark:text-gray-300">Overdue</p>
+              </div>
+            </CardBody>
+          </Card>
+        </div>
+
+        {/* Filters and Controls */}
+        <Card className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700">
+          <CardBody className="p-4">
+            <div className="flex flex-col md:flex-row gap-4 items-center justify-between">
+              {/* Search */}
+              <div className="relative flex-1 max-w-md">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
                 <input
                   type="text"
                   placeholder="Cari tugas..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pl-10 pr-4 py-2 w-full border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  value={filters.search}
+                  onChange={(e) => setFilters(prev => ({ ...prev, search: e.target.value }))}
+                  className="w-full pl-10 pr-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
                 />
               </div>
-            </div>
-            <div className="flex items-center space-x-2">
-              <Filter className="h-4 w-4 text-gray-500" />
-              <select
-                value={statusFilter}
-                onChange={(e) => setStatusFilter(e.target.value)}
-                className="border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              >
-                <option value="ALL">Semua Status</option>
-                <option value="NOT_STARTED">Belum Dikerjakan</option>
-                <option value="IN_PROGRESS">Sedang Dikerjakan</option>
-                <option value="PENDING_VALIDATION">Menunggu Validasi</option>
-                <option value="COMPLETED">Selesai</option>
-              </select>
-            </div>
-          </div>
-        </div>
 
-        {/* Tasks List */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
-          {isLoading ? (
-            <div className="col-span-full flex items-center justify-center h-64">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+              {/* Filters */}
+              <div className="flex gap-2">
+                <select
+                  value={filters.status}
+                  onChange={(e) => setFilters(prev => ({ ...prev, status: e.target.value }))}
+                  className="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                >
+                  <option value="">Semua Status</option>
+                  <option value="NOT_STARTED">Belum Dimulai</option>
+                  <option value="IN_PROGRESS">Sedang Berlangsung</option>
+                  <option value="PENDING_VALIDATION">Menunggu Validasi</option>
+                  <option value="COMPLETED">Selesai</option>
+                </select>
+
+                <select
+                  value={filters.priority}
+                  onChange={(e) => setFilters(prev => ({ ...prev, priority: e.target.value }))}
+                  className="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                >
+                  <option value="">Semua Prioritas</option>
+                  <option value="LOW">Rendah</option>
+                  <option value="MEDIUM">Sedang</option>
+                  <option value="HIGH">Tinggi</option>
+                  <option value="URGENT">Mendesak</option>
+                </select>
+
+                <select
+                  value={filters.assignee}
+                  onChange={(e) => setFilters(prev => ({ ...prev, assignee: e.target.value }))}
+                  className="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                >
+                  <option value="">Semua Karyawan</option>
+                  {users.map(user => (
+                    <option key={user.id} value={user.id}>{user.fullName}</option>
+                  ))}
+                </select>
+              </div>
+
+              {/* View Mode Toggle */}
+              <div className="flex bg-gray-100 dark:bg-gray-800 rounded-lg p-1">
+                <button
+                  onClick={() => setViewMode('kanban')}
+                  className={`px-3 py-1 rounded-md text-sm font-medium transition-colors ${
+                    viewMode === 'kanban'
+                      ? 'bg-white dark:bg-gray-700 text-blue-600 dark:text-blue-400 shadow-sm'
+                      : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100'
+                  }`}
+                >
+                  <Grid3X3 className="w-4 h-4" />
+                </button>
+                <button
+                  onClick={() => setViewMode('list')}
+                  className={`px-3 py-1 rounded-md text-sm font-medium transition-colors ${
+                    viewMode === 'list'
+                      ? 'bg-white dark:bg-gray-700 text-blue-600 dark:text-blue-400 shadow-sm'
+                      : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100'
+                  }`}
+                >
+                  <List className="w-4 h-4" />
+                </button>
+              </div>
             </div>
-          ) : filteredTasks.length === 0 ? (
-            <div className="col-span-full text-center py-12">
-              <CheckSquare className="mx-auto h-12 w-12 text-gray-400" />
-              <h3 className="mt-2 text-sm font-medium text-gray-900">Tidak ada tugas</h3>
-              <p className="mt-1 text-sm text-gray-500">
-                {searchTerm ? 'Tidak ada tugas yang sesuai dengan pencarian.' : 'Belum ada tugas yang dibuat.'}
-              </p>
-            </div>
-          ) : (
-            filteredTasks.map((task) => (
-              <div key={task.id} className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-                <div className="flex items-start justify-between mb-4">
-                  <div className="flex items-center space-x-2">
-                    {getStatusIcon(task.status)}
-                    <h3 className="text-lg font-semibold text-gray-900 truncate">{task.title}</h3>
-                  </div>
-                  <div className="flex items-center space-x-1">
-                    <button
-                      onClick={() => setSelectedTask(task)}
-                      className="text-gray-400 hover:text-gray-600"
-                    >
-                      <Eye className="h-4 w-4" />
-                    </button>
-                    <button
-                      onClick={() => handleDeleteTask(task.id)}
-                      className="text-gray-400 hover:text-red-600"
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </button>
-                  </div>
+
+            {/* Bulk actions bar (only in list view) */}
+            {viewMode === 'list' && (
+              <div className="mt-4 flex flex-wrap gap-2 items-center justify-between">
+                <div className="text-sm text-gray-600 dark:text-gray-400">
+                  Dipilih: {selectedIds.size} tugas
                 </div>
-                
-                <p className="text-gray-600 text-sm mb-4 line-clamp-3">{task.description}</p>
-                
-                <div className="space-y-3">
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs text-gray-500">Status</span>
-                    {getStatusBadge(task.status)}
-                  </div>
-                  
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs text-gray-500">Penugasan</span>
-                    <div className="flex items-center space-x-1">
-                      {task.assignment === 'ALL_EMPLOYEES' ? (
-                        <Users className="h-3 w-3 text-blue-500" />
-                      ) : (
-                        <User className="h-3 w-3 text-green-500" />
-                      )}
-                      <span className="text-xs text-gray-700">
-                        {task.assignment === 'ALL_EMPLOYEES' 
-                          ? 'Semua Karyawan' 
-                          : task.assignee?.fullName || 'Tidak diketahui'
-                        }
-                      </span>
-                    </div>
-                  </div>
-                  
-                  {task.dueDate && (
-                    <div className="flex items-center justify-between">
-                      <span className="text-xs text-gray-500">Deadline</span>
-                      <div className="flex items-center space-x-1">
-                        <Calendar className="h-3 w-3 text-orange-500" />
-                        <span className="text-xs text-gray-700">
-                          {new Date(task.dueDate).toLocaleDateString('id-ID')}
-                        </span>
-                      </div>
-                    </div>
-                  )}
-                  
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs text-gray-500">Pengumpulan</span>
-                    <span className="text-xs font-medium text-blue-600">
-                      {task.submissions.length} submission
-                    </span>
-                  </div>
+                <div className="flex flex-wrap gap-2">
+                  <button
+                    onClick={() => bulkUpdateStatus('IN_PROGRESS')}
+                    disabled={selectedIds.size === 0}
+                    className="px-3 py-2 rounded-lg text-xs font-medium bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50"
+                  >
+                    Jadikan Sedang Berlangsung
+                  </button>
+                  <button
+                    onClick={() => bulkUpdateStatus('NOT_STARTED')}
+                    disabled={selectedIds.size === 0}
+                    className="px-3 py-2 rounded-lg text-xs font-medium bg-gray-300 text-gray-800 hover:bg-gray-400 disabled:opacity-50"
+                  >
+                    Kembalikan ke Belum Dimulai
+                  </button>
+                  <button
+                    onClick={bulkValidatePending}
+                    disabled={selectedIds.size === 0}
+                    className="px-3 py-2 rounded-lg text-xs font-medium bg-green-600 text-white hover:bg-green-700 disabled:opacity-50"
+                  >
+                    Validasi (PENDING → COMPLETED)
+                  </button>
+                  <button
+                    onClick={clearSelection}
+                    disabled={selectedIds.size === 0}
+                    className="px-3 py-2 rounded-lg text-xs font-medium bg-gray-200 dark:bg-gray-600 text-gray-800 dark:text-gray-200 hover:bg-gray-300 dark:hover:bg-gray-500 disabled:opacity-50"
+                  >
+                    Bersihkan Pilihan
+                  </button>
                 </div>
               </div>
-            ))
-          )}
-        </div>
+            )}
+          </CardBody>
+        </Card>
+
+        {/* Task Board */}
+        {loading ? (
+          <div className="flex items-center justify-center h-64">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+          </div>
+        ) : (
+          viewMode === 'kanban' ? (
+            <KanbanBoard
+              tasks={filteredTasks}
+              onTaskUpdate={handleTaskUpdate}
+              onTaskCreate={handleTaskCreate}
+              onTaskDelete={handleTaskDelete}
+            />
+          ) : (
+            <div className="overflow-x-auto bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700">
+              <table className="min-w-full text-sm">
+                <thead>
+                  <tr className="text-left text-gray-600 dark:text-gray-300 border-b border-gray-200 dark:border-gray-700">
+                    <th className="p-3">
+                      <input
+                        type="checkbox"
+                        checked={selectedIds.size > 0 && filteredTasks.every(t => selectedIds.has(t.id)) && filteredTasks.length > 0}
+                        onChange={(e) => e.target.checked ? selectAll(filteredTasks.map(t => t.id)) : clearSelection()}
+                      />
+                    </th>
+                    <th className="p-3">Judul</th>
+                    <th className="p-3">Status</th>
+                    <th className="p-3">Prioritas</th>
+                    <th className="p-3">Assignee</th>
+                    <th className="p-3">Deadline</th>
+                    <th className="p-3">Aksi</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filteredTasks.map(task => (
+                    <tr key={task.id} className="border-b border-gray-100 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700/50">
+                      <td className="p-3 align-top">
+                        <input
+                          type="checkbox"
+                          checked={isSelected(task.id)}
+                          onChange={() => toggleSelect(task.id)}
+                        />
+                      </td>
+                      <td className="p-3 align-top">
+                        <div className="font-medium text-gray-900 dark:text-gray-100">{task.title}</div>
+                        <div className="text-gray-500 dark:text-gray-400 line-clamp-2 max-w-md">{task.description}</div>
+                      </td>
+                      <td className="p-3 align-top">
+                        <span className="px-2 py-1 rounded-full text-xs bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200">
+                          {task.status}
+                        </span>
+                      </td>
+                      <td className="p-3 align-top">{task.priority}</td>
+                      <td className="p-3 align-top">{task.assignee || '-'}</td>
+                      <td className="p-3 align-top">{task.dueDate ? new Date(task.dueDate).toLocaleDateString('id-ID') : '-'}</td>
+                      <td className="p-3 align-top space-x-2">
+                        <button
+                          onClick={() => handleTaskUpdate(task.id, { status: 'IN_PROGRESS' })}
+                          className="px-2 py-1 rounded-md text-xs bg-blue-600 text-white hover:bg-blue-700"
+                        >
+                          In Progress
+                        </button>
+                        <button
+                          onClick={() => handleTaskUpdate(task.id, { status: 'PENDING_VALIDATION' })}
+                          className="px-2 py-1 rounded-md text-xs bg-amber-500 text-white hover:bg-amber-600"
+                        >
+                          Pending
+                        </button>
+                        <button
+                          onClick={() => handleTaskUpdate(task.id, { status: 'COMPLETED' })}
+                          className="px-2 py-1 rounded-md text-xs bg-green-600 text-white hover:bg-green-700"
+                        >
+                          Complete
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )
+        )}
+
       </div>
 
-      {/* Create Task Modal */}
-      {showCreateModal && (
-        <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
-          <div className="relative top-20 mx-auto p-5 border w-11/12 md:w-3/4 lg:w-1/2 shadow-lg rounded-md bg-white">
-            <div className="mt-3">
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="text-lg font-medium text-gray-900">Buat Tugas Baru</h3>
-                <button
-                  onClick={() => setShowCreateModal(false)}
-                  className="text-gray-400 hover:text-gray-600"
-                >
-                  ×
-                </button>
-              </div>
-              
-              <form onSubmit={handleCreateTask} className="space-y-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Judul Tugas *
-                  </label>
-                  <input
-                    type="text"
-                    value={formData.title}
-                    onChange={(e) => setFormData({...formData, title: e.target.value})}
-                    required
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    placeholder="Masukkan judul tugas"
-                  />
-                </div>
-                
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Deskripsi *
-                  </label>
-                  <textarea
-                    value={formData.description}
-                    onChange={(e) => setFormData({...formData, description: e.target.value})}
-                    required
-                    rows={4}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    placeholder="Masukkan deskripsi tugas"
-                  />
-                </div>
-                
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Deadline (Opsional)
-                  </label>
-                  <input
-                    type="datetime-local"
-                    value={formData.dueDate}
-                    onChange={(e) => setFormData({...formData, dueDate: e.target.value})}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  />
-                </div>
-                
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Penugasan *
-                  </label>
-                  <select
-                    value={formData.assignment}
-                    onChange={(e) => setFormData({...formData, assignment: e.target.value as any, assigneeId: ''})}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  >
-                    <option value="ALL_EMPLOYEES">Semua Karyawan</option>
-                    <option value="SPECIFIC">Karyawan Spesifik</option>
-                  </select>
-                </div>
-                
-                {formData.assignment === 'SPECIFIC' && (
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Pilih Karyawan *
-                    </label>
-                    <select
-                      value={formData.assigneeId}
-                      onChange={(e) => setFormData({...formData, assigneeId: e.target.value})}
-                      required
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    >
-                      <option value="">Pilih karyawan</option>
-                      {employees.map((employee) => (
-                        <option key={employee.id} value={employee.id}>
-                          {employee.fullName} ({employee.email})
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                )}
-                
-                <div className="flex space-x-3 pt-4">
-                  <button
-                    type="submit"
-                    className="flex-1 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
-                  >
-                    Buat Tugas
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setShowCreateModal(false)}
-                    className="flex-1 bg-gray-300 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-400 focus:ring-2 focus:ring-gray-500 focus:ring-offset-2"
-                  >
-                    Batal
-                  </button>
-                </div>
-              </form>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Task Detail Modal */}
-      {selectedTask && (
-        <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
-          <div className="relative top-10 mx-auto p-5 border w-11/12 md:w-3/4 lg:w-2/3 shadow-lg rounded-md bg-white">
-            <div className="mt-3">
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="text-lg font-medium text-gray-900">Detail Tugas</h3>
-                <button
-                  onClick={() => setSelectedTask(null)}
-                  className="text-gray-400 hover:text-gray-600"
-                >
-                  ×
-                </button>
-              </div>
-              
-              <div className="space-y-4">
-                <div>
-                  <h4 className="font-semibold text-gray-900 mb-2">{selectedTask.title}</h4>
-                  <p className="text-gray-600">{selectedTask.description}</p>
-                </div>
-                
-                {selectedTask.status === 'PENDING_VALIDATION' && (
-                  <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
-                    <h5 className="font-medium text-blue-800 mb-2">Validasi Tugas</h5>
-                    <p className="text-sm text-blue-700 mb-3">
-                      Tugas ini telah dikumpulkan oleh karyawan dan menunggu validasi dari Anda.
-                    </p>
-                    <div className="flex flex-col space-y-3">
-                      <textarea
-                        placeholder="Pesan validasi (opsional)"
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                        rows={2}
-                        id="validationMessage"
-                      />
-                      <div className="flex space-x-3">
-                        <button
-                          onClick={() => handleValidateTask(selectedTask.id, true)}
-                          className="flex-1 bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 focus:ring-2 focus:ring-green-500 focus:ring-offset-2"
-                        >
-                          Validasi & Selesaikan
-                        </button>
-                        <button
-                          onClick={() => handleValidateTask(selectedTask.id, false)}
-                          className="flex-1 bg-yellow-600 text-white px-4 py-2 rounded-lg hover:bg-yellow-700 focus:ring-2 focus:ring-yellow-500 focus:ring-offset-2"
-                        >
-                          Kembalikan ke Proses
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                )}
-                
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <span className="text-sm font-medium text-gray-700">Status:</span>
-                    <div className="mt-1">{getStatusBadge(selectedTask.status)}</div>
-                  </div>
-                  
-                  <div>
-                    <span className="text-sm font-medium text-gray-700">Penugasan:</span>
-                    <p className="text-sm text-gray-900 mt-1">
-                      {selectedTask.assignment === 'ALL_EMPLOYEES' 
-                        ? 'Semua Karyawan' 
-                        : selectedTask.assignee?.fullName || 'Tidak diketahui'
-                      }
-                    </p>
-                  </div>
-                  
-                  {selectedTask.dueDate && (
-                    <div>
-                      <span className="text-sm font-medium text-gray-700">Deadline:</span>
-                      <p className="text-sm text-gray-900 mt-1">
-                        {new Date(selectedTask.dueDate).toLocaleString('id-ID')}
-                      </p>
-                    </div>
-                  )}
-                  
-                  <div>
-                    <span className="text-sm font-medium text-gray-700">Dibuat:</span>
-                    <p className="text-sm text-gray-900 mt-1">
-                      {new Date(selectedTask.createdAt).toLocaleString('id-ID')}
-                    </p>
-                  </div>
-                </div>
-                
-                {selectedTask.submissions.length > 0 && (
-                  <div>
-                    <h5 className="font-medium text-gray-900 mb-2">
-                      Pengumpulan ({selectedTask.submissions.length})
-                    </h5>
-                    <div className="space-y-2 max-h-40 overflow-y-auto">
-                      {selectedTask.submissions.map((submission: any, index: number) => (
-                        <div key={index} className="bg-gray-50 p-3 rounded-lg">
-                          <div className="flex items-center justify-between">
-                            <span className="font-medium text-sm">{submission.user.fullName}</span>
-                            <span className="text-xs text-gray-500">
-                              {new Date(submission.submittedAt).toLocaleString('id-ID')}
-                            </span>
-                          </div>
-                          {submission.description && (
-                            <p className="text-sm text-gray-600 mt-1">{submission.description}</p>
-                          )}
-                          {submission.documentUrl && (
-                            <a 
-                              href={submission.documentUrl} 
-                              target="_blank" 
-                              rel="noopener noreferrer"
-                              className="text-sm text-blue-600 hover:text-blue-800 mt-1 inline-block"
-                            >
-                              Lihat Dokumen
-                            </a>
-                          )}
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
+      {/* Task Modal */}
+      <TaskModal
+        isOpen={isModalOpen}
+        onClose={closeModal}
+        task={editingTask}
+        onSave={editingTask ? (taskData) => handleTaskUpdate(editingTask.id, taskData) : handleTaskCreate}
+        users={users}
+      />
     </AdminLayout>
   )
 }

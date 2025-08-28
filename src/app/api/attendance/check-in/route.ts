@@ -2,81 +2,79 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
+import { z } from 'zod'
+
+const checkInSchema = z.object({
+  latitude: z.number().min(-90).max(90),
+  longitude: z.number().min(-180).max(180),
+  notes: z.string().optional(),
+})
+
+function haversineMeters(lat1: number, lon1: number, lat2: number, lon2: number) {
+  const toRad = (v: number) => (v * Math.PI) / 180
+  const R = 6371000
+  const dLat = toRad(lat2 - lat1)
+  const dLon = toRad(lon2 - lon1)
+  const a = Math.sin(dLat / 2) ** 2 + Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLon / 2) ** 2
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a))
+  return R * c
+}
 
 export async function POST(req: NextRequest) {
   try {
     const session = await getServerSession(authOptions)
     if (!session?.user?.id) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    if (session.user.role !== 'EMPLOYEE') return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
 
-    const { latitude, longitude, ipAddress, method } = await req.json()
-    const now = new Date()
+    const body = await req.json()
+    const input = checkInSchema.parse(body)
 
-    // Get user data for notification
-    const user = await prisma.user.findUnique({
-      where: { id: session.user.id },
-      select: { id: true, fullName: true, email: true }
+    // Ensure not already checked-in today
+    const todayStart = new Date(); todayStart.setHours(0,0,0,0)
+    const existing = await prisma.attendance.findFirst({
+      where: { userId: session.user.id, checkInTime: { gte: todayStart } },
     })
-
-    // Load admin config
-    const cfg = await prisma.attendanceConfig.findFirst()
-    const startHour = cfg?.workStartHour ?? parseInt(process.env.WORK_START_HOUR || '9', 10)
-    const start = new Date(now)
-    start.setHours(startHour, 0, 0, 0)
-    const status = now.getTime() <= start.getTime() ? 'ONTIME' : 'LATE'
-
-    // Geofence validation (if enabled)
-    let distanceMeters: number | null = null
-    if (cfg?.useGeofence && cfg.officeLat != null && cfg.officeLng != null && cfg.radiusMeters && cfg.radiusMeters > 0) {
-      if ((latitude == null || longitude == null) && cfg.enforceGeofence) {
-        return NextResponse.json({ error: 'GPS diperlukan untuk check-in di area kantor' }, { status: 400 })
-      }
-      if (latitude != null && longitude != null) {
-        const toRad = (v: number) => (v * Math.PI) / 180
-        const R = 6371000 // meters
-        const dLat = toRad(latitude - cfg.officeLat!)
-        const dLon = toRad(longitude - cfg.officeLng!)
-        const a = Math.sin(dLat / 2) ** 2 + Math.cos(toRad(cfg.officeLat!)) * Math.cos(toRad(latitude)) * Math.sin(dLon / 2) ** 2
-        const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a))
-        distanceMeters = Math.round(R * c)
-        if (cfg.enforceGeofence && distanceMeters > cfg.radiusMeters) {
-          return NextResponse.json({ error: 'Di luar radius kantor', distanceMeters }, { status: 400 })
-        }
-      }
+    if (existing?.checkInTime) {
+      return NextResponse.json({ error: 'Sudah melakukan check-in hari ini' }, { status: 400 })
     }
 
-    const attendance = await prisma.attendance.create({
+    // Load latest office location
+    const office = await prisma.officeLocation.findFirst({ orderBy: { createdAt: 'desc' } })
+    if (!office) return NextResponse.json({ error: 'Lokasi kantor belum dikonfigurasi' }, { status: 400 })
+
+    const distance = haversineMeters(input.latitude, input.longitude, office.latitude, office.longitude)
+    if (distance > office.radius) {
+      return NextResponse.json({ error: 'Di luar radius kantor' }, { status: 400 })
+    }
+
+    const record = await prisma.attendance.create({
       data: {
         userId: session.user.id,
-        checkInAt: now,
-        method: method === 'GPS' ? 'GPS' : 'IP',
-        ipAddress: ipAddress || null,
-        latitude: latitude ?? null,
-        longitude: longitude ?? null,
-        status: status as any,
-        notes: distanceMeters != null ? `distance=${distanceMeters}m` : null,
+        checkInTime: new Date(),
+        checkInLatitude: input.latitude,
+        checkInLongitude: input.longitude,
+        status: 'PRESENT',
+        notes: input.notes,
       },
     })
 
-    // Realtime notify admin with user name
+    // Emit socket event for dashboard refresh
     try {
-      const io = (global as any).io
-      if (io) {
-        io.emit('attendance_check_in', { 
-          userId: session.user.id, 
-          attendanceId: attendance.id, 
-          status, 
-          distanceMeters,
-          userName: user?.fullName || 'Karyawan',
-          timestamp: now.toISOString()
-        })
-      }
+      const io = (global as any).io || (require('@/lib/socket') as any).getSocketIO?.()
+      if (io) io.emit('attendance_updated', { userId: session.user.id, id: record.id })
     } catch {}
 
-    return NextResponse.json({ attendance, config: cfg ?? null, distanceMeters })
-  } catch (e) {
-    console.error('check-in error', e)
-    return NextResponse.json({ error: 'Failed' }, { status: 500 })
+    return NextResponse.json({ message: 'Check-in berhasil', attendance: record }, { status: 201 })
+  } catch (error) {
+    if (error instanceof z.ZodError) {
+      return NextResponse.json({ error: 'Validasi gagal', details: error.errors }, { status: 400 })
+    }
+    console.error('Check-in error:', error)
+    return NextResponse.json({ error: 'Terjadi kesalahan server' }, { status: 500 })
   }
 }
+
+
+
 
 
