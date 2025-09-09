@@ -45,22 +45,22 @@ export function ChartSummary({
   const getChangeIcon = () => {
     switch (changeType) {
       case 'increase':
-        return <TrendingUp className="h-4 w-4 text-green-600" />
+        return <TrendingUp className="h-4 w-4 text-success" />
       case 'decrease':
-        return <TrendingDown className="h-4 w-4 text-red-600" />
+        return <TrendingDown className="h-4 w-4 text-error" />
       default:
-        return <Minus className="h-4 w-4 text-gray-600" />
+        return <Minus className="h-4 w-4 text-text-muted" />
     }
   }
 
   const getChangeColor = () => {
     switch (changeType) {
       case 'increase':
-        return 'text-green-600'
+        return 'text-success'
       case 'decrease':
-        return 'text-red-600'
+        return 'text-error'
       default:
-        return 'text-gray-600'
+        return 'text-text-muted'
     }
   }
 
@@ -92,18 +92,18 @@ export function ChartSummary({
           <div className="space-y-2">
             {data.map((item, index) => (
               <div key={index} className="flex items-center space-x-3">
-                <div className="w-20 text-sm text-gray-600 dark:text-gray-400 truncate">
+                <div className="w-20 text-sm text-text-secondary truncate">
                   {item.label}
                 </div>
                 <div className="flex-1">
-                  <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
+                  <div className="w-full bg-surface rounded-full h-2">
                     <div
-                      className={`h-2 rounded-full ${item.color || 'bg-blue-500'}`}
+                      className={`h-2 rounded-full ${item.color || 'bg-accent'}`}
                       style={{ width: `${getPercentage(item.value)}%` }}
                     ></div>
                   </div>
                 </div>
-                <div className="w-16 text-sm font-medium text-gray-900 dark:text-gray-100 text-right">
+                <div className="w-16 text-sm font-medium text-text-primary text-right">
                   {formatValue(item.value)}
                 </div>
               </div>
@@ -129,7 +129,7 @@ export function ChartSummary({
                       cy="18"
                       r="16"
                       fill="none"
-                      stroke={item.color || '#3B82F6'}
+                      stroke={item.color || 'var(--color-accent)'}
                       strokeWidth="3"
                       strokeDasharray={strokeDasharray}
                       strokeDashoffset={offset}
@@ -140,7 +140,7 @@ export function ChartSummary({
               </svg>
               {total && (
                 <div className="absolute inset-0 flex items-center justify-center">
-                  <span className="text-sm font-bold text-gray-900 dark:text-gray-100">
+                  <span className="text-sm font-bold text-text-primary">
                     {formatValue(total)}
                   </span>
                 </div>
@@ -152,12 +152,12 @@ export function ChartSummary({
                 {data.map((item, index) => (
                   <div key={index} className="flex items-center space-x-2">
                     <div 
-                      className={`w-3 h-3 rounded-full ${item.color || 'bg-blue-500'}`}
+                      className={`w-3 h-3 rounded-full ${item.color || 'bg-accent'}`}
                     ></div>
-                    <span className="text-sm text-gray-600 dark:text-gray-400">
+                    <span className="text-sm text-text-secondary">
                       {item.label}
                     </span>
-                    <span className="text-sm font-medium text-gray-900 dark:text-gray-100">
+                    <span className="text-sm font-medium text-text-primary">
                       {formatValue(item.value)}
                     </span>
                   </div>
@@ -172,8 +172,8 @@ export function ChartSummary({
           <div className="space-y-2">
             {data.map((item, index) => (
               <div key={index} className="flex items-center justify-between">
-                <span className="text-sm text-gray-600 dark:text-gray-400">{item.label}</span>
-                <span className="text-sm font-medium text-gray-900 dark:text-gray-100">
+                <span className="text-sm text-text-secondary">{item.label}</span>
+                <span className="text-sm font-medium text-text-primary">
                   {formatValue(item.value)}
                 </span>
               </div>
@@ -188,15 +188,15 @@ export function ChartSummary({
       <CardBody>
         <div className="flex items-start justify-between mb-4">
           <div>
-            <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">{title}</h3>
+            <h3 className="text-lg font-semibold text-text-primary">{title}</h3>
             {subtitle && (
-              <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">{subtitle}</p>
+              <p className="text-sm text-text-secondary mt-1">{subtitle}</p>
             )}
           </div>
           
           <div className="flex items-center space-x-2">
             {getChartIcon() && (
-              <div className="p-2 bg-gray-100 dark:bg-gray-800 rounded-lg">
+              <div className="p-2 bg-surface rounded-lg">
                 {getChartIcon() && <getChartIcon() className="h-4 w-4 text-gray-600 dark:text-gray-400" />}
               </div>
             )}

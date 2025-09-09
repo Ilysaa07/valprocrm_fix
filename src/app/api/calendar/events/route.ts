@@ -18,10 +18,8 @@ const createEventSchema = z.object({
   visibility: z.enum(['PUBLIC', 'PRIVATE', 'CONFIDENTIAL']).default('PRIVATE'),
   recurrenceRule: z.string().optional(),
   recurrenceEnd: z.string().datetime().optional(),
-  projectId: z.string().optional(),
   contactId: z.string().optional(),
   taskId: z.string().optional(),
-  milestoneId: z.string().optional(),
   attendees: z.array(z.object({
     userId: z.string().optional(),
     email: z.string().email().optional(),
@@ -47,7 +45,7 @@ export async function GET(request: NextRequest) {
     const startDate = searchParams.get('startDate')
     const endDate = searchParams.get('endDate')
     const category = searchParams.get('category')
-    const projectId = searchParams.get('projectId')
+
     const contactId = searchParams.get('contactId')
 
     const where: any = {}
@@ -81,10 +79,7 @@ export async function GET(request: NextRequest) {
       where.category = category
     }
 
-    // Project filter
-    if (projectId) {
-      where.projectId = projectId
-    }
+
 
     // Contact filter
     if (contactId) {
@@ -112,9 +107,9 @@ export async function GET(request: NextRequest) {
         createdBy: {
           select: {
             id: true,
-            name: true,
+            fullName: true,
             email: true,
-            avatar: true
+            profilePicture: true
           }
         },
         attendees: {
@@ -122,9 +117,9 @@ export async function GET(request: NextRequest) {
             user: {
               select: {
                 id: true,
-                name: true,
+                fullName: true,
                 email: true,
-                avatar: true
+                profilePicture: true
               }
             }
           }
@@ -140,8 +135,8 @@ export async function GET(request: NextRequest) {
         contact: {
           select: {
             id: true,
-            name: true,
-            email: true,
+            fullName: true,
+            phoneNumber: true,
             companyName: true
           }
         },
@@ -155,7 +150,7 @@ export async function GET(request: NextRequest) {
         milestone: {
           select: {
             id: true,
-            title: true,
+            name: true,
             status: true
           }
         }
@@ -181,114 +176,148 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json()
-    const validatedData = createEventSchema.parse(body)
+    const {
+      title,
+      description,
+      startTime,
+      endTime,
+      allDay,
+      location,
+      meetingLink,
+      category,
+      priority,
+      status,
+      visibility,
+      recurrenceRule,
+      recurrenceEnd,
+      projectId,
+      contactId,
+      taskId,
+      milestoneId,
+      attendees,
+      reminders
+    } = body
 
-    // Validate date range
-    const startTime = new Date(validatedData.startTime)
-    const endTime = new Date(validatedData.endTime)
-    
-    if (endTime <= startTime) {
+    // Validation
+    if (!title?.trim()) {
+      return NextResponse.json({ error: 'Event title is required' }, { status: 400 })
+    }
+
+    if (!startTime || !endTime) {
+      return NextResponse.json({ error: 'Start and end time are required' }, { status: 400 })
+    }
+
+    if (new Date(endTime) <= new Date(startTime)) {
       return NextResponse.json({ error: 'End time must be after start time' }, { status: 400 })
     }
 
-    // Create event with attendees and reminders
+    // Check if project exists (if specified)
+    if (projectId) {
+      const project = await prisma.project.findUnique({
+        where: { id: projectId }
+      })
+      if (!project) {
+        return NextResponse.json({ error: 'Project not found' }, { status: 400 })
+      }
+    }
+
+    // Check if contact exists (if specified)
+    if (contactId) {
+      const contact = await prisma.contact.findUnique({
+        where: { id: contactId }
+      })
+      if (!contact) {
+        return NextResponse.json({ error: 'Contact not found' }, { status: 400 })
+      }
+    }
+
+    // Check if task exists (if specified)
+    if (taskId) {
+      const task = await prisma.task.findUnique({
+        where: { id: taskId }
+      })
+      if (!task) {
+        return NextResponse.json({ error: 'Task not found' }, { status: 400 })
+      }
+    }
+
+    // Check if milestone exists (if specified)
+    if (milestoneId) {
+      const milestone = await prisma.projectMilestone.findUnique({
+        where: { id: milestoneId }
+      })
+      if (!milestone) {
+        return NextResponse.json({ error: 'Milestone not found' }, { status: 400 })
+      }
+    }
+
     const event = await prisma.calendarEvent.create({
       data: {
-        title: validatedData.title,
-        description: validatedData.description,
-        startTime,
-        endTime,
-        allDay: validatedData.allDay,
-        location: validatedData.location,
-        meetingLink: validatedData.meetingLink || null,
-        category: validatedData.category,
-        priority: validatedData.priority,
-        status: validatedData.status,
-        visibility: validatedData.visibility,
-        recurrenceRule: validatedData.recurrenceRule,
-        recurrenceEnd: validatedData.recurrenceEnd ? new Date(validatedData.recurrenceEnd) : null,
-        projectId: validatedData.projectId || null,
-        contactId: validatedData.contactId || null,
-        taskId: validatedData.taskId || null,
-        milestoneId: validatedData.milestoneId || null,
-        createdById: session.user.id,
-        attendees: {
-          create: validatedData.attendees.map(attendee => ({
-            userId: attendee.userId || null,
-            email: attendee.email || null,
-            name: attendee.name || null,
-            isOrganizer: attendee.isOrganizer,
-            status: 'PENDING'
-          }))
-        },
-        reminders: {
-          create: validatedData.reminders.map(reminder => ({
-            reminderTime: new Date(reminder.reminderTime),
-            reminderType: reminder.reminderType,
-            message: reminder.message
-          }))
-        }
+        title: title.trim(),
+        description: description?.trim(),
+        startTime: new Date(startTime),
+        endTime: new Date(endTime),
+        allDay: allDay || false,
+        location: location?.trim(),
+        meetingLink: meetingLink?.trim(),
+        category: category || 'MEETING',
+        priority: priority || 'MEDIUM',
+        status: status || 'CONFIRMED',
+        visibility: visibility || 'PRIVATE',
+        recurrenceRule: recurrenceRule?.trim(),
+        recurrenceEnd: recurrenceEnd ? new Date(recurrenceEnd) : null,
+        projectId: projectId || null,
+        contactId: contactId || null,
+        taskId: taskId || null,
+        milestoneId: milestoneId || null,
+        createdById: session.user.id
       },
       include: {
         createdBy: {
-          select: {
-            id: true,
-            name: true,
-            email: true,
-            avatar: true
-          }
+          select: { id: true, fullName: true, email: true }
         },
-        attendees: {
-          include: {
-            user: {
-              select: {
-                id: true,
-                name: true,
-                email: true,
-                avatar: true
-              }
-            }
-          }
-        },
-        reminders: true,
         project: {
-          select: {
-            id: true,
-            name: true,
-            status: true
-          }
+          select: { id: true, name: true, status: true }
         },
         contact: {
-          select: {
-            id: true,
-            name: true,
-            email: true,
-            companyName: true
-          }
+          select: { id: true, fullName: true, companyName: true }
+        },
+        task: {
+          select: { id: true, title: true, status: true }
+        },
+        milestone: {
+          select: { id: true, name: true, status: true }
         }
       }
     })
 
-    // Create notification for event creation
-    await prisma.notification.create({
-      data: {
-        title: 'New Event Created',
-        message: `Event "${event.title}" has been scheduled for ${startTime.toLocaleDateString()}`,
-        type: 'CALENDAR',
-        userId: session.user.id,
-        metadata: {
+    // Create attendees
+    if (attendees && attendees.length > 0) {
+      await prisma.eventAttendee.createMany({
+        data: attendees.map((attendee: any) => ({
           eventId: event.id,
-          eventTitle: event.title,
-          startTime: startTime.toISOString()
-        }
-      }
-    })
-
-    return NextResponse.json(event, { status: 201 })
-  } catch (error) {
-    if (error instanceof z.ZodError) {
-      return NextResponse.json({ error: 'Validation error', details: error.errors }, { status: 400 })
+          userId: attendee.userId,
+          email: attendee.email,
+          name: attendee.name,
+          isOrganizer: attendee.isOrganizer || false
+        }))
+      })
     }
+
+    // Create reminders
+    if (reminders && reminders.length > 0) {
+      await prisma.eventReminder.createMany({
+        data: reminders.map((reminder: any) => ({
+          eventId: event.id,
+          reminderTime: new Date(reminder.reminderTime),
+          reminderType: reminder.reminderType || 'NOTIFICATION',
+          message: reminder.message
+        }))
+      })
+    }
+
+    return NextResponse.json({ event }, { status: 201 })
+  } catch (error) {
     console.error('Error creating calendar event:', error)
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }

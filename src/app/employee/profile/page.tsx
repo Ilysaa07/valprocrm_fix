@@ -131,7 +131,7 @@ export default function EmployeeProfile() {
           <div className="lg:col-span-1">
             <div className="bg-white/80 backdrop-blur-sm rounded-2xl p-6 border border-white/20 shadow-lg">
               <div className="text-center">
-                <div className="w-32 h-32 mx-auto mb-4 bg-gradient-to-br from-green-400 to-blue-500 rounded-full flex items-center justify-center">
+                <div className="w-32 h-32 mx-auto mb-4 bg-slate-300 dark:bg-slate-600 rounded-full flex items-center justify-center">
                   {profile.profilePicture ? (
                     <img 
                       src={profile.profilePicture} 
@@ -139,7 +139,9 @@ export default function EmployeeProfile() {
                       className="w-full h-full rounded-full object-cover"
                     />
                   ) : (
-                    <User className="w-16 h-16 text-white" />
+                    <span className="text-3xl font-bold text-slate-700 dark:text-slate-300">
+                      {profile.fullName ? profile.fullName.charAt(0) : 'U'}
+                    </span>
                   )}
                 </div>
                 <h2 className="text-xl font-bold text-gray-900">{profile.fullName}</h2>

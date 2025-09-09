@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { 
   LineChart, 
   Line, 
@@ -41,13 +41,15 @@ interface TransactionChartData {
   }
 }
 
-const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884D8', '#82CA9D', '#FFC658', '#FF7C7C']
+const COLORS = ['var(--color-accent)', 'var(--color-success)', 'var(--color-warning)', 'var(--color-error)', 'var(--color-accent)/80', 'var(--color-success)/80', 'var(--color-warning)/80', 'var(--color-error)/80']
 
 export default function TransactionChart() {
   const [data, setData] = useState<TransactionChartData | null>(null)
   const [loading, setLoading] = useState(true)
   const [period, setPeriod] = useState('6months')
   const [activeChart, setActiveChart] = useState<'trend' | 'income' | 'expense'>('trend')
+  const pollingRef = useRef<NodeJS.Timeout | null>(null)
+  const socketRef = useRef<{ on: (event: string, handler: (...args: unknown[]) => void) => void; disconnect: () => void } | null>(null)
 
   const fetchChartData = useCallback(async () => {
     try {
@@ -68,6 +70,38 @@ export default function TransactionChart() {
 
   useEffect(() => {
     fetchChartData()
+    // Background polling for resilience
+    pollingRef.current = setInterval(fetchChartData, 30000)
+
+    // Refresh when tab gains focus or becomes visible
+    const handleVisibility = () => {
+      if (document.visibilityState === 'visible') fetchChartData()
+    }
+    const handleFocus = () => fetchChartData()
+    document.addEventListener('visibilitychange', handleVisibility)
+    window.addEventListener('focus', handleFocus)
+
+    // Try to attach to socket events if available
+    ;(async () => {
+      try {
+        const mod = (await import('socket.io-client')) as unknown as { io?: (url: string, opts: Record<string, unknown>) => any; default?: (url: string, opts: Record<string, unknown>) => any }
+        const factory = (mod.io || mod.default) as (url: string, opts: Record<string, unknown>) => any
+        const s = factory(typeof window !== 'undefined' ? window.location.origin : '', { path: '/socket.io' })
+        socketRef.current = s
+        const refresh = () => fetchChartData()
+        s.on('transactions_updated', refresh)
+        s.on('transaction_created', refresh)
+        s.on('transaction_deleted', refresh)
+        s.on('invoice_status_changed', refresh)
+      } catch {}
+    })()
+
+    return () => {
+      if (pollingRef.current) clearInterval(pollingRef.current)
+      document.removeEventListener('visibilitychange', handleVisibility)
+      window.removeEventListener('focus', handleFocus)
+      if (socketRef.current) socketRef.current.disconnect()
+    }
   }, [fetchChartData])
 
   const formatCurrency = (value: number) => {
@@ -111,7 +145,7 @@ export default function TransactionChart() {
     <div className="space-y-6">
       {/* Trading-Style Summary Cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <div className="bg-white/95 dark:bg-neutral-900/95 rounded-xl border border-neutral-200/50 dark:border-neutral-700/50 p-6 shadow-xl backdrop-blur-sm">
+        <div className="bg-white/95 dark:bg-[#1e293b] rounded-xl border border-neutral-200/50 dark:border-neutral-700/50 p-6 shadow-xl backdrop-blur-sm">
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm font-medium text-neutral-600 dark:text-neutral-400">Total Pemasukan</p>
@@ -131,7 +165,7 @@ export default function TransactionChart() {
           </div>
         </div>
 
-        <div className="bg-white/95 dark:bg-neutral-900/95 rounded-xl border border-neutral-200/50 dark:border-neutral-700/50 p-6 shadow-xl backdrop-blur-sm">
+        <div className="bg-white/95 dark:bg-[#1e293b] rounded-xl border border-neutral-200/50 dark:border-neutral-700/50 p-6 shadow-xl backdrop-blur-sm">
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm font-medium text-neutral-600 dark:text-neutral-400">Total Pengeluaran</p>
@@ -151,7 +185,7 @@ export default function TransactionChart() {
           </div>
         </div>
 
-        <div className={`bg-white/95 dark:bg-neutral-900/95 rounded-xl border p-6 shadow-xl backdrop-blur-sm ${
+        <div className={`bg-white/95 dark:bg-[#1e293b] rounded-xl border p-6 shadow-xl backdrop-blur-sm ${
           data.summary.netIncome >= 0 
             ? 'border-secondary-500/30' 
             : 'border-danger-500/30'
@@ -191,7 +225,7 @@ export default function TransactionChart() {
       </div>
 
       {/* Trading-Style Chart Controls */}
-      <div className="bg-white/95 dark:bg-neutral-900/95 rounded-xl border border-neutral-200/50 dark:border-neutral-700/50 p-6 shadow-xl backdrop-blur-sm">
+      <div className="bg-white/95 dark:bg-[#1e293b] rounded-xl border border-neutral-200/50 dark:border-neutral-700/50 p-6 shadow-xl backdrop-blur-sm">
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 space-y-4 sm:space-y-0">
           <div className="flex items-center space-x-3">
             <div className="w-3 h-3 bg-primary-500 rounded-full animate-pulse"></div>
@@ -202,20 +236,20 @@ export default function TransactionChart() {
             <select
               value={period}
               onChange={(e) => setPeriod(e.target.value)}
-              className="px-3 py-2 border border-slate-600 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent bg-slate-800 text-slate-100"
+              className="px-3 py-2 border rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 bg-white text-gray-900 border-gray-300 dark:bg-slate-800 dark:text-slate-100 dark:border-slate-600"
             >
               <option value="6months">6M</option>
               <option value="1year">1Y</option>
               <option value="all">ALL</option>
             </select>
             
-            <div className="flex bg-slate-800 rounded-lg p-1 border border-slate-600">
+            <div className="flex rounded-lg p-1 border bg-gray-100 border-gray-300 dark:bg-slate-800 dark:border-slate-600">
               <button
                 onClick={() => setActiveChart('trend')}
                 className={`px-3 py-1 rounded-md text-sm font-medium transition-all duration-200 ${
                   activeChart === 'trend' 
                     ? 'bg-emerald-500 text-slate-900 shadow-sm' 
-                    : 'text-slate-400 hover:text-slate-100'
+                    : 'text-gray-600 hover:text-gray-900 dark:text-slate-400 dark:hover:text-slate-100'
                 }`}
               >
                 Chart
@@ -225,7 +259,7 @@ export default function TransactionChart() {
                 className={`px-3 py-1 rounded-md text-sm font-medium transition-all duration-200 ${
                   activeChart === 'income' 
                     ? 'bg-emerald-500 text-slate-900 shadow-sm' 
-                    : 'text-slate-400 hover:text-slate-100'
+                    : 'text-gray-600 hover:text-gray-900 dark:text-slate-400 dark:hover:text-slate-100'
                 }`}
               >
                 Income
@@ -235,7 +269,7 @@ export default function TransactionChart() {
                 className={`px-3 py-1 rounded-md text-sm font-medium transition-all duration-200 ${
                   activeChart === 'expense' 
                     ? 'bg-emerald-500 text-slate-900 shadow-sm' 
-                    : 'text-slate-400 hover:text-slate-100'
+                    : 'text-gray-600 hover:text-gray-900 dark:text-slate-400 dark:hover:text-slate-100'
                 }`}
               >
                 Expense
@@ -245,7 +279,7 @@ export default function TransactionChart() {
         </div>
 
         {/* Trading-Style Charts */}
-        <div className="h-80 bg-slate-900 rounded-lg border border-slate-700/50 p-4">
+        <div className="h-80 rounded-lg border p-4 bg-white border-gray-200 dark:bg-[#1e293b] dark:border-slate-700/50">
           {activeChart === 'trend' && (
             <ResponsiveContainer width="100%" height="100%">
               <LineChart data={data.chartData}>

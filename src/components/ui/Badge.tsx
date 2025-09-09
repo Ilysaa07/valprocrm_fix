@@ -18,14 +18,14 @@ export default function Badge({
   const baseClasses = 'inline-flex items-center font-medium rounded-full'
   
   const variantStyles = {
-    default: 'bg-gray-100 text-gray-800',
-    success: 'bg-green-100 text-green-800',
-    warning: 'bg-yellow-100 text-yellow-800',
-    danger: 'bg-red-100 text-red-800',
-    info: 'bg-blue-100 text-blue-800',
-    secondary: 'bg-gray-100 text-gray-800',
-    outline: 'bg-white text-gray-700 border border-gray-300',
-    destructive: 'bg-red-100 text-red-800'
+    default: 'bg-surface text-text-primary',
+    success: 'bg-success/20 text-success-dark',
+    warning: 'bg-warning/20 text-warning-dark',
+    danger: 'bg-error/20 text-error-dark',
+    info: 'bg-accent/20 text-accent-dark',
+    secondary: 'bg-surface text-text-secondary',
+    outline: 'bg-card text-text-primary border border-border',
+    destructive: 'bg-error/20 text-error-dark'
   }
   
   const sizeClasses = {

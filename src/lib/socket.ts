@@ -16,7 +16,7 @@ export interface ChatMessage {
   senderId: string
   content: string
   createdAt: Date
-  messageType?: 'TEXT' | 'FILE' | 'IMAGE' | 'AUDIO' | 'VIDEO' | 'DELETED'
+  messageType?: 'TEXT' | 'FILE' | 'IMAGE' | 'VIDEO' | 'DELETED'
   attachments?: ChatAttachment[]
   sender?: {
     id: string

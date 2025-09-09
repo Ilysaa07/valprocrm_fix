@@ -1,270 +1,366 @@
-'use client'
+"use client"
 
-import { useEffect, useState } from 'react'
-import AdminLayout from '@/components/layout/AdminLayout'
-import { 
-  Bell, 
-  CheckCircle, 
-  AlertCircle, 
-  Clock, 
-  CheckSquare,
-  User,
-  Filter
-} from 'lucide-react'
+import { useEffect, useMemo, useState, useTransition } from "react"
+import AdminLayout from "@/components/layout/AdminLayout"
+import { ScrollArea } from "@/components/ui/scroll-area"
+import {
+	Bell,
+	BellRing,
+	Check,
+	RefreshCcw,
+	Star,
+	Search,
+	Filter,
+	Bookmark,
+	Clock,
+	Info,
+	AlertTriangle,
+	CheckCircle,
+	Trash2,
+} from "lucide-react"
 
-interface Notification {
-  id: string
-  title: string
-  message: string
-  isRead: boolean
-  createdAt: string
-  task?: {
-    id: string
-    title: string
-  }
+type NotificationType = "info" | "success" | "warning" | "error"
+
+interface NotificationItem {
+	id: string
+	title: string
+	message: string
+	isRead: boolean
+	important?: boolean
+	type?: NotificationType
+	createdAt: string
+	actionUrl?: string
 }
 
-export default function AdminNotificationsPage() {
-  const [notifications, setNotifications] = useState<Notification[]>([])
-  const [isLoading, setIsLoading] = useState(true)
-  const [filter, setFilter] = useState('ALL')
+export default function Page() {
+	const [notifications, setNotifications] = useState<NotificationItem[]>([])
+	const [loading, setLoading] = useState(false)
+	const [isRefreshing, startRefresh] = useTransition()
+	const [activeTab, setActiveTab] = useState<"all" | "unread" | "important">(
+		"all",
+	)
+	const [query, setQuery] = useState("")
+	const [unreadCount, setUnreadCount] = useState(0)
 
-  useEffect(() => {
-    fetchNotifications()
-  }, [filter])
+	const filtered = useMemo(() => {
+		let list = notifications
+		if (activeTab === "unread") list = list.filter((n) => !n.isRead)
+		if (activeTab === "important") list = list.filter((n) => n.important)
+		if (query.trim()) {
+			const q = query.toLowerCase()
+			list = list.filter(
+				(n) =>
+					n.title.toLowerCase().includes(q) ||
+					n.message.toLowerCase().includes(q),
+			)
+		}
+		return list
+	}, [notifications, activeTab, query])
 
-  const fetchNotifications = async () => {
-    try {
-      setIsLoading(true)
-      const params = new URLSearchParams()
-      if (filter === 'UNREAD') {
-        params.append('unread', 'true')
-      }
-      
-      const response = await fetch(`/api/notifications?${params}`)
-      const data = await response.json()
-      
-      if (response.ok) {
-        setNotifications(data.notifications)
-      } else {
-        console.error('Error fetching notifications:', data.error)
-      }
-    } catch (error) {
-      console.error('Error fetching notifications:', error)
-    } finally {
-      setIsLoading(false)
-    }
-  }
+	const importantCount = useMemo(
+		() => notifications.filter((n) => n.important).length,
+		[notifications],
+	)
 
-  const markAsRead = async (notificationIds: string[]) => {
-    try {
-      const response = await fetch('/api/notifications', {
-        method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          action: 'mark_read',
-          notificationIds
-        }),
-      })
+	async function markAsRead(id: string) {
+		try {
+			await fetch("/api/notifications", {
+				method: "PATCH",
+				headers: { "Content-Type": "application/json" },
+				body: JSON.stringify({ action: "mark_read", notificationIds: [id] }),
+			})
+			setNotifications((prev) => prev.map((n) => (n.id === id ? { ...n, isRead: true } : n)))
+			if (typeof window !== 'undefined') window.dispatchEvent(new Event('notifications:updated'))
+		} catch {}
+	}
 
-      if (response.ok) {
-        fetchNotifications()
-      }
-    } catch (error) {
-      console.error('Error marking notifications as read:', error)
-    }
-  }
+	async function deleteNotification(id: string) {
+		try {
+			await fetch("/api/notifications", {
+				method: "DELETE",
+				headers: { "Content-Type": "application/json" },
+				body: JSON.stringify({ notificationIds: [id] }),
+			})
+			setNotifications((prev) => prev.filter((n) => n.id !== id))
+			if (typeof window !== 'undefined') window.dispatchEvent(new Event('notifications:updated'))
+		} catch {}
+	}
 
-  const markAllAsRead = async () => {
-    try {
-      const response = await fetch('/api/notifications', {
-        method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          action: 'mark_all_read'
-        }),
-      })
+	async function deleteAllNotifications() {
+		try {
+			await fetch("/api/notifications?all=true", { method: "DELETE" })
+			setNotifications([])
+			setUnreadCount(0)
+			if (typeof window !== 'undefined') window.dispatchEvent(new Event('notifications:updated'))
+		} catch {}
+	}
 
-      if (response.ok) {
-        fetchNotifications()
-        alert('Semua notifikasi telah ditandai sebagai dibaca')
-      }
-    } catch (error) {
-      console.error('Error marking all notifications as read:', error)
-    }
-  }
+	async function fetchCounts() {
+		try {
+			const res = await fetch("/api/notifications/count", { cache: "no-store" })
+			if (res.ok) {
+				const data = await res.json()
+				setUnreadCount(
+					(data && typeof data.count === "number") ? data.count : (data?.unread ?? 0)
+				)
+			}
+		} catch {}
+	}
 
-  const getNotificationIcon = (title: string) => {
-    if (title.includes('Tugas Baru') || title.includes('Tugas')) {
-      return <CheckSquare className="h-5 w-5 text-blue-500" />
-    } else if (title.includes('Registrasi')) {
-      return <User className="h-5 w-5 text-green-500" />
-    } else if (title.includes('Status')) {
-      return <AlertCircle className="h-5 w-5 text-yellow-500" />
-    }
-    return <Bell className="h-5 w-5 text-gray-500" />
-  }
+	async function fetchNotifications() {
+		setLoading(true)
+		try {
+			const res = await fetch("/api/notifications", { cache: "no-store" })
+			if (res.ok) {
+				const raw = await res.json()
+				const list: unknown = Array.isArray(raw) ? raw : (raw?.notifications ?? raw)
+				const arr = Array.isArray(list) ? (list as NotificationItem[]) : []
+				setNotifications(
+					arr.slice().sort(
+						(a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
+					),
+				)
+				if (typeof raw?.unreadCount === "number") {
+					setUnreadCount(raw.unreadCount)
+				}
+			}
+		} finally {
+			setLoading(false)
+			fetchCounts()
+		}
+	}
 
-  const filteredNotifications = notifications.filter(notification => {
-    if (filter === 'UNREAD') return !notification.isRead
-    if (filter === 'READ') return notification.isRead
-    return true
-  })
+	useEffect(() => {
+		fetchNotifications()
+		// eslint-disable-next-line react-hooks/exhaustive-deps
+	}, [])
 
-  const unreadCount = notifications.filter(n => !n.isRead).length
+	function iconByType(type?: NotificationType) {
+		switch (type) {
+			case "success":
+				return <CheckCircle className="h-4 w-4 text-green-500" />
+			case "warning":
+				return <AlertTriangle className="h-4 w-4 text-yellow-500" />
+			case "error":
+				return <AlertTriangle className="h-4 w-4 text-red-500" />
+			default:
+				return <Info className="h-4 w-4 text-blue-500" />
+		}
+	}
 
-  return (
-    <AdminLayout>
-      <div className="space-y-6">
-        {/* Header */}
-        <div className="bg-white rounded-lg shadow-sm p-6">
-          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-            <div>
-              <h1 className="text-2xl font-bold text-gray-900">Notifikasi</h1>
-              <p className="text-gray-600 mt-1">
-                {unreadCount > 0 ? `${unreadCount} notifikasi belum dibaca` : 'Semua notifikasi sudah dibaca'}
-              </p>
-            </div>
-            
-            <div className="flex items-center space-x-3">
-              <div className="flex items-center space-x-2">
-                <Filter className="h-4 w-4 text-gray-500" />
-                <select
-                  value={filter}
-                  onChange={(e) => setFilter(e.target.value)}
-                  className="border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                >
-                  <option value="ALL">Semua</option>
-                  <option value="UNREAD">Belum Dibaca</option>
-                  <option value="READ">Sudah Dibaca</option>
-                </select>
-              </div>
-              
-              {unreadCount > 0 && (
-                <button
-                  onClick={markAllAsRead}
-                  className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 text-sm"
-                >
-                  Tandai Semua Dibaca
-                </button>
-              )}
-            </div>
-          </div>
-        </div>
+	async function markAllAsRead() {
+		// Optimistic UI
+		setNotifications((prev) => prev.map((n) => ({ ...n, isRead: true })))
+		setUnreadCount(0)
+		try {
+			await fetch("/api/notifications", {
+				method: "PATCH",
+				headers: { "Content-Type": "application/json" },
+				body: JSON.stringify({ action: "mark_all_read" }),
+			})
+		} finally {
+			fetchCounts()
+			// Notify dropdown to refresh
+			if (typeof window !== 'undefined') {
+				window.dispatchEvent(new Event('notifications:updated'))
+			}
+		}
+	}
 
-        {/* Notifications List */}
-        <div className="bg-white rounded-lg shadow-sm">
-          {isLoading ? (
-            <div className="flex items-center justify-center h-64">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-            </div>
-          ) : filteredNotifications.length === 0 ? (
-            <div className="text-center py-12">
-              <Bell className="mx-auto h-12 w-12 text-gray-400" />
-              <h3 className="mt-2 text-sm font-medium text-gray-900">
-                {filter === 'UNREAD' ? 'Tidak ada notifikasi belum dibaca' : 'Tidak ada notifikasi'}
-              </h3>
-              <p className="mt-1 text-sm text-gray-500">
-                {filter === 'UNREAD' 
-                  ? 'Semua notifikasi sudah dibaca.'
-                  : 'Notifikasi akan muncul di sini ketika ada aktivitas baru.'
-                }
-              </p>
-            </div>
-          ) : (
-            <div className="divide-y divide-gray-200">
-              {filteredNotifications.map((notification) => (
-                <div
-                  key={notification.id}
-                  className={`p-6 hover:bg-gray-50 transition-colors ${
-                    !notification.isRead ? 'bg-blue-50 border-l-4 border-l-blue-500' : ''
-                  }`}
-                >
-                  <div className="flex items-start space-x-4">
-                    <div className="flex-shrink-0 mt-1">
-                      {getNotificationIcon(notification.title)}
-                    </div>
-                    
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-start justify-between">
-                        <div className="flex-1">
-                          <h3 className={`text-sm font-medium ${
-                            !notification.isRead ? 'text-gray-900' : 'text-gray-700'
-                          }`}>
-                            {notification.title}
-                          </h3>
-                          <p className={`mt-1 text-sm ${
-                            !notification.isRead ? 'text-gray-700' : 'text-gray-500'
-                          }`}>
-                            {notification.message}
-                          </p>
-                          
-                          {notification.task && (
-                            <div className="mt-2">
-                              <a
-                                href="/admin/tasks"
-                                className="text-sm text-blue-600 hover:text-blue-700 font-medium"
-                              >
-                                Lihat Tugas: {notification.task.title}
-                              </a>
-                            </div>
-                          )}
-                        </div>
-                        
-                        <div className="flex items-center space-x-2 ml-4">
-                          <div className="text-xs text-gray-500">
-                            {new Date(notification.createdAt).toLocaleString('id-ID')}
-                          </div>
-                          
-                          {!notification.isRead && (
-                            <button
-                              onClick={() => markAsRead([notification.id])}
-                              className="text-blue-600 hover:text-blue-700 p-1"
-                              title="Tandai sebagai dibaca"
-                            >
-                              <CheckCircle className="h-4 w-4" />
-                            </button>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
+	async function toggleImportant(id: string, important: boolean) {
+		setNotifications((prev) =>
+			prev.map((n) => (n.id === id ? { ...n, important: !important } : n)),
+		)
+		// Hanya update lokal; endpoint untuk toggle penting belum tersedia.
+		if (typeof window !== 'undefined') {
+			window.dispatchEvent(new Event('notifications:updated'))
+		}
+	}
 
-        {/* Summary Stats */}
-        {notifications.length > 0 && (
-          <div className="bg-white rounded-lg shadow-sm p-6">
-            <h3 className="text-lg font-semibold text-gray-900 mb-4">Ringkasan Notifikasi</h3>
-            
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div className="text-center p-4 bg-blue-50 rounded-lg">
-                <div className="text-2xl font-bold text-blue-600">{notifications.length}</div>
-                <div className="text-sm text-blue-700">Total Notifikasi</div>
-              </div>
-              
-              <div className="text-center p-4 bg-red-50 rounded-lg">
-                <div className="text-2xl font-bold text-red-600">{unreadCount}</div>
-                <div className="text-sm text-red-700">Belum Dibaca</div>
-              </div>
-              
-              <div className="text-center p-4 bg-green-50 rounded-lg">
-                <div className="text-2xl font-bold text-green-600">
-                  {notifications.length - unreadCount}
-                </div>
-                <div className="text-sm text-green-700">Sudah Dibaca</div>
-              </div>
-            </div>
-          </div>
-        )}
-      </div>
-    </AdminLayout>
-  )
+	return (
+		<AdminLayout>
+			<div className="max-w-7xl mx-auto p-6 space-y-8">
+				{/* Header */}
+				<div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+					<div className="flex items-center space-x-3">
+						<div className="relative">
+							<Bell className="h-12 w-12 text-accent" />
+							{unreadCount > 0 && (
+								<span className="absolute -top-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full bg-red-500 text-xs text-white">
+									{unreadCount}
+								</span>
+							)}
+						</div>
+
+						<div>
+							<h1 className="text-4xl font-bold text-text-primary">Notifikasi</h1>
+							<p className="text-lg text-text-secondary">
+								Kelola dan monitor semua notifikasi sistem
+							</p>
+						</div>
+					</div>
+
+					<div className="flex flex-wrap items-center gap-3">
+						<div className="flex items-center space-x-2">
+							<div className="flex items-center space-x-1 px-3 py-1 bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300 rounded-full">
+								<BellRing className="h-4 w-4" />
+								<span className="text-sm font-medium">{unreadCount}</span>
+							</div>
+							<div className="flex items-center space-x-1 px-3 py-1 bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-300 rounded-full">
+								<Star className="h-4 w-4" />
+								<span className="text-sm font-medium">{importantCount}</span>
+							</div>
+						</div>
+
+						<button
+							onClick={() => startRefresh(() => fetchNotifications())}
+							className="px-3 py-2 bg-surface text-text-secondary rounded-lg hover:bg-card-hover transition-colors duration-200 flex items-center space-x-2"
+							disabled={isRefreshing || loading}
+						>
+							<RefreshCcw className={`h-4 w-4 ${isRefreshing ? "animate-spin" : ""}`} />
+							<span>Refresh</span>
+						</button>
+
+						<button
+							onClick={markAllAsRead}
+							className="px-4 py-2 bg-accent text-text-inverse rounded-lg hover:bg-accent-hover transition-colors duration-200 flex items-center space-x-2"
+							disabled={unreadCount === 0}
+						>
+							<Check className="h-4 w-4" />
+							<span>Tandai Semua Dibaca</span>
+						</button>
+
+						<button
+							onClick={deleteAllNotifications}
+							className="px-3 py-2 bg-surface text-red-600 rounded-lg hover:bg-card-hover transition-colors duration-200 flex items-center space-x-2"
+							disabled={notifications.length === 0}
+						>
+							<Trash2 className="h-4 w-4" />
+							<span>Hapus Semua</span>
+						</button>
+					</div>
+				</div>
+
+				{/* Controls */}
+				<div className="flex flex-wrap items-center gap-3">
+					<div className="flex items-center gap-2 rounded-lg border border-border bg-surface px-3 py-2">
+						<Search className="h-4 w-4 text-text-secondary" />
+						<input
+							type="text"
+							placeholder="Cari notifikasi..."
+							value={query}
+							onChange={(e) => setQuery(e.target.value)}
+							className="bg-transparent outline-none text-sm"
+						/>
+					</div>
+					<button className="px-3 py-2 rounded-lg bg-surface text-text-secondary hover:bg-card-hover inline-flex items-center gap-2">
+						<Filter className="h-4 w-4" /> Filter
+					</button>
+				</div>
+
+				{/* Tabs */}
+				<div className="flex border-b border-slate-200 dark:border-slate-700">
+					{([
+						{ key: "all", label: "Semua" },
+						{ key: "unread", label: "Belum Dibaca" },
+						{ key: "important", label: "Penting" },
+					] as const).map((tab) => (
+						<button
+							key={tab.key}
+							onClick={() => setActiveTab(tab.key)}
+							className={`px-4 py-2 text-sm font-medium ${
+								activeTab === tab.key
+									? "text-accent border-b-2 border-blue-600 dark:border-blue-400"
+								: "text-text-secondary hover:text-slate-900 dark:hover:text-white"
+							}`}
+						>
+							{tab.label}
+							{tab.key === "unread" && unreadCount > 0 && (
+								<span className="ml-2 px-1.5 py-0.5 text-xs bg-blue-100 text-blue-800 dark:bg-blue-900/50 dark:text-blue-300 rounded-full">
+									{unreadCount}
+								</span>
+							)}
+							{tab.key === "important" && importantCount > 0 && (
+								<span className="ml-2 px-1.5 py-0.5 text-xs bg-yellow-100 text-yellow-800 dark:bg-yellow-900/50 dark:text-yellow-300 rounded-full">
+									{importantCount}
+								</span>
+							)}
+						</button>
+					))}
+				</div>
+
+				{/* List */}
+				<div className="rounded-lg border border-border bg-surface">
+					<ScrollArea className="max-h-[70vh]">
+						{loading && (
+							<div className="p-6 text-sm text-text-secondary">Memuat notifikasi...</div>
+						)}
+						{!loading && filtered.length === 0 && (
+							<div className="p-10 text-center text-text-secondary">Tidak ada notifikasi</div>
+						)}
+						<ul className="divide-y divide-border">
+							{filtered.map((n) => (
+								<li key={n.id} className={`p-4 transition-all duration-200 transform hover:scale-[1.01] ${
+									n.isRead 
+										? 'hover:bg-card-hover' 
+										: 'bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/30 dark:to-indigo-900/30 border-l-4 border-blue-500 dark:border-blue-400 hover:shadow-md'
+								}`}>
+									<div className="flex items-start gap-3">
+										<div className="mt-1">{iconByType(n.type)}</div>
+										<div className="flex-1 min-w-0">
+											<div className="flex items-center justify-between gap-2">
+												<div className="flex items-center gap-2">
+													<h3 className={`text-sm font-medium ${n.isRead ? "text-text-secondary" : "text-blue-900 dark:text-blue-100 font-semibold"}`}>
+														{n.title}
+													</h3>
+													{!n.isRead && (
+														<span className="h-2.5 w-2.5 rounded-full bg-gradient-to-r from-blue-500 to-indigo-500 animate-pulse shadow-lg ring-2 ring-blue-200 dark:ring-blue-800/50"></span>
+													)}
+												</div>
+												<div className="flex items-center gap-2 text-xs text-text-secondary">
+													<Clock className="h-3.5 w-3.5" />
+													<span>{new Date(n.createdAt).toLocaleString("id-ID", { hour: "2-digit", minute: "2-digit", day: "2-digit", month: "short" })}</span>
+												</div>
+											</div>
+											<p className={`mt-1 text-sm line-clamp-3 ${n.isRead ? "text-text-secondary" : "text-blue-800 dark:text-blue-200"}`}>{n.message}</p>
+											<div className="mt-3 flex items-center gap-2">
+												<button
+													onClick={() => toggleImportant(n.id, !!n.important)}
+													className={`inline-flex items-center gap-2 rounded-md px-2 py-1 text-xs transition-colors ${
+														n.important
+															? "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/40 dark:text-yellow-300"
+															: "bg-surface hover:bg-card-hover text-text-secondary"
+													}`}
+												>
+													<Bookmark className="h-3.5 w-3.5" />
+													{n.important ? "Diutamakan" : "Tandai penting"}
+												</button>
+												{!n.isRead && (
+													<button
+														onClick={() => markAsRead(n.id)}
+														className="inline-flex items-center gap-2 rounded-md px-2 py-1 text-xs bg-surface hover:bg-card-hover text-text-secondary"
+													>
+														<Check className="h-3.5 w-3.5" />
+														Tandai dibaca
+													</button>
+												)}
+												<button
+													onClick={() => deleteNotification(n.id)}
+													className="inline-flex items-center gap-2 rounded-md px-2 py-1 text-xs bg-surface hover:bg-card-hover text-red-600"
+												>
+													<Trash2 className="h-3.5 w-3.5" />
+													Hapus
+												</button>
+												{/* Buka dihilangkan sesuai permintaan */}
+											</div>
+										</div>
+									</div>
+								</li>
+							))}
+						</ul>
+					</ScrollArea>
+				</div>
+			</div>
+		</AdminLayout>
+	)
 }

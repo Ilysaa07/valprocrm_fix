@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { useSession } from 'next-auth/react'
-import { X, Calendar, Clock, MapPin, Users, Link, Tag, AlertCircle, Trash2 } from 'lucide-react'
+import { X, Trash2 } from 'lucide-react'
 import { useToast } from '@/components/providers/ToastProvider'
 
 interface CalendarEvent {
@@ -20,7 +20,7 @@ interface CalendarEvent {
   visibility: string
   createdBy: {
     id: string
-    name: string
+    fullName: string
     email: string
   }
   attendees: Array<{
@@ -32,7 +32,7 @@ interface CalendarEvent {
     isOrganizer: boolean
     user?: {
       id: string
-      name: string
+      fullName: string
       email: string
     }
   }>
@@ -42,7 +42,7 @@ interface CalendarEvent {
   }
   contact?: {
     id: string
-    name: string
+    fullName: string
   }
 }
 
@@ -50,7 +50,7 @@ interface EventModalProps {
   event: CalendarEvent | null
   isOpen: boolean
   onClose: () => void
-  onSave: () => void
+  onSave: (event?: CalendarEvent) => void
   onDelete: () => void
   isCreating: boolean
 }
@@ -68,19 +68,12 @@ interface Contact {
   companyName?: string
 }
 
-interface User {
-  id: string
-  name: string
-  email: string
-}
-
 export default function EventModal({ event, isOpen, onClose, onSave, onDelete, isCreating }: EventModalProps) {
-  const { data: session } = useSession()
+  const { data: _session } = useSession()
   const { showToast } = useToast()
   const [loading, setLoading] = useState(false)
   const [projects, setProjects] = useState<Project[]>([])
   const [contacts, setContacts] = useState<Contact[]>([])
-  const [users, setUsers] = useState<User[]>([])
   
   const [formData, setFormData] = useState({
     title: '',
@@ -113,10 +106,8 @@ export default function EventModal({ event, isOpen, onClose, onSave, onDelete, i
     if (isOpen) {
       fetchProjects()
       fetchContacts()
-      fetchUsers()
       
       if (event && !isCreating) {
-        // Populate form with existing event data
         const startTime = new Date(event.startTime)
         const endTime = new Date(event.endTime)
         
@@ -143,7 +134,6 @@ export default function EventModal({ event, isOpen, onClose, onSave, onDelete, i
           reminders: []
         })
       } else {
-        // Reset form for new event
         const now = new Date()
         const oneHourLater = new Date(now.getTime() + 60 * 60 * 1000)
         
@@ -177,10 +167,10 @@ export default function EventModal({ event, isOpen, onClose, onSave, onDelete, i
       const response = await fetch('/api/projects')
       if (response.ok) {
         const data = await response.json()
-        setProjects(data)
+        setProjects(data.projects || [])
       }
     } catch (error) {
-      console.error('Error fetching projects:', error)
+      setProjects([])
     }
   }
 
@@ -189,43 +179,41 @@ export default function EventModal({ event, isOpen, onClose, onSave, onDelete, i
       const response = await fetch('/api/contacts')
       if (response.ok) {
         const data = await response.json()
-        setContacts(data)
+        setContacts(data.contacts || [])
       }
     } catch (error) {
-      console.error('Error fetching contacts:', error)
+      setContacts([])
     }
   }
 
-  const fetchUsers = async () => {
-    try {
-      const response = await fetch('/api/users')
-      if (response.ok) {
-        const data = await response.json()
-        setUsers(data)
-      }
-    } catch (error) {
-      console.error('Error fetching users:', error)
-    }
+  interface EventPayload {
+    title: string
+    description?: string
+    startTime: string
+    endTime: string
+    allDay: boolean
+    location?: string
+    meetingLink?: string
+    category: 'MEETING' | 'DEADLINE' | 'REMINDER' | 'INTERNAL' | 'CLIENT' | 'PROJECT' | 'PERSONAL' | 'HOLIDAY'
+    priority: 'LOW' | 'MEDIUM' | 'HIGH' | 'URGENT'
+    status: 'CONFIRMED' | 'TENTATIVE' | 'CANCELLED'
+    visibility: 'PUBLIC' | 'PRIVATE' | 'CONFIDENTIAL'
+    projectId?: string
+    contactId?: string
+    attendees: Array<{ userId?: string; email?: string; name?: string; isOrganizer: boolean }>
+    reminders: Array<{ reminderTime: string; reminderType: 'NOTIFICATION' | 'EMAIL' | 'SMS' | 'WHATSAPP'; message?: string }>
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     
     if (!formData.title.trim()) {
-      showToast({
-        title: 'Error',
-        message: 'Event title is required',
-        type: 'error'
-      })
+      showToast('Event title is required', { type: 'error' })
       return
     }
 
     if (new Date(formData.endTime) <= new Date(formData.startTime)) {
-      showToast({
-        title: 'Error',
-        message: 'End time must be after start time',
-        type: 'error'
-      })
+      showToast('End time must be after start time', { type: 'error' })
       return
     }
 
@@ -234,32 +222,54 @@ export default function EventModal({ event, isOpen, onClose, onSave, onDelete, i
     try {
       const url = isCreating ? '/api/calendar/events' : `/api/calendar/events/${event?.id}`
       const method = isCreating ? 'POST' : 'PUT'
+
+      const payload: EventPayload = {
+        title: formData.title,
+        description: formData.description || undefined,
+        startTime: new Date(formData.startTime).toISOString(),
+        endTime: new Date(formData.endTime).toISOString(),
+        allDay: formData.allDay,
+        location: formData.location || undefined,
+        meetingLink: formData.meetingLink || undefined,
+        category: formData.category as EventPayload['category'],
+        priority: formData.priority as EventPayload['priority'],
+        status: formData.status as EventPayload['status'],
+        visibility: formData.visibility as EventPayload['visibility'],
+        attendees: (formData.attendees || []).map(a => ({
+          userId: a.userId || undefined,
+          email: a.email || undefined,
+          name: a.name || undefined,
+          isOrganizer: !!a.isOrganizer
+        })),
+        reminders: (formData.reminders || []).map(r => ({
+          reminderTime: new Date(r.reminderTime).toISOString(),
+          reminderType: (r.reminderType || 'NOTIFICATION') as EventPayload['reminders'][number]['reminderType'],
+          message: r.message || undefined
+        }))
+      }
+      if (formData.projectId) payload.projectId = formData.projectId
+      if (formData.contactId) payload.contactId = formData.contactId
       
       const response = await fetch(url, {
         method,
         headers: {
           'Content-Type': 'application/json'
         },
-        body: JSON.stringify({
-          ...formData,
-          projectId: formData.projectId || null,
-          contactId: formData.contactId || null
-        })
+        body: JSON.stringify(payload)
       })
 
       if (!response.ok) {
-        const error = await response.json()
-        throw new Error(error.error || 'Failed to save event')
+        const errorData = await response.json()
+        throw new Error(errorData.error || 'Failed to save event')
       }
 
-      onSave()
+      const result = await response.json()
+      showToast(`Event ${isCreating ? 'created' : 'updated'} successfully`, { type: 'success' })
+      onSave(result.event || result)
+      onClose()
     } catch (error) {
       console.error('Error saving event:', error)
-      showToast({
-        title: 'Error',
-        message: error instanceof Error ? error.message : 'Failed to save event',
-        type: 'error'
-      })
+      showToast(error instanceof Error ? error.message : 'Failed to save event', { type: 'error' })
     } finally {
       setLoading(false)
     }
@@ -284,12 +294,7 @@ export default function EventModal({ event, isOpen, onClose, onSave, onDelete, i
 
       onDelete()
     } catch (error) {
-      console.error('Error deleting event:', error)
-      showToast({
-        title: 'Error',
-        message: error instanceof Error ? error.message : 'Failed to delete event',
-        type: 'error'
-      })
+      showToast(error instanceof Error ? error.message : 'Failed to delete event', { type: 'error' })
     } finally {
       setLoading(false)
     }
@@ -309,7 +314,7 @@ export default function EventModal({ event, isOpen, onClose, onSave, onDelete, i
     }))
   }
 
-  const updateAttendee = (index: number, field: string, value: string | boolean) => {
+  const updateAttendee = (index: number, field: string, value: string) => {
     setFormData(prev => ({
       ...prev,
       attendees: prev.attendees.map((attendee, i) => 
@@ -318,38 +323,64 @@ export default function EventModal({ event, isOpen, onClose, onSave, onDelete, i
     }))
   }
 
+  const toggleAttendeeOrganizer = (index: number) => {
+    setFormData(prev => ({
+      ...prev,
+      attendees: prev.attendees.map((attendee, i) => 
+        i === index ? { ...attendee, isOrganizer: !attendee.isOrganizer } : attendee
+      )
+    }))
+  }
+
+  const addReminder = () => {
+    const now = new Date()
+    setFormData(prev => ({
+      ...prev,
+      reminders: [...prev.reminders, {
+        reminderTime: now.toISOString().slice(0, 16),
+        reminderType: 'NOTIFICATION',
+        message: ''
+      }]
+    }))
+  }
+
+  const removeReminder = (index: number) => {
+    setFormData(prev => ({
+      ...prev,
+      reminders: prev.reminders.filter((_, i) => i !== index)
+    }))
+  }
+
+  const updateReminder = (index: number, field: string, value: string) => {
+    setFormData(prev => ({
+      ...prev,
+      reminders: prev.reminders.map((reminder, i) => 
+        i === index ? { ...reminder, [field]: value } : reminder
+      )
+    }))
+  }
+
   if (!isOpen) return null
 
   return (
-    <div className="fixed inset-0 z-50 overflow-y-auto">
-      <div className="flex items-center justify-center min-h-screen px-4 pt-4 pb-20 text-center sm:block sm:p-0">
-        <div className="fixed inset-0 transition-opacity bg-gray-500 bg-opacity-75" onClick={onClose}></div>
-        
-        <div className="inline-block w-full max-w-2xl p-6 my-8 overflow-hidden text-left align-middle transition-all transform bg-white dark:bg-gray-800 shadow-xl rounded-lg">
-          {/* Header */}
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
+        <div className="p-6">
           <div className="flex items-center justify-between mb-6">
-            <h3 className="text-lg font-medium text-gray-900 dark:text-white">
+            <h2 className="text-2xl font-bold text-gray-900 dark:text-white">
               {isCreating ? 'Create New Event' : 'Edit Event'}
-            </h3>
-            <div className="flex items-center space-x-2">
-              {!isCreating && (
-                <button
-                  onClick={handleDelete}
-                  disabled={loading}
-                  className="p-2 text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors"
-                >
-                  <Trash2 className="h-4 w-4" />
-                </button>
-              )}
-              <button onClick={onClose} className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors">
-                <X className="h-4 w-4" />
-              </button>
-            </div>
+            </h2>
+            <button
+              onClick={onClose}
+              className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+            >
+              <X className="h-6 w-6" />
+            </button>
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-6">
-            {/* Basic Info */}
-            <div className="grid grid-cols-1 gap-4">
+            {/* Basic Information */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                   Event Title *
@@ -366,20 +397,40 @@ export default function EventModal({ event, isOpen, onClose, onSave, onDelete, i
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                  Description
+                  Category
                 </label>
-                <textarea
-                  value={formData.description}
-                  onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
-                  rows={3}
+                <select
+                  value={formData.category}
+                  onChange={(e) => setFormData(prev => ({ ...prev, category: e.target.value }))}
                   className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  placeholder="Event description (optional)"
-                />
+                >
+                  <option value="MEETING">Meeting</option>
+                  <option value="DEADLINE">Deadline</option>
+                  <option value="REMINDER">Reminder</option>
+                  <option value="INTERNAL">Internal</option>
+                  <option value="CLIENT">Client</option>
+                  <option value="PROJECT">Project</option>
+                  <option value="PERSONAL">Personal</option>
+                  <option value="HOLIDAY">Holiday</option>
+                </select>
               </div>
             </div>
 
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                Description
+              </label>
+              <textarea
+                value={formData.description}
+                onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
+                rows={3}
+                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                placeholder="Enter event description"
+              />
+            </div>
+
             {/* Date & Time */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                   Start Time *
@@ -405,22 +456,21 @@ export default function EventModal({ event, isOpen, onClose, onSave, onDelete, i
                   required
                 />
               </div>
+
+              <div className="flex items-center">
+                <label className="flex items-center">
+                  <input
+                    type="checkbox"
+                    checked={formData.allDay}
+                    onChange={(e) => setFormData(prev => ({ ...prev, allDay: e.target.checked }))}
+                    className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                  />
+                  <span className="ml-2 text-sm text-gray-700 dark:text-gray-300">All Day</span>
+                </label>
+              </div>
             </div>
 
-            <div className="flex items-center">
-              <input
-                type="checkbox"
-                id="allDay"
-                checked={formData.allDay}
-                onChange={(e) => setFormData(prev => ({ ...prev, allDay: e.target.checked }))}
-                className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
-              />
-              <label htmlFor="allDay" className="ml-2 text-sm text-gray-700 dark:text-gray-300">
-                All day event
-              </label>
-            </div>
-
-            {/* Location & Link */}
+            {/* Additional Details */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
@@ -431,7 +481,7 @@ export default function EventModal({ event, isOpen, onClose, onSave, onDelete, i
                   value={formData.location}
                   onChange={(e) => setFormData(prev => ({ ...prev, location: e.target.value }))}
                   className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  placeholder="Event location"
+                  placeholder="Enter location"
                 />
               </div>
 
@@ -444,33 +494,13 @@ export default function EventModal({ event, isOpen, onClose, onSave, onDelete, i
                   value={formData.meetingLink}
                   onChange={(e) => setFormData(prev => ({ ...prev, meetingLink: e.target.value }))}
                   className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  placeholder="https://..."
+                  placeholder="Enter meeting link"
                 />
               </div>
             </div>
 
-            {/* Categories & Settings */}
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                  Category
-                </label>
-                <select
-                  value={formData.category}
-                  onChange={(e) => setFormData(prev => ({ ...prev, category: e.target.value }))}
-                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                >
-                  <option value="MEETING">Meeting</option>
-                  <option value="DEADLINE">Deadline</option>
-                  <option value="REMINDER">Reminder</option>
-                  <option value="INTERNAL">Internal</option>
-                  <option value="CLIENT">Client</option>
-                  <option value="PROJECT">Project</option>
-                  <option value="PERSONAL">Personal</option>
-                  <option value="HOLIDAY">Holiday</option>
-                </select>
-              </div>
-
+            {/* Priority & Status */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                   Priority
@@ -530,11 +560,11 @@ export default function EventModal({ event, isOpen, onClose, onSave, onDelete, i
                   className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 >
                   <option value="">No project</option>
-                  {projects.map(project => (
+                  {projects?.map(project => (
                     <option key={project.id} value={project.id}>
                       {project.name}
                     </option>
-                  ))}
+                  )) || []}
                 </select>
               </div>
 
@@ -548,11 +578,11 @@ export default function EventModal({ event, isOpen, onClose, onSave, onDelete, i
                   className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 >
                   <option value="">No contact</option>
-                  {contacts.map(contact => (
+                  {contacts?.map(contact => (
                     <option key={contact.id} value={contact.id}>
                       {contact.name} {contact.companyName && `(${contact.companyName})`}
                     </option>
-                  ))}
+                  )) || []}
                 </select>
               </div>
             </div>
@@ -591,7 +621,71 @@ export default function EventModal({ event, isOpen, onClose, onSave, onDelete, i
                     />
                     <button
                       type="button"
+                      onClick={() => toggleAttendeeOrganizer(index)}
+                      className={`px-3 py-2 text-xs rounded-lg ${
+                        attendee.isOrganizer
+                          ? 'bg-blue-600 text-white'
+                          : 'bg-gray-200 text-gray-700 dark:bg-gray-600 dark:text-gray-300'
+                      }`}
+                    >
+                      Organizer
+                    </button>
+                    <button
+                      type="button"
                       onClick={() => removeAttendee(index)}
+                      className="p-2 text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors"
+                    >
+                      <X className="h-4 w-4" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Reminders */}
+            <div>
+              <div className="flex items-center justify-between mb-3">
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                  Reminders
+                </label>
+                <button
+                  type="button"
+                  onClick={addReminder}
+                  className="text-sm text-blue-600 hover:text-blue-700"
+                >
+                  + Add Reminder
+                </button>
+              </div>
+              
+              <div className="space-y-2">
+                {formData.reminders.map((reminder, index) => (
+                  <div key={index} className="flex items-center space-x-2">
+                    <input
+                      type="datetime-local"
+                      value={reminder.reminderTime}
+                      onChange={(e) => updateReminder(index, 'reminderTime', e.target.value)}
+                      className="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    />
+                    <select
+                      value={reminder.reminderType}
+                      onChange={(e) => updateReminder(index, 'reminderType', e.target.value)}
+                      className="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    >
+                      <option value="NOTIFICATION">Notification</option>
+                      <option value="EMAIL">Email</option>
+                      <option value="SMS">SMS</option>
+                      <option value="WHATSAPP">WhatsApp</option>
+                    </select>
+                    <input
+                      type="text"
+                      value={reminder.message || ''}
+                      onChange={(e) => updateReminder(index, 'message', e.target.value)}
+                      className="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      placeholder="Message (optional)"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => removeReminder(index)}
                       className="p-2 text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors"
                     >
                       <X className="h-4 w-4" />

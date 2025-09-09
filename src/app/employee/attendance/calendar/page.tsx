@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import EmployeeLayout from '@/components/layout/EmployeeLayout'
 
-type AttendanceStatus = 'PRESENT' | 'SICK' | 'LEAVE' | 'WFH'
+type AttendanceStatus = 'PRESENT' | 'LATE' | 'SICK' | 'LEAVE' | 'WFH'
 
 interface AttendanceRecord {
   id: string

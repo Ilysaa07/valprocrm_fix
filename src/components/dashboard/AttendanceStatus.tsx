@@ -32,6 +32,8 @@ export function AttendanceStatus({
     switch (status) {
       case 'PRESENT':
         return 'bg-green-100 text-green-800'
+      case 'LATE':
+        return 'bg-yellow-100 text-yellow-800'
       case 'ABSENT':
         return 'bg-red-100 text-red-800'
       case 'SICK':
@@ -49,6 +51,8 @@ export function AttendanceStatus({
     switch (status) {
       case 'PRESENT':
         return 'Hadir'
+      case 'LATE':
+        return 'Terlambat'
       case 'ABSENT':
         return 'Tidak Hadir'
       case 'SICK':

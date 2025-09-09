@@ -61,7 +61,18 @@ export default function AdminAnalytics() {
 
   useEffect(() => {
     fetchAnalyticsData()
+    // Resilient background refresh
     pollingRef.current = setInterval(fetchAnalyticsData, 30000)
+
+    // Also refresh when tab refocuses or becomes visible
+    const handleVisibility = () => {
+      if (document.visibilityState === 'visible') fetchAnalyticsData()
+    }
+    const handleFocus = () => fetchAnalyticsData()
+    document.addEventListener('visibilitychange', handleVisibility)
+    window.addEventListener('focus', handleFocus)
+
+    // Live updates via socket if available
     ;(async () => {
       try {
         const mod = (await import('socket.io-client')) as unknown as { io?: (url: string, opts: Record<string, unknown>) => MinimalSocket; default?: (url: string, opts: Record<string, unknown>) => MinimalSocket }
@@ -71,40 +82,41 @@ export default function AdminAnalytics() {
         const refresh = () => fetchAnalyticsData()
         s.on('attendance_updated', refresh)
         s.on('leave_status_changed', refresh)
+        s.on('employee_created', refresh)
+        s.on('employee_deleted', refresh)
       } catch {}
     })()
+
     return () => {
       if (pollingRef.current) clearInterval(pollingRef.current)
+      document.removeEventListener('visibilitychange', handleVisibility)
+      window.removeEventListener('focus', handleFocus)
       if (socketRef.current) socketRef.current.disconnect()
     }
   }, [appUrl])
 
   const fetchAnalyticsData = async () => {
     try {
-      // Fetch attendance data for analytics
-      const [attendanceRes, requestsRes, monthlyTrendsRes] = await Promise.all([
-        fetch('/api/admin/attendance'),
-        fetch('/api/admin/attendance/requests'),
+      // Prefer consolidated dashboard stats for real-time numbers
+      const [statsRes, monthlyTrendsRes] = await Promise.all([
+        fetch('/api/admin/dashboard-stats'),
         fetch('/api/admin/analytics/monthly-trends')
       ])
 
-      if (attendanceRes.ok && requestsRes.ok && monthlyTrendsRes.ok) {
-        const [attendanceJson, requestsJson, monthlyTrendsJson] = await Promise.all([
-          attendanceRes.json(),
-          requestsRes.json(),
+      if (statsRes.ok && monthlyTrendsRes.ok) {
+        const [statsJson, monthlyTrendsJson] = await Promise.all([
+          statsRes.json(),
           monthlyTrendsRes.json()
         ])
-        const attendanceData = attendanceJson?.data || attendanceJson
-        const requestsData = requestsJson?.data || requestsJson
+        const stats = statsJson?.data || {}
         const monthlyTrendsData = monthlyTrendsJson?.data || []
 
-        // Calculate analytics from the data
-        const totalEmployees = attendanceData.totalEmployees || 0
-        const presentToday = attendanceData.employees?.filter((e: EmployeeData) => e.status === 'PRESENT').length || 0
-        const absentToday = attendanceData.employees?.filter((e: EmployeeData) => e.status === 'ABSENT').length || 0
-        const wfhToday = attendanceData.employees?.filter((e: EmployeeData) => e.status === 'WFH').length || 0
-        const leaveToday = attendanceData.employees?.filter((e: EmployeeData) => e.status === 'LEAVE').length || 0
-        const pendingRequests = (requestsData.leaveRequests?.length || 0) + (requestsData.wfhLogs?.length || 0)
+        const totalEmployees = Number(stats.totalUsers || 0)
+        const presentToday = Number(stats.todayPresent || 0)
+        const absentToday = Number(stats.todayAbsent || 0)
+        const wfhToday = Number(stats.todayWFH || 0)
+        const pendingRequests = Number(stats.pendingLeaveRequests || 0) + Number(stats.pendingWFHLogs || 0)
+        const leaveToday = 0
 
         setAnalytics({
           totalEmployees,
@@ -164,7 +176,7 @@ export default function AdminAnalytics() {
           <div className="flex items-center space-x-4">
             <div className="w-2 h-10 bg-gradient-to-b from-blue-500 via-green-500 to-amber-500 rounded-full shadow-lg"></div>
             <div>
-              <h1 className="text-3xl font-bold bg-gradient-to-r from-blue-700 via-green-600 to-amber-600 dark:from-blue-400 dark:via-green-400 dark:to-amber-400 bg-clip-text text-transparent">Analytics Dashboard</h1>
+              <h1 className="text-3xl font-bold text-slate-900 dark:text-slate-100">Analytics Dashboard</h1>
               <p className="text-gray-600 dark:text-gray-300 mt-1">Ringkasan performa sistem dan karyawan</p>
             </div>
           </div>
@@ -182,7 +194,7 @@ export default function AdminAnalytics() {
         {/* Key Metrics */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
           {/* Total Employees */}
-          <div className="bg-white/95 dark:bg-gray-800/95 rounded-2xl border border-gray-200/50 dark:border-gray-700/50 p-6 hover:shadow-lg transition-all duration-300 hover:scale-[1.02] backdrop-blur-sm">
+          <div className="bg-white/95 dark:bg-[#1e293b] rounded-2xl border border-gray-200/50 dark:border-neutral-700/50 p-6 hover:shadow-lg transition-all duration-300 hover:scale-[1.02] backdrop-blur-sm">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium text-gray-600 dark:text-gray-400 mb-1">Total Karyawan</p>
@@ -195,7 +207,7 @@ export default function AdminAnalytics() {
           </div>
 
           {/* Attendance Rate */}
-          <div className="bg-white/95 dark:bg-gray-800/95 rounded-2xl border border-gray-200/50 dark:border-gray-700/50 p-6 hover:shadow-lg transition-all duration-300 hover:scale-[1.02] backdrop-blur-sm">
+          <div className="bg-white/95 dark:bg-[#1e293b] rounded-2xl border border-gray-200/50 dark:border-neutral-700/50 p-6 hover:shadow-lg transition-all duration-300 hover:scale-[1.02] backdrop-blur-sm">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium text-gray-600 dark:text-gray-400 mb-1">Tingkat Kehadiran</p>
@@ -208,7 +220,7 @@ export default function AdminAnalytics() {
           </div>
 
           {/* Pending Requests */}
-          <div className="bg-white/95 dark:bg-gray-800/95 rounded-2xl border border-gray-200/50 dark:border-gray-700/50 p-6 hover:shadow-lg transition-all duration-300 hover:scale-[1.02] backdrop-blur-sm">
+          <div className="bg-white/95 dark:bg-[#1e293b] rounded-2xl border border-gray-200/50 dark:border-neutral-700/50 p-6 hover:shadow-lg transition-all duration-300 hover:scale-[1.02] backdrop-blur-sm">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium text-gray-600 dark:text-gray-400 mb-1">Permintaan Pending</p>
@@ -221,7 +233,7 @@ export default function AdminAnalytics() {
           </div>
 
           {/* Active Employees */}
-          <div className="bg-white/95 dark:bg-gray-800/95 rounded-2xl border border-gray-200/50 dark:border-gray-700/50 p-6 hover:shadow-lg transition-all duration-300 hover:scale-[1.02] backdrop-blur-sm">
+          <div className="bg-white/95 dark:bg-[#1e293b] rounded-2xl border border-gray-200/50 dark:border-neutral-700/50 p-6 hover:shadow-lg transition-all duration-300 hover:scale-[1.02] backdrop-blur-sm">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium text-gray-600 dark:text-gray-400 mb-1">Karyawan Aktif</p>
@@ -237,7 +249,7 @@ export default function AdminAnalytics() {
         {/* Analytics Charts */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {/* Today's Overview */}
-          <div className="bg-white/95 dark:bg-gray-800/95 rounded-2xl border border-gray-200/50 dark:border-gray-700/50 p-6 backdrop-blur-sm">
+          <div className="bg-white/95 dark:bg-[#1e293b] rounded-2xl border border-gray-200/50 dark:border-neutral-700/50 p-6 backdrop-blur-sm">
             <div className="flex items-center justify-between mb-6">
               <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Ringkasan Hari Ini</h3>
               <Activity className="w-5 h-5 text-blue-500" />
@@ -278,14 +290,14 @@ export default function AdminAnalytics() {
           </div>
 
           {/* Monthly Trend Chart */}
-          <div className="bg-white/95 dark:bg-neutral-900/95 rounded-2xl border border-neutral-200/50 dark:border-neutral-700/50 p-6 backdrop-blur-sm">
+          <div className="bg-white/95 dark:bg-[#1e293b] rounded-2xl border border-neutral-200/50 dark:border-neutral-700/50 p-6 backdrop-blur-sm">
             <div className="flex items-center justify-between mb-6">
               <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Trend Bulanan</h3>
               <TrendingUp className="w-5 h-5 text-purple-500" />
             </div>
             <div className="space-y-3">
               {analytics.monthlyTrend.map((month, index) => (
-                <div key={index} className="flex items-center justify-between p-3 bg-gray-50/50 dark:bg-gray-800/50 rounded-xl border border-gray-100 dark:border-gray-700/50">
+                <div key={index} className="flex items-center justify-between p-3 bg-gray-50/50 dark:bg-[#1e293b] rounded-xl border border-gray-100 dark:border-gray-700/50">
                   <span className="text-sm font-medium text-gray-600 dark:text-gray-400">{month.month}</span>
                   <div className="flex items-center space-x-4">
                     <div className="flex items-center space-x-2">
@@ -308,7 +320,7 @@ export default function AdminAnalytics() {
         </div>
 
         {/* Financial Analysis */}
-        <div className="bg-white/95 dark:bg-neutral-900/95 rounded-2xl border border-neutral-200/50 dark:border-neutral-700/50 p-6 backdrop-blur-sm">
+        <div className="bg-white/95 dark:bg-[#1e293b] rounded-2xl border border-neutral-200/50 dark:border-neutral-700/50 p-6 backdrop-blur-sm">
           <div className="flex items-center justify-between mb-6">
             <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Analisis Keuangan</h3>
             <DollarSign className="w-5 h-5 text-emerald-500" />
@@ -317,7 +329,7 @@ export default function AdminAnalytics() {
         </div>
 
         {/* Quick Actions */}
-        <div className="bg-white/95 dark:bg-neutral-900/95 rounded-2xl border border-neutral-200/50 dark:border-neutral-700/50 p-6 backdrop-blur-sm">
+        <div className="bg-white/95 dark:bg-[#1e293b] rounded-2xl border border-neutral-200/50 dark:border-neutral-700/50 p-6 backdrop-blur-sm">
           <div className="flex items-center justify-between mb-6">
             <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Aksi Cepat</h3>
             <PieChart className="w-5 h-5 text-indigo-500" />

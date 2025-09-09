@@ -20,6 +20,27 @@ function haversineMeters(lat1: number, lon1: number, lat2: number, lon2: number)
   return R * c
 }
 
+// Function to determine if check-in is late
+function isLateCheckIn(checkInTime: Date): boolean {
+  const checkInHour = checkInTime.getHours()
+  const checkInMinute = checkInTime.getMinutes()
+  
+  // Set late threshold to 09:10
+  const lateThresholdHour = 9
+  const lateThresholdMinute = 10
+  
+  // Convert to minutes for easier comparison
+  const checkInTotalMinutes = checkInHour * 60 + checkInMinute
+  const lateThresholdTotalMinutes = lateThresholdHour * 60 + lateThresholdMinute
+  
+  return checkInTotalMinutes > lateThresholdTotalMinutes
+}
+
+// Function to get attendance status based on check-in time
+function getAttendanceStatus(checkInTime: Date): 'PRESENT' | 'LATE' {
+  return isLateCheckIn(checkInTime) ? 'LATE' : 'PRESENT'
+}
+
 export async function POST(req: NextRequest) {
   try {
     const session = await getServerSession(authOptions)
@@ -29,13 +50,45 @@ export async function POST(req: NextRequest) {
     const body = await req.json()
     const input = checkInSchema.parse(body)
 
-    // Ensure not already checked-in today
+    // Check today's date range
     const todayStart = new Date(); todayStart.setHours(0,0,0,0)
-    const existing = await prisma.attendance.findFirst({
-      where: { userId: session.user.id, checkInTime: { gte: todayStart } },
+    const todayEnd = new Date(); todayEnd.setHours(23,59,59,999)
+
+    // Check if user already has attendance record today
+    const existingAttendance = await prisma.attendance.findFirst({
+      where: { 
+        userId: session.user.id, 
+        checkInTime: { 
+          gte: todayStart,
+          lte: todayEnd
+        } 
+      },
     })
-    if (existing?.checkInTime) {
-      return NextResponse.json({ error: 'Sudah melakukan check-in hari ini' }, { status: 400 })
+
+    if (existingAttendance) {
+      return NextResponse.json({ 
+        error: 'Anda sudah melakukan absensi hari ini. Tidak dapat melakukan check-in lagi.' 
+      }, { status: 400 })
+    }
+
+    // Check if user has pending or approved WFH log today
+    const existingWFH = await prisma.wfhLog.findFirst({
+      where: {
+        userId: session.user.id,
+        logTime: {
+          gte: todayStart,
+          lte: todayEnd
+        },
+        status: {
+          in: ['PENDING', 'APPROVED']
+        }
+      }
+    })
+
+    if (existingWFH) {
+      return NextResponse.json({ 
+        error: 'Anda sudah mengajukan atau memiliki WFH hari ini. Tidak dapat melakukan absensi kantor.' 
+      }, { status: 400 })
     }
 
     // Load latest office location
@@ -47,14 +100,29 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Di luar radius kantor' }, { status: 400 })
     }
 
+    // Determine check-in time and status
+    const checkInTime = new Date()
+    const attendanceStatus = getAttendanceStatus(checkInTime)
+    const isLate = isLateCheckIn(checkInTime)
+    
+    // Prepare notes with late information if applicable
+    let notes = input.notes || ''
+    if (isLate) {
+      const lateTime = checkInTime.toLocaleTimeString('id-ID', { 
+        hour: '2-digit', 
+        minute: '2-digit' 
+      })
+      notes = notes ? `${notes} (Terlambat - Check-in: ${lateTime})` : `Terlambat - Check-in: ${lateTime}`
+    }
+
     const record = await prisma.attendance.create({
       data: {
         userId: session.user.id,
-        checkInTime: new Date(),
+        checkInTime: checkInTime,
         checkInLatitude: input.latitude,
         checkInLongitude: input.longitude,
-        status: 'PRESENT',
-        notes: input.notes,
+        status: attendanceStatus,
+        notes: notes,
       },
     })
 
@@ -64,7 +132,17 @@ export async function POST(req: NextRequest) {
       if (io) io.emit('attendance_updated', { userId: session.user.id, id: record.id })
     } catch {}
 
-    return NextResponse.json({ message: 'Check-in berhasil', attendance: record }, { status: 201 })
+    // Return appropriate message based on status
+    const message = isLate 
+      ? `Check-in berhasil (Terlambat - ${checkInTime.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })})`
+      : 'Check-in berhasil'
+
+    return NextResponse.json({ 
+      message: message, 
+      attendance: record,
+      isLate: isLate,
+      checkInTime: checkInTime.toISOString()
+    }, { status: 201 })
   } catch (error) {
     if (error instanceof z.ZodError) {
       return NextResponse.json({ error: 'Validasi gagal', details: error.errors }, { status: 400 })

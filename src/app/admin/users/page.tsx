@@ -31,6 +31,7 @@ interface User {
   gender: 'MALE' | 'FEMALE'
   nikKtp: string
   phoneNumber: string
+  profilePicture?: string | null
   bankAccountNumber?: string
   ewalletNumber?: string
   role: string
@@ -401,22 +402,22 @@ function UsersPageInner() {
           <div className="flex flex-col sm:flex-row gap-4">
             <div className="flex-1">
               <div className="relative">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-text-muted h-4 w-4" />
                 <input
                   type="text"
                   placeholder="Cari nama atau email..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pl-10 pr-4 py-2 w-full border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors duration-200"
+                  className="pl-10 pr-4 py-2 w-full border border-border bg-card text-text-primary rounded-lg focus:ring-2 focus:ring-accent focus:border-transparent transition-colors duration-200"
                 />
               </div>
             </div>
             <div className="flex items-center space-x-2">
-              <Filter className="h-4 w-4 text-gray-500" />
+              <Filter className="h-4 w-4 text-text-secondary" />
               <select
                 value={statusFilter}
                 onChange={(e) => setStatusFilter(e.target.value)}
-                className="border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors duration-200"
+                className="border border-border bg-card text-text-primary rounded-lg px-3 py-2 focus:ring-2 focus:ring-accent focus:border-transparent transition-colors duration-200"
               >
                 <option value="ALL">Semua Status</option>
                 <option value="PENDING">Menunggu Persetujuan</option>
@@ -428,63 +429,71 @@ function UsersPageInner() {
         </div>
 
         {/* Users List */}
-        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm transition-colors duration-200">
+        <div className="bg-card rounded-lg shadow-soft transition-colors duration-200">
           {isLoading ? (
             <div className="flex items-center justify-center h-64">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-accent"></div>
             </div>
           ) : (
             <div className="overflow-x-auto">
-              <table className="min-w-full divide-y divide-gray-200">
-                <thead className="bg-gray-50 dark:bg-gray-700">
+              <table className="min-w-full divide-y divide-border">
+                <thead className="bg-surface">
                   <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th className="px-6 py-3 text-left text-xs font-medium text-text-secondary uppercase tracking-wider">
                       Karyawan
                     </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th className="px-6 py-3 text-left text-xs font-medium text-text-secondary uppercase tracking-wider">
                       Kontak
                     </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th className="px-6 py-3 text-left text-xs font-medium text-text-secondary uppercase tracking-wider">
                       Status
                     </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th className="px-6 py-3 text-left text-xs font-medium text-text-secondary uppercase tracking-wider">
                       Tanggal Daftar
                     </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th className="px-6 py-3 text-left text-xs font-medium text-text-secondary uppercase tracking-wider">
                       Aksi
                     </th>
                   </tr>
                 </thead>
-                <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
+                <tbody className="bg-card divide-y divide-border">
                   {filteredUsers.map((user) => (
-                    <tr key={user.id} className="hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors duration-200">
+                    <tr key={user.id} className="hover:bg-card-hover transition-colors duration-200">
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div className="flex items-center">
                           <div className="flex-shrink-0 h-10 w-10">
-                            <div className="h-10 w-10 rounded-full bg-blue-100 flex items-center justify-center">
-                              <User className="h-5 w-5 text-blue-600" />
-                            </div>
+                            {user.profilePicture ? (
+                              <img
+                                src={user.profilePicture}
+                                alt={user.fullName}
+                                className="h-10 w-10 rounded-full object-cover border border-border"
+                              />
+                            ) : (
+                              <div className="h-10 w-10 rounded-full bg-accent/20 flex items-center justify-center">
+                                <User className="h-5 w-5 text-accent" />
+                              </div>
+                            )}
                           </div>
                           <div className="ml-4">
-                            <div className="text-sm font-medium text-gray-900 dark:text-white">{user.fullName}</div>
-                            <div className="text-sm text-gray-500 dark:text-gray-400">{user.email}</div>
+                            <div className="text-sm font-medium text-text-primary">{user.fullName}</div>
+                            <div className="text-sm text-text-secondary">{user.email}</div>
                           </div>
                         </div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm text-gray-900 dark:text-white">{user.phoneNumber}</div>
-                        <div className="text-sm text-gray-500 dark:text-gray-400">{user.gender === 'MALE' ? 'Laki-laki' : 'Perempuan'}</div>
+                        <div className="text-sm text-text-primary">{user.phoneNumber}</div>
+                        <div className="text-sm text-text-secondary">{user.gender === 'MALE' ? 'Laki-laki' : 'Perempuan'}</div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         {getStatusBadge(user.status)}
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-text-secondary">
                         {new Date(user.createdAt).toLocaleDateString('id-ID')}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm font-medium space-x-2">
                         <button
                           onClick={() => setSelectedUser(user)}
-                          className="text-blue-600 hover:text-blue-900"
+                          className="text-accent hover:text-accent-hover"
                           title="Lihat Detail"
                         >
                           <Eye className="h-4 w-4" />
@@ -493,14 +502,14 @@ function UsersPageInner() {
                           <>
                             <button
                               onClick={() => handleApproveReject(user.id, 'APPROVED')}
-                              className="text-green-600 hover:text-green-900"
+                              className="text-success hover:text-success-dark"
                               title="Setujui"
                             >
                               <Check className="h-4 w-4" />
                             </button>
                             <button
                               onClick={() => handleApproveReject(user.id, 'REJECTED')}
-                              className="text-red-600 hover:text-red-900"
+                              className="text-error hover:text-error-dark"
                               title="Tolak"
                             >
                               <X className="h-4 w-4" />
@@ -509,14 +518,14 @@ function UsersPageInner() {
                         )}
                         <button
                           onClick={() => handleOpenEditModal(user)}
-                          className="text-yellow-600 hover:text-yellow-900"
+                          className="text-warning hover:text-warning-dark"
                           title="Edit"
                         >
                           <Pencil className="h-4 w-4" />
                         </button>
                         <button
                           onClick={() => handleOpenDeleteModal(user)}
-                          className="text-red-600 hover:text-red-900"
+                          className="text-error hover:text-error-dark"
                           title="Hapus"
                         >
                           <Trash2 className="h-4 w-4" />
@@ -528,9 +537,9 @@ function UsersPageInner() {
               </table>
               {filteredUsers.length === 0 && (
                 <div className="text-center py-12">
-                  <User className="mx-auto h-12 w-12 text-gray-400" />
-                  <h3 className="mt-2 text-sm font-medium text-gray-900 dark:text-white">Tidak ada karyawan</h3>
-                  <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
+                  <User className="mx-auto h-12 w-12 text-text-muted" />
+                  <h3 className="mt-2 text-sm font-medium text-text-primary">Tidak ada karyawan</h3>
+                  <p className="mt-1 text-sm text-text-secondary">
                     {searchTerm ? 'Tidak ada karyawan yang sesuai dengan pencarian.' : 'Belum ada karyawan yang terdaftar.'}
                   </p>
                 </div>
@@ -542,34 +551,51 @@ function UsersPageInner() {
 
       {/* User Detail Modal */}
       {selectedUser && (
-        <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
-          <div className="relative top-20 mx-auto p-5 border w-11/12 md:w-3/4 lg:w-1/2 shadow-lg rounded-md bg-white">
+        <div className="fixed inset-0 bg-text-primary/50 overflow-y-auto h-full w-full z-50">
+          <div className="relative top-20 mx-auto p-5 border border-border w-11/12 md:w-3/4 lg:w-1/2 shadow-lg rounded-md bg-card">
             <div className="mt-3">
               <div className="flex items-center justify-between mb-4">
-                <h3 className="text-lg font-medium text-gray-900">Detail Karyawan</h3>
+                <h3 className="text-lg font-medium text-text-primary">Detail Karyawan</h3>
                 <button
                   onClick={() => setSelectedUser(null)}
-                  className="text-gray-400 hover:text-gray-600"
+                  className="text-text-muted hover:text-text-secondary"
                 >
                   <X className="h-6 w-6" />
                 </button>
               </div>
               
               <div className="space-y-4">
+                <div className="flex items-center space-x-4">
+                  {selectedUser.profilePicture ? (
+                    <img
+                      src={selectedUser.profilePicture}
+                      alt={selectedUser.fullName}
+                      className="h-16 w-16 rounded-full object-cover border border-border"
+                    />
+                  ) : (
+                    <div className="h-16 w-16 rounded-full bg-accent/20 flex items-center justify-center">
+                      <User className="h-6 w-6 text-accent" />
+                    </div>
+                  )}
+                  <div>
+                    <p className="text-base font-semibold text-text-primary">{selectedUser.fullName}</p>
+                    <p className="text-sm text-text-secondary">{selectedUser.email}</p>
+                  </div>
+                </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                    <label className="block text-sm font-medium text-text-secondary mb-1">
                       <User className="inline w-4 h-4 mr-1" />
                       Nama Lengkap
                     </label>
-                    <p className="text-sm text-gray-900">{selectedUser.fullName}</p>
+                    <p className="text-sm text-text-primary">{selectedUser.fullName}</p>
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                    <label className="block text-sm font-medium text-text-secondary mb-1">
                       <Mail className="inline w-4 h-4 mr-1" />
                       Email
                     </label>
-                    <p className="text-sm text-gray-900">{selectedUser.email}</p>
+                    <p className="text-sm text-text-primary">{selectedUser.email}</p>
                   </div>
                 </div>
                 
@@ -583,12 +609,12 @@ function UsersPageInner() {
                 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Jenis Kelamin</label>
-                    <p className="text-sm text-gray-900">{selectedUser.gender === 'MALE' ? 'Laki-laki' : 'Perempuan'}</p>
+                    <label className="block text-sm font-medium text-text-secondary mb-1">Jenis Kelamin</label>
+                    <p className="text-sm text-text-primary">{selectedUser.gender === 'MALE' ? 'Laki-laki' : 'Perempuan'}</p>
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">NIK KTP</label>
-                    <p className="text-sm text-gray-900">{selectedUser.nikKtp}</p>
+                    <label className="block text-sm font-medium text-text-secondary mb-1">NIK KTP</label>
+                    <p className="text-sm text-text-primary">{selectedUser.nikKtp}</p>
                   </div>
                 </div>
                 
@@ -603,17 +629,17 @@ function UsersPageInner() {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   {selectedUser.bankAccountNumber && (
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                      <label className="block text-sm font-medium text-text-secondary mb-1">
                         <CreditCard className="inline w-4 h-4 mr-1" />
                         Rekening Bank
                       </label>
-                      <p className="text-sm text-gray-900">{selectedUser.bankAccountNumber}</p>
+                      <p className="text-sm text-text-primary">{selectedUser.bankAccountNumber}</p>
                     </div>
                   )}
                   {selectedUser.ewalletNumber && (
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">E-Wallet</label>
-                      <p className="text-sm text-gray-900">{selectedUser.ewalletNumber}</p>
+                      <label className="block text-sm font-medium text-text-secondary mb-1">E-Wallet</label>
+                      <p className="text-sm text-text-primary">{selectedUser.ewalletNumber}</p>
                     </div>
                   )}
                 </div>
@@ -684,7 +710,7 @@ function UsersPageInner() {
               <form onSubmit={handleSubmitEdit} className="space-y-4">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                    <label className="block text-sm font-medium text-text-secondary mb-1">
                       Nama Lengkap
                     </label>
                     <input
@@ -697,7 +723,7 @@ function UsersPageInner() {
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                    <label className="block text-sm font-medium text-text-secondary mb-1">
                       Jenis Kelamin
                     </label>
                     <select
@@ -729,7 +755,7 @@ function UsersPageInner() {
                 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                    <label className="block text-sm font-medium text-text-secondary mb-1">
                       NIK KTP
                     </label>
                     <input
@@ -742,7 +768,7 @@ function UsersPageInner() {
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                    <label className="block text-sm font-medium text-text-secondary mb-1">
                       Nomor HP
                     </label>
                     <input
@@ -758,7 +784,7 @@ function UsersPageInner() {
                 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                    <label className="block text-sm font-medium text-text-secondary mb-1">
                       Rekening Bank
                     </label>
                     <input
@@ -770,7 +796,7 @@ function UsersPageInner() {
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                    <label className="block text-sm font-medium text-text-secondary mb-1">
                       E-Wallet
                     </label>
                     <input
@@ -875,7 +901,7 @@ function UsersPageInner() {
                 {/* Personal Information */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                    <label className="block text-sm font-medium text-text-secondary mb-1">
                       <User className="inline w-4 h-4 mr-1" />
                       Nama Lengkap *
                     </label>
@@ -891,7 +917,7 @@ function UsersPageInner() {
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                    <label className="block text-sm font-medium text-text-secondary mb-1">
                       <Mail className="inline w-4 h-4 mr-1" />
                       Email *
                     </label>
@@ -925,7 +951,7 @@ function UsersPageInner() {
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                    <label className="block text-sm font-medium text-text-secondary mb-1">
                       Jenis Kelamin *
                     </label>
                     <select
@@ -942,7 +968,7 @@ function UsersPageInner() {
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                    <label className="block text-sm font-medium text-text-secondary mb-1">
                       NIK KTP *
                     </label>
                     <input
@@ -981,7 +1007,7 @@ function UsersPageInner() {
                   
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                      <label className="block text-sm font-medium text-text-secondary mb-1">
                         <CreditCard className="inline w-4 h-4 mr-1" />
                         Nomor Rekening Bank
                       </label>
@@ -996,7 +1022,7 @@ function UsersPageInner() {
                     </div>
 
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                      <label className="block text-sm font-medium text-text-secondary mb-1">
                         <Wallet className="inline w-4 h-4 mr-1" />
                         Nomor E-Wallet
                       </label>
@@ -1015,7 +1041,7 @@ function UsersPageInner() {
                 {/* Password */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 border-t pt-4">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                    <label className="block text-sm font-medium text-text-secondary mb-1">
                       <Lock className="inline w-4 h-4 mr-1" />
                       Password *
                     </label>
@@ -1040,7 +1066,7 @@ function UsersPageInner() {
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                    <label className="block text-sm font-medium text-text-secondary mb-1">
                       <Lock className="inline w-4 h-4 mr-1" />
                       Konfirmasi Password *
                     </label>

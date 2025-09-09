@@ -272,7 +272,7 @@ export function DashboardAnalytics({
       </div>
       
       {/* Charts */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         {charts.map((chart, index) => (
           <Card key={index} className="hover:shadow-lg transition-shadow">
             <CardBody>

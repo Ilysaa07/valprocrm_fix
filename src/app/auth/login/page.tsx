@@ -96,7 +96,7 @@ export default function LoginPage() {
           <div className="text-center space-y-4 sm:space-y-6">
             <div className="flex justify-center mb-6 sm:mb-10">
               <Image
-                src="/valprologo.webp"
+                src="/logometa.png"
                 alt="Valpro Intertech"
                 width={200}
                 height={60}

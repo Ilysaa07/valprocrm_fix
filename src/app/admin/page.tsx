@@ -4,31 +4,37 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { useSession } from 'next-auth/react'
 import { redirect } from 'next/navigation'
 import AdminLayout from '@/components/layout/AdminLayout'
-type MinimalSocket = { on: (event: string, handler: (...args: unknown[]) => void) => void; disconnect: () => void }
 import { 
   DashboardLayout, 
   DashboardSection,
-  // adminStatConfigs,
+  DashboardGrid,
+  DashboardCard,
+  DashboardStatCard,
+  DashboardMetricCard,
+  ThreeColumnLayout,
+  FourColumnLayout
+} from '@/components/dashboard'
+import { 
   ActivityFeed,
   adminActivityFeed,
   WelcomeSection,
   adminWelcomeConfig,
-  // adminSummaryCards,
   ChartSummary,
   attendanceChartConfig,
-  // taskProgressChartConfig,
-  // leaveStatusChartConfig,
   QuickStats,
   adminQuickStats,
-  // ProgressOverview,
-  // taskProgressConfig,
-  // attendanceProgressConfig,
-  // attendanceOverviewConfig,
-  // leaveOverviewConfig,
-  // wfhOverviewConfig,
-  // NotificationsSummary
 } from '@/components/dashboard'
 import CalendarWidget from '@/components/calendar/CalendarWidget'
+import { 
+  Users, 
+  CheckSquare, 
+  Clock, 
+  Calendar, 
+  FileText, 
+  Receipt,
+  TrendingUp,
+  UserCheck
+} from 'lucide-react'
 
 interface DashboardStats {
   totalUsers: number
@@ -55,8 +61,6 @@ export default function AdminDashboard() {
   const [isLoading, setIsLoading] = useState(true)
   const [recentActivities, setRecentActivities] = useState([])
   const [mounted, setMounted] = useState(false)
-  // const [recentTasks, setRecentTasks] = useState([])
-  // const [notifications, setNotifications] = useState([])
   
   const socketRef = useRef<MinimalSocket | null>(null)
   const pollingRef = useRef<NodeJS.Timeout | null>(null)
@@ -81,17 +85,11 @@ export default function AdminDashboard() {
     // initial fetch
     fetchStats()
     fetchRecentActivities()
-    // fetchRecentTasks()
-    // fetchNotifications()
-    
 
     // light polling for freshness
     pollingRef.current = setInterval(() => {
       fetchStats()
       fetchRecentActivities()
-      // fetchRecentTasks()
-      // fetchNotifications()
-      
     }, 30000)
 
     // socket trigger to refresh on important events
@@ -104,9 +102,6 @@ export default function AdminDashboard() {
         const refresh = () => {
           fetchStats()
           fetchRecentActivities()
-          // fetchRecentTasks()
-          // fetchNotifications()
-          
         }
         s.on('notification', refresh)
         s.on('task_updated', refresh)
@@ -121,8 +116,6 @@ export default function AdminDashboard() {
       if (socketRef.current) socketRef.current.disconnect()
     }
   }, [mounted, session, status, appUrl])
-
-  //
 
   const fetchStats = async () => {
     try {
@@ -154,12 +147,6 @@ export default function AdminDashboard() {
     }
   }
 
-  // const fetchRecentTasks = async () => {}
-
-  // const fetchNotifications = async () => {}
-
-  
-
   if (!mounted || status === 'loading' || isLoading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
@@ -186,70 +173,177 @@ export default function AdminDashboard() {
     )
   }
 
-  // Generate configurations using the new dashboard components
-  // const statConfigs = adminStatConfigs(stats)
-  // const summaryCards = adminSummaryCards(stats)
   const quickStats = adminQuickStats(stats)
-  // simplified overview no longer uses progressItems
-  // const overviewItems = { attendance: attendanceOverviewConfig(stats), leave: leaveOverviewConfig(stats), wfh: wfhOverviewConfig(stats) }
   const activities = adminActivityFeed(recentActivities)
   const welcomeConfig = {
     ...adminWelcomeConfig(session?.user, new Date()),
-    user: session?.user
+    user: {
+      name: session?.user?.name,
+      role: session?.user?.role,
+      image: session?.user?.image,
+      profilePicture: session?.user?.image
+    }
   }
-
-  // ChartSummary uses derived arrays from stats via config functions
 
   return (
     <AdminLayout>
       <DashboardLayout>
-      {/* Welcome Section */}
-      <DashboardSection>
-        <WelcomeSection {...welcomeConfig} />
-      </DashboardSection>
-
-      {/* Main Dashboard Grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-8">
-        {/* Quick Stats - spans 2 columns */}
-        <div className="lg:col-span-2">
-          <DashboardSection title="Statistik Cepat">
-            <QuickStats items={quickStats} />
-          </DashboardSection>
-        </div>
-        
-        {/* Calendar Widget - spans 1 column */}
-        <div className="lg:col-span-1">
-          <CalendarWidget />
-        </div>
-      </div>
-
-      <div className="space-y-8">
-        {/* Charts Section */}
-        <DashboardSection title="Analisis Kehadiran">
-          <div className="bg-white/90 dark:bg-neutral-900/90 rounded-2xl border border-neutral-200/50 dark:border-neutral-700/50 p-8 backdrop-blur-sm shadow-lg hover:shadow-xl transition-all duration-300">
-            <ChartSummary {...attendanceChartConfig(stats)} />
-          </div>
+        {/* Welcome Section */}
+        <DashboardSection>
+          <WelcomeSection {...welcomeConfig} />
         </DashboardSection>
-      </div>
 
-      {/* Full Width Sections */}
-      {/* Removed extra stat cards to keep overview clean */}
+        {/* Key Metrics Overview */}
+        <DashboardSection title="Ringkasan Utama">
+          <DashboardGrid cols={4} gap="md">
+            <DashboardStatCard
+              title="Total Pengguna"
+              value={stats.totalUsers}
+              description="Karyawan terdaftar"
+              icon={Users}
+              trend={{
+                value: 12,
+                isPositive: true,
+                period: "dari bulan lalu"
+              }}
+            />
+            <DashboardStatCard
+              title="Tugas Aktif"
+              value={stats.pendingTasks}
+              description="Menunggu penyelesaian"
+              icon={CheckSquare}
+              trend={{
+                value: 0,
+                isPositive: true,
+                period: "Stabil"
+              }}
+            />
+            <DashboardStatCard
+              title="Kehadiran Hari Ini"
+              value={stats.todayPresent}
+              description={`dari ${stats.totalUsers} karyawan`}
+              icon={UserCheck}
+              trend={{
+                value: 5,
+                isPositive: true,
+                period: "dari kemarin"
+              }}
+            />
+            <DashboardStatCard
+              title="Permintaan Cuti"
+              value={stats.pendingLeaveRequests}
+              description="Menunggu persetujuan"
+              icon={Calendar}
+              trend={{
+                value: 8,
+                isPositive: false,
+                period: "dari minggu lalu"
+              }}
+            />
+          </DashboardGrid>
+        </DashboardSection>
 
-      {/* Summary Cards */}
-      {/* Removed summary cards to reduce clutter */}
+        {/* Main Dashboard Content */}
+        <div className="space-y-4 lg:space-y-6">
+          {/* Row 1: Quick Stats & Calendar */}
+          <DashboardGrid cols={3} gap="md">
+            {/* Quick Stats - Takes 2 columns */}
+            <div className="lg:col-span-2">
+              <DashboardCard>
+                <div className="space-y-4">
+                  <h3 className="text-lg lg:text-xl font-semibold text-slate-900 dark:text-white">Statistik Cepat</h3>
+                  <QuickStats items={quickStats} />
+                </div>
+              </DashboardCard>
+            </div>
+            
+            {/* Calendar Widget - Takes 1 column */}
+            <div>
+              <DashboardCard>
+                <div className="space-y-4">
+                  <h3 className="text-lg lg:text-xl font-semibold text-slate-900 dark:text-white">Kalender</h3>
+                  <CalendarWidget />
+                </div>
+              </DashboardCard>
+            </div>
+          </DashboardGrid>
 
-      {/* Charts Section (concise) */}
-      {/* Simplified: charts moved above; remove extra blocks */}
+          {/* Row 2: Charts & Quick Actions */}
+          <DashboardGrid cols={3} gap="md">
+            {/* Charts Section - Takes 2 columns */}
+            <div className="lg:col-span-2">
+              <DashboardCard>
+                <div className="space-y-4">
+                  <h3 className="text-lg lg:text-xl font-semibold text-slate-900 dark:text-white">Analisis Kehadiran</h3>
+                  <ChartSummary {...attendanceChartConfig(stats)} />
+                </div>
+              </DashboardCard>
+            </div>
+            
+            {/* Quick Actions - Takes 1 column */}
+            <div>
+              <DashboardCard>
+                <div className="space-y-4">
+                  <h3 className="text-lg lg:text-xl font-semibold text-slate-900 dark:text-white">Aksi Cepat</h3>
+                  <div className="space-y-3">
+                    <button className="w-full flex items-center justify-between p-3 rounded-xl bg-gradient-to-r from-blue-50 to-indigo-50 hover:from-blue-100 hover:to-indigo-100 dark:from-blue-900/30 dark:to-indigo-900/30 transition-all duration-200">
+                      <span className="text-sm font-medium text-blue-700 dark:text-blue-300">Tambah Pengguna</span>
+                      <Users className="w-4 h-4 text-blue-600 dark:text-blue-400" />
+                    </button>
+                    <button className="w-full flex items-center justify-between p-3 rounded-xl bg-gradient-to-r from-green-50 to-emerald-50 hover:from-green-100 hover:to-emerald-100 dark:from-green-900/30 dark:to-emerald-900/30 transition-all duration-200">
+                      <span className="text-sm font-medium text-green-700 dark:text-green-300">Buat Tugas</span>
+                      <CheckSquare className="w-4 h-4 text-green-600 dark:text-green-400" />
+                    </button>
+                    <button className="w-full flex items-center justify-between p-3 rounded-xl bg-gradient-to-r from-purple-50 to-violet-50 hover:from-purple-100 hover:to-violet-100 dark:from-purple-900/30 dark:to-violet-900/30 transition-all duration-200">
+                      <span className="text-sm font-medium text-purple-700 dark:text-purple-300">Upload Dokumen</span>
+                      <FileText className="w-4 h-4 text-purple-600 dark:text-purple-400" />
+                    </button>
+                  </div>
+                </div>
+              </DashboardCard>
+            </div>
+          </DashboardGrid>
+        </div>
 
-      {/* Transactions Overview */}
-      {/* Transactions section moved up with charts */}
+        {/* Additional Metrics */}
+        <DashboardSection title="Metrik Detail">
+          <DashboardGrid cols={3} gap="md">
+            <DashboardMetricCard
+              title="Tugas Selesai"
+              value={stats.completedTasks}
+              subtitle={`${((stats.completedTasks / stats.totalTasks) * 100).toFixed(1)}% dari total`}
+              icon={CheckSquare}
+              color="green"
+            />
+            <DashboardMetricCard
+              title="WFH Hari Ini"
+              value={stats.todayWFH}
+              subtitle={`${((stats.todayWFH / stats.totalUsers) * 100).toFixed(1)}% dari total`}
+              icon={Clock}
+              color="blue"
+            />
+            <DashboardMetricCard
+              title="Cuti Disetujui"
+              value={stats.approvedLeaveRequests}
+              subtitle={`${((stats.approvedLeaveRequests / (stats.approvedLeaveRequests + stats.rejectedLeaveRequests + stats.pendingLeaveRequests)) * 100).toFixed(1)}% dari total`}
+              icon={Calendar}
+              color="purple"
+            />
+          </DashboardGrid>
+        </DashboardSection>
 
-      {/* Activity Feed */}
-      <DashboardSection title="Aktivitas Terbaru">
-        <ActivityFeed activities={activities || []} />
-      </DashboardSection>
+        {/* Activity Feed */}
+        <DashboardSection title="Aktivitas Terbaru">
+          <DashboardCard>
+            <div className="space-y-4">
+              <ActivityFeed activities={activities || []} />
+            </div>
+          </DashboardCard>
+        </DashboardSection>
       </DashboardLayout>
     </AdminLayout>
   )
 }
+
+type MinimalSocket = { on: (event: string, handler: (...args: unknown[]) => void) => void; disconnect: () => void }
 

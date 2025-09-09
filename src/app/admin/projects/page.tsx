@@ -1,60 +1,65 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { useSession } from 'next-auth/react'
 import { redirect } from 'next/navigation'
+import { useToast } from '@/hooks/useToast'
 import AdminLayout from '@/components/layout/AdminLayout'
-import { Button } from '@/components/ui/Button'
-import { Card } from '@/components/ui/Card'
-import Badge from '@/components/ui/Badge'
-import LoadingSpinner from '@/components/ui/LoadingSpinner'
-import { useToast } from '@/components/providers/ToastProvider'
 import { 
-  FolderKanban, 
   Plus, 
   Search, 
   Filter, 
-  Calendar, 
-  Users, 
-  Building,
-  User,
-  Clock,
-  Edit,
-  Trash2,
+  MoreHorizontal, 
+  Edit, 
+  Trash2, 
   Eye,
-  FileText,
-  Grid3X3,
-  List,
+  Users,
+  Calendar,
   Target,
   CheckCircle,
-  AlertCircle,
-  XCircle
+  Clock,
+  AlertTriangle,
+  XCircle,
+  FolderKanban,
+  Building2,
+  UserPlus,
+  BarChart3,
+  Grid3X3
 } from 'lucide-react'
 import ProjectModal from '@/components/projects/ProjectModal'
-import ProjectTasksModal from '@/components/projects/ProjectTasksModal'
 
-type Project = {
+interface Project {
   id: string
   name: string
   description?: string
-  serviceType: string
-  startDate: string
-  endDate: string
-  status: 'ONGOING' | 'PENDING' | 'COMPLETED' | 'CANCELLED'
-  notes?: string
-  createdAt: string
-  updatedAt: string
   contact: {
     id: string
     fullName: string
     companyName?: string
     clientStatus: string
   }
-  createdBy: { id: string; fullName: string; email: string }
+  serviceType: string
+  startDate: string
+  endDate: string
+  status: string
+  notes?: string
+  createdAt: string
+  updatedAt: string
+  createdBy: {
+    id: string
+    fullName: string
+    email: string
+  }
   members: Array<{
     id: string
+    userId: string
     role?: string
-    user: { id: string; fullName: string; email: string; role: string }
+    user: {
+      id: string
+      fullName: string
+      email: string
+      role: string
+    }
   }>
   milestones: Array<{
     id: string
@@ -63,7 +68,11 @@ type Project = {
     startDate: string
     endDate: string
   }>
-  _count: { members: number; milestones: number }
+  _count: {
+    members: number
+    milestones: number
+    tasks: number
+  }
 }
 
 export default function AdminProjectsPage() {
@@ -77,8 +86,7 @@ export default function AdminProjectsPage() {
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid')
   const [showCreateModal, setShowCreateModal] = useState(false)
   const [editingProject, setEditingProject] = useState<Project | null>(null)
-  const [showTasksModal, setShowTasksModal] = useState(false)
-  const [selectedProjectForTasks, setSelectedProjectForTasks] = useState<Project | null>(null)
+  const [savingProject, setSavingProject] = useState(false)
   const [pagination, setPagination] = useState({
     page: 1,
     limit: 20,
@@ -111,7 +119,7 @@ export default function AdminProjectsPage() {
         setProjects(data.projects)
         setPagination(data.pagination)
       } else {
-        showToast('Gagal memuat projects', { type: 'error' })
+        showToast('Gagal memuat proyek', { type: 'error' })
       }
     } catch (error) {
       showToast('Terjadi kesalahan', { type: 'error' })
@@ -120,60 +128,49 @@ export default function AdminProjectsPage() {
     }
   }
 
-  const handleDelete = async (id: string) => {
-    if (!confirm('Yakin ingin menghapus project ini?')) return
-
+  const handleSaveProject = async (projectData: any) => {
     try {
-      const res = await fetch(`/api/projects/${id}`, { method: 'DELETE' })
-      if (res.ok) {
-        showToast('Project berhasil dihapus', { type: 'success' })
-        loadProjects()
-      } else {
-        showToast('Gagal menghapus project', { type: 'error' })
-      }
-    } catch (error) {
-      showToast('Terjadi kesalahan', { type: 'error' })
-    }
-  }
-
-  const handleCreateProject = async (projectData: any) => {
-    try {
-      const res = await fetch('/api/projects', {
-        method: 'POST',
+      setSavingProject(true)
+      const url = editingProject ? `/api/projects/${editingProject.id}` : '/api/projects'
+      const method = editingProject ? 'PUT' : 'POST'
+      
+      const res = await fetch(url, {
+        method,
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(projectData)
       })
 
       if (res.ok) {
-        showToast('Project berhasil dibuat', { type: 'success' })
+        const result = await res.json()
+        showToast(`Proyek berhasil ${editingProject ? 'diperbarui' : 'dibuat'}`, { type: 'success' })
         setShowCreateModal(false)
-        loadProjects()
-      } else {
-        const error = await res.json()
-        showToast(error.message || 'Gagal membuat project', { type: 'error' })
-      }
-    } catch (error) {
-      showToast('Terjadi kesalahan', { type: 'error' })
-    }
-  }
-
-  const handleUpdateProject = async (projectData: any) => {
-    if (!editingProject) return
-
-    try {
-      const res = await fetch(`/api/projects/${editingProject.id}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(projectData)
-      })
-
-      if (res.ok) {
-        showToast('Project berhasil diperbarui', { type: 'success' })
         setEditingProject(null)
         loadProjects()
       } else {
         const error = await res.json()
-        showToast(error.message || 'Gagal memperbarui project', { type: 'error' })
+        showToast(error.error || 'Gagal menyimpan proyek', { type: 'error' })
+      }
+    } catch (error) {
+      showToast('Terjadi kesalahan', { type: 'error' })
+    } finally {
+      setSavingProject(false)
+    }
+  }
+
+  const handleDeleteProject = async (projectId: string) => {
+    if (!confirm('Apakah Anda yakin ingin menghapus proyek ini?')) return
+
+    try {
+      const res = await fetch(`/api/projects/${projectId}`, {
+        method: 'DELETE'
+      })
+
+      if (res.ok) {
+        showToast('Proyek berhasil dihapus', { type: 'success' })
+        loadProjects()
+      } else {
+        const error = await res.json()
+        showToast(error.error || 'Gagal menghapus proyek', { type: 'error' })
       }
     } catch (error) {
       showToast('Terjadi kesalahan', { type: 'error' })
@@ -182,402 +179,491 @@ export default function AdminProjectsPage() {
 
   const getStatusColor = (status: string) => {
     switch (status) {
-      case 'ONGOING': return 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400'
-      case 'PENDING': return 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400'
-      case 'COMPLETED': return 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400'
-      case 'CANCELLED': return 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400'
-      default: return 'bg-gray-100 text-gray-800 dark:bg-gray-900/30 dark:text-gray-400'
-    }
-  }
-
-  const getStatusLabel = (status: string) => {
-    switch (status) {
-      case 'ONGOING': return 'Berlangsung'
-      case 'PENDING': return 'Tertunda'
-      case 'COMPLETED': return 'Selesai'
-      case 'CANCELLED': return 'Dibatalkan'
-      default: return status
+      case 'PLANNING':
+        return 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300'
+      case 'ONGOING':
+        return 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300'
+      case 'ON_HOLD':
+        return 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300'
+      case 'COMPLETED':
+        return 'bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-300'
+      case 'CANCELLED':
+        return 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300'
+      default:
+        return 'bg-gray-100 text-gray-800 dark:bg-gray-900/30 dark:text-gray-300'
     }
   }
 
   const getStatusIcon = (status: string) => {
     switch (status) {
-      case 'ONGOING': return <Clock className="w-4 h-4" />
-      case 'PENDING': return <AlertCircle className="w-4 h-4" />
-      case 'COMPLETED': return <CheckCircle className="w-4 h-4" />
-      case 'CANCELLED': return <XCircle className="w-4 h-4" />
-      default: return <Target className="w-4 h-4" />
+      case 'PLANNING':
+        return <Clock className="h-4 w-4" />
+      case 'ONGOING':
+        return <Target className="h-4 w-4" />
+      case 'ON_HOLD':
+        return <AlertTriangle className="h-4 w-4" />
+      case 'COMPLETED':
+        return <CheckCircle className="h-4 w-4" />
+      case 'CANCELLED':
+        return <XCircle className="h-4 w-4" />
+      default:
+        return <Clock className="h-4 w-4" />
     }
   }
 
   const getProgressPercentage = (project: Project) => {
-    if (project.milestones.length === 0) return 0
-    const completedMilestones = project.milestones.filter(m => m.status === 'COMPLETED').length
+    if (!project.milestones || project.milestones.length === 0) return 0
+    
+    const completedMilestones = project.milestones.filter(m => {
+      const status = m.status?.toUpperCase()
+      return status === 'COMPLETED' || status === 'FINISHED' || status === 'DONE'
+    }).length
+    
     return Math.round((completedMilestones / project.milestones.length) * 100)
   }
 
-  const isOverdue = (endDate: string) => {
-    return new Date(endDate) < new Date() && new Date(endDate).toDateString() !== new Date().toDateString()
+  const getMilestoneStatusDisplay = (status: string) => {
+    switch (status) {
+      case 'NOT_STARTED':
+        return 'Belum Dimulai'
+      case 'IN_PROGRESS':
+        return 'Sedang Berjalan'
+      case 'COMPLETED':
+        return 'Selesai'
+      case 'OVERDUE':
+        return 'Terlambat'
+      default:
+        return status
+    }
+  }
+
+  const formatDate = (dateString: string) => {
+    return new Date(dateString).toLocaleDateString('id-ID', {
+      day: 'numeric',
+      month: 'short',
+      year: 'numeric'
+    })
+  }
+
+  const getDaysRemaining = (endDate: string) => {
+    const end = new Date(endDate)
+    const now = new Date()
+    const diffTime = end.getTime() - now.getTime()
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24))
+    return diffDays
+  }
+
+  if (status === 'loading') {
+    return (
+      <AdminLayout>
+        <div className="flex items-center justify-center min-h-screen">
+          <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-blue-600"></div>
+        </div>
+      </AdminLayout>
+    )
   }
 
   return (
     <AdminLayout>
-      <div className="space-y-6">
+      <div className="max-w-7xl mx-auto p-6 space-y-8">
         {/* Header */}
-        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-          <div>
-            <h1 className="text-2xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
-              <FolderKanban className="w-6 h-6 text-blue-600 dark:text-blue-400" />
-              Manajemen Project
-            </h1>
-            <p className="text-gray-600 dark:text-gray-300 mt-1">
-              Kelola project legalitas untuk klien
-            </p>
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div className="flex items-center space-x-3">
+            <div className="p-3 bg-blue-100 dark:bg-blue-900/30 rounded-lg">
+              <FolderKanban className="h-8 w-8 text-blue-600 dark:text-blue-400" />
+            </div>
+            <div>
+              <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Manajemen Proyek</h1>
+              <p className="text-gray-600 dark:text-gray-400">
+                Kelola semua proyek dan tim
+              </p>
+            </div>
           </div>
-          <div className="flex gap-2">
-            <Button
-              variant="outline"
-              onClick={() => setViewMode(viewMode === 'grid' ? 'list' : 'grid')}
-              className="flex items-center gap-2"
-            >
-              {viewMode === 'grid' ? (
-                <>
-                  <List className="w-4 h-4" />
-                  List
-                </>
-              ) : (
-                <>
-                  <Grid3X3 className="w-4 h-4" />
-                  Grid
-                </>
-              )}
-            </Button>
-            <Button
-              onClick={() => setShowCreateModal(true)}
-              className="flex items-center gap-2"
-            >
-              <Plus className="w-4 h-4" />
-              Buat Project
-            </Button>
-          </div>
+          
+          <button
+            onClick={() => setShowCreateModal(true)}
+            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center space-x-2"
+          >
+            <Plus className="h-5 w-5" />
+            <span>Buat Proyek</span>
+          </button>
         </div>
 
         {/* Stats Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-          <Card className="p-4">
-            <div className="flex items-center">
-              <div className="p-2 bg-blue-100 dark:bg-blue-900/50 rounded-lg">
-                <FolderKanban className="w-6 h-6 text-blue-600 dark:text-blue-400" />
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+          <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-gray-600 dark:text-gray-400">Total Proyek</p>
+                <p className="text-2xl font-bold text-gray-900 dark:text-white">{projects.length}</p>
               </div>
-              <div className="ml-3">
-                <p className="text-sm font-medium text-gray-600 dark:text-gray-300">Total Project</p>
-                <p className="text-2xl font-bold text-gray-900 dark:text-white">{pagination.total}</p>
-              </div>
+              <FolderKanban className="h-8 w-8 text-blue-500" />
             </div>
-          </Card>
-          <Card className="p-4">
-            <div className="flex items-center">
-              <div className="p-2 bg-blue-100 dark:bg-blue-900/50 rounded-lg">
-                <Clock className="w-6 h-6 text-blue-600 dark:text-blue-400" />
-              </div>
-              <div className="ml-3">
-                <p className="text-sm font-medium text-gray-600 dark:text-gray-300">Berlangsung</p>
-                <p className="text-2xl font-bold text-gray-900 dark:text-white">
+          </div>
+          
+          <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-gray-600 dark:text-gray-400">Sedang Berjalan</p>
+                <p className="text-2xl font-bold text-green-600">
                   {projects.filter(p => p.status === 'ONGOING').length}
                 </p>
               </div>
+              <Target className="h-8 w-8 text-green-500" />
             </div>
-          </Card>
-          <Card className="p-4">
-            <div className="flex items-center">
-              <div className="p-2 bg-green-100 dark:bg-green-900/50 rounded-lg">
-                <CheckCircle className="w-6 h-6 text-green-600 dark:text-green-400" />
-              </div>
-              <div className="ml-3">
-                <p className="text-sm font-medium text-gray-600 dark:text-gray-300">Selesai</p>
-                <p className="text-2xl font-bold text-gray-900 dark:text-white">
+          </div>
+          
+          <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-gray-600 dark:text-gray-400">Selesai</p>
+                <p className="text-2xl font-bold text-purple-600">
                   {projects.filter(p => p.status === 'COMPLETED').length}
                 </p>
               </div>
+              <CheckCircle className="h-8 w-8 text-purple-500" />
             </div>
-          </Card>
-          <Card className="p-4">
-            <div className="flex items-center">
-              <div className="p-2 bg-red-100 dark:bg-red-900/50 rounded-lg">
-                <AlertCircle className="w-6 h-6 text-red-600 dark:text-red-400" />
-              </div>
-              <div className="ml-3">
-                <p className="text-sm font-medium text-gray-600 dark:text-gray-300">Terlambat</p>
-                <p className="text-2xl font-bold text-gray-900 dark:text-white">
-                  {projects.filter(p => p.status === 'ONGOING' && isOverdue(p.endDate)).length}
+          </div>
+          
+          <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-gray-600 dark:text-gray-400">Total Tim</p>
+                <p className="text-2xl font-bold text-orange-600">
+                  {projects.reduce((acc, p) => acc + p._count.members, 0)}
                 </p>
               </div>
+              <Users className="h-8 w-8 text-orange-500" />
             </div>
-          </Card>
+          </div>
         </div>
 
-        {/* Search and Filters */}
-        <Card className="p-4">
-          <div className="flex flex-col lg:flex-row gap-4">
-            <div className="flex-1 relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 dark:text-gray-500 w-4 h-4" />
+        {/* Filters & Search */}
+        <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-6">
+          <div className="flex flex-col md:flex-row gap-4 justify-between">
+            <div className="relative w-full md:w-2/3">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
               <input
-                placeholder="Cari project..."
-                className="w-full border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white rounded-lg pl-10 pr-4 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors"
+                type="text"
+                placeholder="Cari proyek, klien, atau layanan..."
                 value={search}
-                onChange={e => setSearch(e.target.value)}
+                onChange={(e) => setSearch(e.target.value)}
+                className="w-full pl-10 pr-4 py-2.5 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white"
               />
             </div>
-            <div className="flex gap-2">
+
+            <div className="flex items-center space-x-4">
               <select
-                className="border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors"
                 value={filterStatus}
-                onChange={e => setFilterStatus(e.target.value)}
+                onChange={(e) => setFilterStatus(e.target.value)}
+                className="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
               >
                 <option value="">Semua Status</option>
-                <option value="ONGOING">Berlangsung</option>
-                <option value="PENDING">Tertunda</option>
+                <option value="PLANNING">Perencanaan</option>
+                <option value="ONGOING">Sedang Berjalan</option>
+                <option value="ON_HOLD">Ditahan</option>
                 <option value="COMPLETED">Selesai</option>
                 <option value="CANCELLED">Dibatalkan</option>
               </select>
-              <input
-                placeholder="Filter layanan"
-                className="border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors"
+
+              <select
                 value={filterServiceType}
-                onChange={e => setFilterServiceType(e.target.value)}
-              />
+                onChange={(e) => setFilterServiceType(e.target.value)}
+                className="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
+              >
+                <option value="">Semua Layanan</option>
+                <option value="web">Web Development</option>
+                <option value="mobile">Mobile App</option>
+                <option value="design">UI/UX Design</option>
+                <option value="consulting">Konsultasi</option>
+                <option value="maintenance">Maintenance</option>
+              </select>
+
+              <div className="flex border border-gray-300 dark:border-gray-600 rounded-lg">
+                <button
+                  onClick={() => setViewMode('grid')}
+                  className={`px-3 py-2 ${viewMode === 'grid' ? 'bg-blue-600 text-white' : 'bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-300'}`}
+                >
+                  <Grid3X3 className="h-4 w-4" />
+                </button>
+                <button
+                  onClick={() => setViewMode('list')}
+                  className={`px-3 py-2 ${viewMode === 'list' ? 'bg-blue-600 text-white' : 'bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-300'}`}
+                >
+                  <BarChart3 className="h-4 w-4" />
+                </button>
+              </div>
             </div>
           </div>
-        </Card>
+        </div>
 
-        {/* Projects Display */}
-        {loading ? (
-          <Card className="p-8">
-            <div className="text-center">
-              <LoadingSpinner size="xl" variant="primary" className="mx-auto" />
-              <p className="mt-4 text-gray-600 dark:text-gray-300">Memuat projects...</p>
+        {/* Projects List */}
+        <div className="space-y-6">
+          {loading ? (
+            <div className="flex items-center justify-center py-12">
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
             </div>
-          </Card>
-        ) : projects.length === 0 ? (
-          <Card className="p-8">
-            <div className="text-center">
-              <FolderKanban className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-              <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">Belum ada project</h3>
-              <p className="text-gray-600 dark:text-gray-300 mb-4">
-                Mulai buat project untuk mengelola layanan legalitas klien
+          ) : projects.length === 0 ? (
+            <div className="text-center py-12 bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700">
+              <FolderKanban className="h-16 w-16 text-gray-400 mx-auto mb-4" />
+              <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">
+                Belum ada proyek
+              </h3>
+              <p className="text-gray-600 dark:text-gray-400 mb-4">
+                Mulai dengan membuat proyek pertama Anda
               </p>
-              <Button onClick={() => setShowCreateModal(true)}>
-                <Plus className="w-4 h-4 mr-2" />
-                Buat Project Pertama
-              </Button>
+              <button
+                onClick={() => setShowCreateModal(true)}
+                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+              >
+                Buat Proyek Pertama
+              </button>
             </div>
-          </Card>
-        ) : (
-          <div className={viewMode === 'grid' ? 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4' : 'space-y-3'}>
-            {projects.map((project) => (
-              viewMode === 'grid' ? (
-                <Card key={project.id} className="p-4 hover:shadow-lg transition-all duration-200 group">
-                  <div className="flex items-start justify-between mb-3">
+          ) : viewMode === 'grid' ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {projects.map((project) => (
+                <div
+                  key={project.id}
+                  className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-6 hover:shadow-lg transition-shadow"
+                >
+                  <div className="flex items-start justify-between mb-4">
                     <div className="flex-1">
-                      <h3 className="font-semibold text-gray-900 dark:text-white mb-1">{project.name}</h3>
-                      <div className="flex items-center gap-2 mb-2">
-                        <Badge className={getStatusColor(project.status)}>
-                          <span className="flex items-center gap-1">
-                            {getStatusIcon(project.status)}
-                            {getStatusLabel(project.status)}
-                          </span>
-                        </Badge>
-                        {isOverdue(project.endDate) && project.status === 'ONGOING' && (
-                          <Badge variant="danger">Terlambat!</Badge>
-                        )}
-                      </div>
+                      <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
+                        {project.name}
+                      </h3>
+                      <p className="text-sm text-gray-600 dark:text-gray-400 mb-3">
+                        {project.description || 'Tidak ada deskripsi'}
+                      </p>
+                    </div>
+                    <div className="relative">
+                      <button className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg">
+                        <MoreHorizontal className="h-4 w-4" />
+                      </button>
                     </div>
                   </div>
 
-                  <div className="space-y-2 mb-3">
-                    <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-300">
-                      <Building className="w-4 h-4" />
-                      <span>{project.contact.fullName}</span>
-                      {project.contact.companyName && <span>• {project.contact.companyName}</span>}
+                  <div className="space-y-3 mb-4">
+                    <div className="flex items-center space-x-2">
+                      <Building2 className="h-4 w-4 text-gray-400" />
+                      <span className="text-sm text-gray-600 dark:text-gray-400">
+                        {project.contact.fullName}
+                        {project.contact.companyName && ` (${project.contact.companyName})`}
+                      </span>
                     </div>
-
-                    <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-300">
-                      <FileText className="w-4 h-4" />
-                      <span>{project.serviceType}</span>
+                    
+                    <div className="flex items-center space-x-2">
+                      <Target className="h-4 w-4 text-gray-400" />
+                      <span className="text-sm text-gray-600 dark:text-gray-400">
+                        {project.serviceType}
+                      </span>
                     </div>
-
-                    <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-300">
-                      <Calendar className="w-4 h-4" />
-                      <span>{new Date(project.startDate).toLocaleDateString('id-ID')} - {new Date(project.endDate).toLocaleDateString('id-ID')}</span>
+                    
+                    <div className="flex items-center space-x-2">
+                      <Calendar className="h-4 w-4 text-gray-400" />
+                      <span className="text-sm text-gray-600 dark:text-gray-400">
+                        {formatDate(project.startDate)} - {formatDate(project.endDate)}
+                      </span>
                     </div>
+                  </div>
 
-                    <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-300">
-                      <Users className="w-4 h-4" />
-                      <span>{project._count.members} anggota • {project._count.milestones} milestone</span>
+                  <div className="flex items-center justify-between mb-4">
+                    <span className={`px-2 py-1 text-xs rounded-full flex items-center space-x-1 ${getStatusColor(project.status)}`}>
+                      {getStatusIcon(project.status)}
+                      <span>{project.status}</span>
+                    </span>
+                    
+                    <div className="flex items-center space-x-2 text-sm text-gray-500">
+                      <Users className="h-4 w-4" />
+                      <span>{project._count.members}</span>
                     </div>
                   </div>
 
                   {/* Progress Bar */}
-                  <div className="mb-3">
-                    <div className="flex justify-between text-xs text-gray-600 dark:text-gray-300 mb-1">
-                      <span>Progress</span>
-                      <span>{getProgressPercentage(project)}%</span>
+                  {project.milestones && project.milestones.length > 0 && (
+                    <div className="mb-4">
+                      <div className="flex items-center justify-between text-sm text-gray-600 dark:text-gray-400 mb-2">
+                        <span>Progress</span>
+                        <span>{getProgressPercentage(project)}%</span>
+                      </div>
+                      <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
+                        <div
+                          className="bg-blue-600 h-2 rounded-full transition-all duration-300"
+                          style={{ width: `${getProgressPercentage(project)}%` }}
+                        ></div>
+                      </div>
                     </div>
-                    <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
-                      <div 
-                        className="bg-blue-600 dark:bg-blue-400 h-2 rounded-full transition-all duration-300"
-                        style={{ width: `${getProgressPercentage(project)}%` }}
-                      ></div>
-                    </div>
-                  </div>
+                  )}
 
-                  <div className="flex items-center justify-between text-xs text-gray-500 dark:text-gray-400 mb-3">
-                    <span className="flex items-center gap-1">
-                      <User className="w-3 h-3" />
-                      {project.createdBy.fullName}
-                    </span>
-                    <span className="flex items-center gap-1">
-                      <Clock className="w-3 h-3" />
-                      {new Date(project.updatedAt).toLocaleDateString('id-ID')}
-                    </span>
-                  </div>
-
-                  <div className="flex gap-1">
-                    <Button
-                      variant="outline"
-                      size="sm"
+                  {/* Actions */}
+                  <div className="flex items-center space-x-2">
+                    <button
                       onClick={() => setEditingProject(project)}
-                      className="flex-1 flex items-center justify-center gap-1"
+                      className="flex-1 px-3 py-2 text-sm bg-blue-100 text-blue-700 hover:bg-blue-200 dark:bg-blue-900/30 dark:text-blue-300 dark:hover:bg-blue-900/50 rounded-lg transition-colors flex items-center justify-center space-x-1"
                     >
-                      <Edit className="w-3 h-3" />
-                      Edit
-                    </Button>
-                    <Button
-                      variant="danger"
-                      size="sm"
-                      onClick={() => handleDelete(project.id)}
-                      className="flex-1 flex items-center justify-center gap-1"
+                      <Edit className="h-4 w-4" />
+                      <span>Edit</span>
+                    </button>
+                    
+                    <button
+                      onClick={() => handleDeleteProject(project.id)}
+                      className="px-3 py-2 text-sm bg-red-100 text-red-700 hover:bg-red-200 dark:bg-red-900/30 dark:text-red-300 dark:hover:bg-red-900/50 rounded-lg transition-colors"
                     >
-                      <Trash2 className="w-3 h-3" />
-                      Hapus
-                    </Button>
+                      <Trash2 className="h-4 w-4" />
+                    </button>
                   </div>
-                </Card>
-              ) : (
-                <Card key={project.id} className="p-4 hover:shadow-md transition-shadow">
-                  <div className="flex items-center gap-4">
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 mb-1">
-                        <h3 className="font-semibold text-gray-900 dark:text-white">{project.name}</h3>
-                        <Badge className={getStatusColor(project.status)}>
-                          <span className="flex items-center gap-1">
-                            {getStatusIcon(project.status)}
-                            {getStatusLabel(project.status)}
-                          </span>
-                        </Badge>
-                        {isOverdue(project.endDate) && project.status === 'ONGOING' && (
-                          <Badge variant="danger">Terlambat!</Badge>
-                        )}
-                      </div>
-                      <div className="flex items-center gap-4 text-sm text-gray-600 dark:text-gray-300">
-                        <span className="flex items-center gap-1">
-                          <Building className="w-3 h-3" />
-                          {project.contact.fullName}
-                        </span>
-                        <span className="flex items-center gap-1">
-                          <FileText className="w-3 h-3" />
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden">
+              <div className="overflow-x-auto">
+                <table className="w-full">
+                  <thead className="bg-gray-50 dark:bg-gray-700">
+                    <tr>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                        Proyek
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                        Klien
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                        Layanan
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                        Timeline
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                        Status
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                        Tim
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                        Progress
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                        Aksi
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
+                    {projects.map((project) => (
+                      <tr key={project.id} className="hover:bg-gray-50 dark:hover:bg-gray-700">
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div>
+                            <div className="text-sm font-medium text-gray-900 dark:text-white">
+                              {project.name}
+                            </div>
+                            <div className="text-sm text-gray-500 dark:text-gray-400">
+                              {project.description?.substring(0, 50)}...
+                            </div>
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="text-sm text-gray-900 dark:text-white">
+                            {project.contact.fullName}
+                          </div>
+                          <div className="text-sm text-gray-500 dark:text-gray-400">
+                            {project.contact.companyName}
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
                           {project.serviceType}
-                        </span>
-                        <span className="flex items-center gap-1">
-                          <Users className="w-3 h-3" />
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="text-sm text-gray-900 dark:text-white">
+                            {formatDate(project.startDate)}
+                          </div>
+                          <div className="text-sm text-gray-500 dark:text-gray-400">
+                            {formatDate(project.endDate)}
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <span className={`px-2 py-1 text-xs rounded-full flex items-center space-x-1 w-fit ${getStatusColor(project.status)}`}>
+                            {getStatusIcon(project.status)}
+                            <span>{project.status}</span>
+                          </span>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
                           {project._count.members} anggota
-                        </span>
-                        <span>{getProgressPercentage(project)}% selesai</span>
-                      </div>
-                    </div>
-                    <div className="flex gap-1">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => {
-                          setSelectedProjectForTasks(project)
-                          setShowTasksModal(true)
-                        }}
-                        title="View Tasks"
-                      >
-                        <CheckCircle className="w-3 h-3" />
-                      </Button>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => setEditingProject(project)}
-                      >
-                        <Edit className="w-3 h-3" />
-                      </Button>
-                      <Button
-                        variant="danger"
-                        size="sm"
-                        onClick={() => handleDelete(project.id)}
-                      >
-                        <Trash2 className="w-3 h-3" />
-                      </Button>
-                    </div>
-                  </div>
-                </Card>
-              )
-            ))}
-          </div>
-        )}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="flex items-center space-x-2">
+                            <div className="w-16 bg-gray-200 dark:bg-gray-700 rounded-full h-2">
+                              <div
+                                className="bg-blue-600 h-2 rounded-full"
+                                style={{ width: `${getProgressPercentage(project)}%` }}
+                              ></div>
+                            </div>
+                            <span className="text-sm text-gray-600 dark:text-gray-400">
+                              {getProgressPercentage(project)}%
+                            </span>
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                          <div className="flex items-center space-x-2">
+                            <button
+                              onClick={() => setEditingProject(project)}
+                              className="text-blue-600 hover:text-blue-900 dark:hover:text-blue-400"
+                            >
+                              <Edit className="h-4 w-4" />
+                            </button>
+                            <button
+                              onClick={() => handleDeleteProject(project.id)}
+                              className="text-red-600 hover:text-red-900 dark:hover:text-red-400"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+        </div>
 
         {/* Pagination */}
         {pagination.pages > 1 && (
-          <div className="flex justify-center gap-2">
-            <Button
-              variant="outline"
-              disabled={pagination.page === 1}
+          <div className="flex items-center justify-center space-x-2">
+            <button
               onClick={() => setPagination(prev => ({ ...prev, page: prev.page - 1 }))}
+              disabled={pagination.page === 1}
+              className="px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50 dark:hover:bg-gray-700"
             >
               Previous
-            </Button>
-            <span className="flex items-center px-4 py-2 text-sm text-gray-600 dark:text-gray-300">
+            </button>
+            
+            <span className="px-3 py-2 text-sm text-gray-700 dark:text-gray-300">
               Page {pagination.page} of {pagination.pages}
             </span>
-            <Button
-              variant="outline"
-              disabled={pagination.page === pagination.pages}
+            
+            <button
               onClick={() => setPagination(prev => ({ ...prev, page: prev.page + 1 }))}
+              disabled={pagination.page === pagination.pages}
+              className="px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50 dark:hover:bg-gray-700"
             >
               Next
-            </Button>
+            </button>
           </div>
         )}
+      </div>
 
-        {/* Project Modal */}
+      {/* Project Modal */}
+      {showCreateModal && (
         <ProjectModal
-          isOpen={showCreateModal || !!editingProject}
+          isOpen={showCreateModal}
           onClose={() => {
             setShowCreateModal(false)
             setEditingProject(null)
           }}
-          onSubmit={editingProject ? handleUpdateProject : handleCreateProject}
+          onSave={handleSaveProject}
           project={editingProject}
-          isLoading={loading}
+          loading={savingProject}
         />
-
-        {/* Project Tasks Modal */}
-        {selectedProjectForTasks && (
-          <ProjectTasksModal
-            isOpen={showTasksModal}
-            onClose={() => {
-              setShowTasksModal(false)
-              setSelectedProjectForTasks(null)
-            }}
-            projectId={selectedProjectForTasks.id}
-            projectName={selectedProjectForTasks.name}
-            contactId={selectedProjectForTasks.contact?.id}
-          />
-        )}
-      </div>
+      )}
     </AdminLayout>
   )
 }

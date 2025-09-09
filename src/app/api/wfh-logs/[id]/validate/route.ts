@@ -31,6 +31,27 @@ export async function POST(
       return NextResponse.json({ error: 'Log WFH tidak ditemukan' }, { status: 404 })
     }
 
+    // Check if user already has attendance record for the WFH date
+    const wfhDate = new Date(wfhLog.logTime)
+    const wfhDateStart = new Date(wfhDate); wfhDateStart.setHours(0,0,0,0)
+    const wfhDateEnd = new Date(wfhDate); wfhDateEnd.setHours(23,59,59,999)
+
+    const existingAttendance = await prisma.attendance.findFirst({
+      where: {
+        userId: wfhLog.userId,
+        checkInTime: {
+          gte: wfhDateStart,
+          lte: wfhDateEnd
+        }
+      }
+    })
+
+    if (existingAttendance) {
+      return NextResponse.json({ 
+        error: 'Karyawan sudah memiliki absensi untuk tanggal WFH ini. Tidak dapat menyetujui WFH.' 
+      }, { status: 400 })
+    }
+
     // Update WFH log status
     const updatedLog = await prisma.wfhLog.update({
       where: { id: params.id },

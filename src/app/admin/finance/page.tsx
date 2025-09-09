@@ -6,16 +6,15 @@ import { useRouter } from 'next/navigation'
 import AdminLayout from '@/components/layout/AdminLayout'
 import { 
   Plus, 
-  Search, 
   Filter, 
-  Calendar,
   TrendingUp,
   TrendingDown,
   DollarSign,
   Edit,
-  Trash2,
-  Eye
+  Trash2
 } from 'lucide-react'
+import dynamic from 'next/dynamic'
+const TransactionChart = dynamic(() => import('@/components/TransactionChart'), { ssr: false })
 
 interface Transaction {
   id: string
@@ -247,16 +246,26 @@ export default function AdminFinancePage() {
         {/* Header */}
         <div className="flex justify-between items-center">
           <div>
-            <h1 className="text-2xl font-bold text-gray-900">Manajemen Keuangan</h1>
-            <p className="text-gray-600">Kelola pemasukan dan pengeluaran perusahaan</p>
+            <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">Manajemen Keuangan</h1>
+            <p className="text-gray-600 dark:text-gray-300">Kelola pemasukan dan pengeluaran perusahaan</p>
           </div>
-          <button
-            onClick={() => setShowCreateModal(true)}
-            className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 flex items-center space-x-2"
-          >
-            <Plus className="h-4 w-4" />
-            <span>Tambah Transaksi</span>
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setShowCreateModal(true)}
+              className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 flex items-center space-x-2"
+            >
+              <Plus className="h-4 w-4" />
+              <span>Tambah Transaksi</span>
+            </button>
+            <a
+              href={`/api/exports?format=csv&startDate=${filters.startDate}&endDate=${filters.endDate}`}
+              className="bg-gray-100 text-gray-800 px-3 py-2 rounded-lg hover:bg-gray-200"
+            >CSV</a>
+            <a
+              href={`/api/exports?format=excel&startDate=${filters.startDate}&endDate=${filters.endDate}`}
+              className="bg-gray-100 text-gray-800 px-3 py-2 rounded-lg hover:bg-gray-200"
+            >Excel</a>
+          </div>
         </div>
 
         {/* Summary Cards */}
@@ -371,6 +380,11 @@ export default function AdminFinancePage() {
               </button>
             </div>
           </div>
+        </div>
+
+        {/* Charts placeholder (can plug existing TransactionChart or new charts here) */}
+        <div className="rounded-lg shadow p-6 border border-black/10 dark:border-white/10 bg-white dark:bg-black/30">
+          <TransactionChart />
         </div>
 
         {/* Transactions Table */}

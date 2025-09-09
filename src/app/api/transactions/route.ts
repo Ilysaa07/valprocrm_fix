@@ -3,6 +3,7 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { z } from 'zod'
+import { Prisma } from '@prisma/client'
 
 const createTransactionSchema = z.object({
   type: z.enum(['INCOME', 'EXPENSE']),
@@ -36,7 +37,7 @@ export async function GET(request: NextRequest) {
     const page = parseInt(searchParams.get('page') || '1')
     const limit = parseInt(searchParams.get('limit') || '10')
 
-    const where: any = {}
+    const where: Prisma.TransactionWhereInput = {}
 
     if (type) {
       where.type = type
@@ -143,6 +144,8 @@ export async function POST(request: NextRequest) {
         }
       }
     })
+
+    // Removed audit logs and budget checks
 
     return NextResponse.json({
       message: 'Transaksi berhasil dibuat',

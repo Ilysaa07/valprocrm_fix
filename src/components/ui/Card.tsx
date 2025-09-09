@@ -9,7 +9,7 @@ interface CardProps {
 
 export function Card({ children, className = '' }: CardProps) {
   return (
-    <div className={`rounded-xl border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 shadow-md ${className}`}>
+    <div className={`rounded-xl border border-border bg-card shadow-medium ${className}`}>
       {children}
     </div>
   )
@@ -31,21 +31,21 @@ export function StatCard({
   accent?: 'primary' | 'success' | 'warning' | 'danger'
 }) {
   const accentMap: Record<string, { icon: string; text: string }> = {
-    primary: { icon: 'bg-primary-500', text: 'text-primary-600 dark:text-primary-400' },
-    success: { icon: 'bg-secondary-500', text: 'text-secondary-600 dark:text-secondary-400' },
-    warning: { icon: 'bg-accent-500', text: 'text-accent-600 dark:text-accent-400' },
-    danger: { icon: 'bg-danger-500', text: 'text-danger-600 dark:text-danger-400' },
+    primary: { icon: 'bg-accent', text: 'text-accent' },
+    success: { icon: 'bg-success', text: 'text-success-dark' },
+    warning: { icon: 'bg-warning', text: 'text-warning-dark' },
+    danger: { icon: 'bg-error', text: 'text-error-dark' },
   }
   const a = accentMap[accent]
   return (
     <Card>
       <CardBody>
         <div className="flex items-center">
-          <div className={`w-10 h-10 rounded-lg ${a.icon} text-white flex items-center justify-center mr-4`}>
+          <div className={`w-10 h-10 rounded-lg ${a.icon} text-text-inverse flex items-center justify-center mr-4`}>
             <Icon className="w-5 h-5" />
           </div>
           <div>
-            <p className="text-sm font-medium text-neutral-700 dark:text-neutral-300">{title}</p>
+            <p className="text-sm font-medium text-text-secondary">{title}</p>
             <p className={`text-2xl font-bold ${a.text}`}>{value}</p>
           </div>
         </div>

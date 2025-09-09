@@ -1,7 +1,8 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { Bell, CheckSquare, Calendar } from 'lucide-react'
+import { Bell, CheckSquare, Calendar, Sun, Moon, Clock } from 'lucide-react'
+import { cn } from '@/lib/utils'
 
 export interface WelcomeConfig {
   title: string
@@ -15,6 +16,8 @@ interface WelcomeSectionProps extends WelcomeConfig {
   user?: {
     name?: string
     role?: string
+    image?: string
+    profilePicture?: string
   }
   currentDate?: Date
   className?: string
@@ -100,94 +103,154 @@ export function WelcomeSection({
           })
         }
       } catch (error) {
-        console.error('Failed to fetch real-time data:', error)
+        console.error('Error fetching real-time data:', error)
       }
     }
 
+    // Initial fetch
     fetchRealTimeData()
-    
-    // Update every 30 seconds
-    const interval = setInterval(fetchRealTimeData, 30000)
-    
+
+    // Set up interval for real-time updates
+    const interval = setInterval(fetchRealTimeData, 30000) // Update every 30 seconds
+
     return () => clearInterval(interval)
   }, [mounted])
 
+  if (!mounted) {
+    return (
+      <div className="animate-pulse">
+        <div className="bg-slate-200 dark:bg-slate-700 rounded-2xl p-8">
+          <div className="h-8 bg-slate-300 dark:bg-slate-600 rounded mb-4"></div>
+          <div className="h-6 bg-slate-300 dark:bg-slate-600 rounded mb-6"></div>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            {[...Array(3)].map((_, i) => (
+              <div key={i} className="h-20 bg-slate-300 dark:bg-slate-600 rounded"></div>
+            ))}
+          </div>
+        </div>
+      </div>
+    )
+  }
+
   return (
-    <div className={`bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-6 ${className}`}>
-      <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6">
-        <div className="flex-1">
-          {/* Header */}
-          <div className="flex items-center space-x-4">
-            <div className="w-1 h-12 bg-blue-600 rounded-full"></div>
-            <div>
-              <h1 className="text-2xl lg:text-3xl font-semibold text-gray-900 dark:text-white">
-                {getGreeting(currentDate)}, {user?.name || 'User'}!
-              </h1>
-              {showRole && user?.role && (
-                <p className="text-gray-600 dark:text-gray-400 mt-1">
-                  {getRoleText(user.role)}
+    <div className={cn(
+      'bg-gradient-to-r from-blue-50 via-indigo-50/30 to-cyan-50/20',
+      'dark:from-slate-800 dark:via-blue-900/20 dark:to-slate-800',
+      'rounded-3xl border border-blue-200/50 dark:border-slate-700/50',
+      'p-8 backdrop-blur-sm shadow-xl',
+      'relative overflow-hidden',
+      className
+    )}>
+      {/* Background Pattern */}
+      <div className="absolute inset-0 opacity-10">
+        <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-blue-400 to-indigo-500 rounded-full -translate-y-16 translate-x-16"></div>
+        <div className="absolute bottom-0 left-0 w-24 h-24 bg-gradient-to-br from-cyan-400 to-blue-500 rounded-full translate-y-12 -translate-x-12"></div>
+      </div>
+
+      <div className="relative z-10">
+        {/* Header Section */}
+        <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between mb-8">
+          <div className="flex-1">
+            <div className="flex items-center space-x-4 mb-4">
+              <div className="w-12 h-12 rounded-full bg-slate-300 dark:bg-slate-600 flex items-center justify-center">
+                {user?.image ? (
+                  <img src={user.image} alt="Profile" className="w-full h-full object-cover rounded-full" />
+                ) : (
+                  <span className="text-lg font-bold text-slate-700 dark:text-slate-300">
+                    {user?.name ? user.name.charAt(0) : 'U'}
+                  </span>
+                )}
+              </div>
+              <div>
+                <h1 className="text-3xl lg:text-4xl font-bold bg-gradient-to-r from-slate-900 to-slate-700 dark:from-slate-100 dark:to-slate-300 bg-clip-text text-transparent">
+                  {getGreeting(currentDate)}, {user?.name || 'User'}! 👋
+                </h1>
+                <p className="text-lg text-slate-600 dark:text-slate-400 mt-2">
+                  {subtitle}
                 </p>
+              </div>
+            </div>
+
+            {/* Date, Time, and Role Info */}
+            <div className="flex flex-wrap items-center gap-4 text-sm text-slate-600 dark:text-slate-400">
+              {showDateTime && (
+                <>
+                  <div className="flex items-center space-x-2">
+                    <Clock className="w-4 h-4 text-blue-500" />
+                    <span>{formatDate(currentDate)}</span>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <Clock className="w-4 h-4 text-indigo-500" />
+                    <span>{formatTime(currentDate)}</span>
+                  </div>
+                </>
+              )}
+              
+              {showRole && user?.role && (
+                <div className="flex items-center space-x-2">
+                  <div className="w-2 h-2 bg-gradient-to-r from-blue-500 to-indigo-500 rounded-full"></div>
+                  <span className="font-medium text-blue-600 dark:text-blue-400">
+                    {getRoleText(user.role)}
+                  </span>
+                </div>
               )}
             </div>
           </div>
-          
-          {/* Content */}
-          <div className="mt-4 space-y-2">
-            <p className="text-gray-700 dark:text-gray-200 text-lg font-medium">
-              {title}
-            </p>
-            
-            {subtitle && (
-              <p className="text-gray-600 dark:text-gray-400 text-base">
-                {subtitle}
-              </p>
-            )}
-            
-            {showDateTime && (
-              <div className="flex flex-wrap items-center gap-3 mt-4">
-                <div className="flex items-center space-x-2 text-gray-600 dark:text-gray-400 bg-gray-50 dark:bg-gray-700 px-3 py-2 rounded-lg">
-                  <div className="w-2 h-2 bg-blue-600 rounded-full"></div>
-                  <span className="text-sm">{formatDate(currentDate)}</span>
-                </div>
-                
-                <div className="flex items-center space-x-2 text-gray-600 dark:text-gray-400 bg-gray-50 dark:bg-gray-700 px-3 py-2 rounded-lg">
-                  <div className="w-2 h-2 bg-green-600 rounded-full"></div>
-                  <span className="text-sm">{formatTime(currentDate)}</span>
-                </div>
+
+          {/* Weather/Time Icon */}
+          <div className="mt-6 lg:mt-0 lg:ml-6">
+            <div className="p-4 bg-white/80 dark:bg-slate-800/80 rounded-2xl border border-blue-200/50 dark:border-slate-700/50 backdrop-blur-sm">
+              <div className="text-center">
+                {currentDate.getHours() >= 6 && currentDate.getHours() < 18 ? (
+                  <Sun className="w-8 h-8 text-yellow-500 mx-auto mb-2" />
+                ) : (
+                  <Moon className="w-8 h-8 text-indigo-500 mx-auto mb-2" />
+                )}
+                <p className="text-xs text-slate-500 dark:text-slate-400">
+                  {currentDate.getHours() >= 6 && currentDate.getHours() < 18 ? 'Siang' : 'Malam'}
+                </p>
               </div>
-            )}
+            </div>
           </div>
         </div>
-          
-        {/* Quick stats */}
+
+        {/* Quick Stats */}
         {showQuickStats && (
-          <div className="flex lg:flex-col items-center lg:items-end gap-4">
-            <div className="text-center lg:text-right">
-              <div className="flex items-center justify-center lg:justify-end gap-2 mb-1">
-                <CheckSquare className="w-4 h-4 text-blue-600 dark:text-blue-400" />
-                <p className="text-2xl font-bold text-gray-900 dark:text-white">
-                  {realTimeData?.activeTasks ?? liveData.activeTasks}
-                </p>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="bg-white/80 dark:bg-slate-800/80 rounded-2xl border border-blue-200/50 dark:border-slate-700/50 p-6 backdrop-blur-sm hover:shadow-lg transition-all duration-300">
+              <div className="flex items-center space-x-3">
+                <div className="p-3 bg-gradient-to-br from-blue-500 to-indigo-500 rounded-xl">
+                  <CheckSquare className="w-6 h-6 text-white" />
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-slate-600 dark:text-slate-400">Tugas Aktif</p>
+                  <p className="text-2xl font-bold text-slate-900 dark:text-white">{liveData.activeTasks}</p>
+                </div>
               </div>
-              <p className="text-sm text-gray-600 dark:text-gray-400">Tugas Aktif</p>
             </div>
-            <div className="text-center lg:text-right">
-              <div className="flex items-center justify-center lg:justify-end gap-2 mb-1">
-                <Bell className="w-4 h-4 text-blue-600 dark:text-blue-400" />
-                <p className="text-2xl font-bold text-gray-900 dark:text-white">
-                  {realTimeData?.notifications ?? liveData.notifications}
-                </p>
+
+            <div className="bg-white/80 dark:bg-slate-800/80 rounded-2xl border border-blue-200/50 dark:border-slate-700/50 p-6 backdrop-blur-sm hover:shadow-lg transition-all duration-300">
+              <div className="flex items-center space-x-3">
+                <div className="p-3 bg-gradient-to-br from-green-500 to-emerald-500 rounded-xl">
+                  <Bell className="w-6 h-6 text-white" />
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-slate-600 dark:text-slate-400">Notifikasi</p>
+                  <p className="text-2xl font-bold text-slate-900 dark:text-white">{liveData.notifications}</p>
+                </div>
               </div>
-              <p className="text-sm text-gray-600 dark:text-gray-400">Notifikasi</p>
             </div>
-            <div className="text-center lg:text-right">
-              <div className="flex items-center justify-center lg:justify-end gap-2 mb-1">
-                <Calendar className="w-4 h-4 text-blue-600 dark:text-blue-400" />
-                <p className="text-2xl font-bold text-gray-900 dark:text-white">
-                  {realTimeData?.meetings ?? liveData.meetings}
-                </p>
+
+            <div className="bg-white/80 dark:bg-slate-800/80 rounded-2xl border border-blue-200/50 dark:border-slate-700/50 p-6 backdrop-blur-sm hover:shadow-lg transition-all duration-300">
+              <div className="flex items-center space-x-3">
+                <div className="p-3 bg-gradient-to-br from-purple-500 to-violet-500 rounded-xl">
+                  <Calendar className="w-6 h-6 text-white" />
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-slate-600 dark:text-slate-400">Meeting</p>
+                  <p className="text-2xl font-bold text-slate-900 dark:text-white">{liveData.meetings}</p>
+                </div>
               </div>
-              <p className="text-sm text-gray-600 dark:text-gray-400">Meeting</p>
             </div>
           </div>
         )}

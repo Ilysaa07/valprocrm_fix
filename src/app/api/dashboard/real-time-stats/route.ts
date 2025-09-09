@@ -19,16 +19,17 @@ export async function GET(request: NextRequest) {
     let meetings = 0
 
     try {
-      // Count pending tasks
+      // Count active tasks (including revision/pending validation)
       activeTasks = await prisma.task.count({
         where: {
           ...(isAdmin ? {} : {
             OR: [
               { createdById: session.user.id },
-              { assigneeId: session.user.id }
+              { assigneeId: session.user.id },
+              { assignment: 'ALL_EMPLOYEES' }
             ]
           }),
-          status: { in: ['NOT_STARTED', 'IN_PROGRESS'] }
+          status: { in: ['NOT_STARTED', 'IN_PROGRESS', 'PENDING_VALIDATION', 'REVISION'] }
         }
       })
     } catch (error) {

@@ -106,10 +106,25 @@ model TaskSubmission {
   updatedAt    DateTime @updatedAt
   task         Task     @relation(fields: [taskId], references: [id], onDelete: Cascade)
   user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  files        TaskSubmissionFile[]
 
   @@unique([taskId, userId])
   @@index([userId], map: "task_submissions_userId_fkey")
   @@map("task_submissions")
+}
+
+model TaskSubmissionFile {
+  id            String   @id @default(cuid())
+  submissionId  String
+  fileUrl       String
+  fileName      String
+  fileSize      Int?
+  fileType      String?
+  createdAt     DateTime @default(now())
+  submission    TaskSubmission @relation(fields: [submissionId], references: [id], onDelete: Cascade)
+
+  @@index([submissionId])
+  @@map("task_submission_files")
 }
 
 model Transaction {
@@ -127,6 +142,7 @@ model Transaction {
   @@index([createdById], map: "transactions_createdById_fkey")
   @@map("transactions")
 }
+
 
 model Notification {
   id        String   @id @default(cuid())
@@ -521,6 +537,7 @@ enum TaskStatus {
   IN_PROGRESS
   PENDING_VALIDATION
   COMPLETED
+  REVISION
 }
 
 enum TaskPriority {
@@ -557,6 +574,7 @@ enum TransactionCategory {
   OTHER_EXPENSE
 }
 
+
 enum ConversationType {
   DIRECT
   GROUP
@@ -572,7 +590,6 @@ enum MessageType {
   TEXT
   FILE
   IMAGE
-  AUDIO
   VIDEO
   DELETED
 }
@@ -670,18 +687,19 @@ enum ClientStatus {
   COMPLETED
 }
 
-enum ProjectStatus {
-  ONGOING
-  PENDING
-  COMPLETED
-  CANCELLED
-}
-
 enum MilestoneStatus {
   NOT_STARTED
   IN_PROGRESS
   COMPLETED
   OVERDUE
+}
+
+enum ProjectStatus {
+  PLANNING
+  ONGOING
+  ON_HOLD
+  COMPLETED
+  CANCELLED
 }
 
 model Project {
@@ -692,7 +710,7 @@ model Project {
   serviceType     String
   startDate       DateTime
   endDate         DateTime
-  status          ProjectStatus     @default(ONGOING)
+  status          ProjectStatus     @default(PLANNING)
   notes           String?           @db.Text
   createdById     String
   updatedById     String?

@@ -1,5 +1,17 @@
 // Dashboard Components
-export { DashboardLayout, DashboardSection, DashboardGrid, DashboardHeader, DashboardFooter, DashboardEmptyState, TwoColumnLayout } from '../DashboardLayout'
+export { 
+  DashboardLayout, 
+  DashboardSection, 
+  DashboardGrid, 
+  DashboardSidebar,
+  DashboardMain,
+  TwoColumnLayout,
+  ThreeColumnLayout,
+  FourColumnLayout,
+  DashboardCard,
+  DashboardStatCard,
+  DashboardMetricCard
+} from '../DashboardLayout'
 export { DashboardSummary } from '../DashboardSummary'
 export { DashboardInsights } from '../DashboardInsights'
 export { DashboardAnalytics } from '../DashboardAnalytics'
@@ -45,9 +57,6 @@ export type {
   DashboardLayoutProps,
   DashboardSectionProps,
   DashboardGridProps,
-  DashboardHeaderProps,
-  DashboardFooterProps,
-  DashboardEmptyStateProps,
   ChartConfig,
   ProgressConfig,
   QuickActionsConfig,

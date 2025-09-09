@@ -3,10 +3,8 @@
 import React, { useState } from 'react';
 import { formatDistanceToNow } from 'date-fns';
 import { Search, Users, Clock, Circle, Trash2 } from 'lucide-react';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+// Using simple avatar logic (img or initial) inline to avoid broken Avatar component
 import Badge from '@/components/ui/Badge';
-import { Button } from '@/components/ui/Button';
-import { Modal } from '@/components/ui/Modal';
 
 interface Conversation {
   id: string;
@@ -54,23 +52,29 @@ export default function ConversationList({
   currentUserId,
   unreadByConversation,
 }: ConversationListProps) {
-  const [searchQuery, setSearchQuery] = useState('');
-  const [showArchived, setShowArchived] = useState(false);
+  const [searchQuery] = useState('');
   const [onlineUserIds, setOnlineUserIds] = useState<Set<string>>(new Set());
 
   // Presence indicator via window socket (if available)
   React.useEffect(() => {
-    const w = window as any;
-    const s = w?.socket as any;
+    interface SocketApi {
+      emit: (event: string, ...args: unknown[]) => void
+      on: (event: string, cb: (...args: unknown[]) => void) => void
+      off: (event: string, cb: (...args: unknown[]) => void) => void
+    }
+    interface WindowWithSocket extends Window { socket?: SocketApi }
+    const w = window as unknown as WindowWithSocket;
+    const s = w?.socket;
     if (!s) return;
-    const onPresence = (p: { userId: string; isOnline: boolean }) => {
+    const onPresence = (p: unknown) => {
+      const payload = p as { userId: string; isOnline: boolean }
       setOnlineUserIds(prev => {
         const next = new Set(prev);
-        if (p.isOnline) next.add(p.userId); else next.delete(p.userId);
+        if (payload.isOnline) next.add(payload.userId); else next.delete(payload.userId);
         return next;
       });
     };
-    const onList = (arr: string[]) => setOnlineUserIds(new Set(arr));
+    const onList = (arr: unknown) => setOnlineUserIds(new Set((arr as string[]) || []));
     s.emit('get_online_users');
     s.on('presence_update', onPresence);
     s.on('online_users', onList);
@@ -109,32 +113,37 @@ export default function ConversationList({
   const getConversationAvatar = (conversation: Conversation) => {
     if (conversation.type === 'GROUP') {
       return (
-        <Avatar className="w-10 h-10">
-          <AvatarFallback className="bg-blue-500 text-white">
-            <Users className="w-5 h-5" />
-          </AvatarFallback>
-        </Avatar>
+        <div className="w-10 h-10 rounded-full overflow-hidden bg-blue-500 text-white flex items-center justify-center">
+          <Users className="w-5 h-5" />
+        </div>
       );
     }
 
     const otherParticipant = conversation.participants.find(p => p.user.id !== currentUserId);
     if (otherParticipant?.user.profilePicture) {
       return (
-        <Avatar className="w-10 h-10">
-          <AvatarImage src={otherParticipant.user.profilePicture} alt={otherParticipant.user.fullName} />
-          <AvatarFallback className="bg-gray-100 text-gray-600">
+        <div className="w-10 h-10 rounded-full overflow-hidden bg-slate-300 dark:bg-slate-600 flex items-center justify-center text-gray-600">
+          <img
+            src={otherParticipant.user.profilePicture}
+            alt={otherParticipant.user.fullName}
+            className="w-full h-full object-cover"
+            onError={(e) => {
+              (e.currentTarget as HTMLImageElement).style.display = 'none'
+              const next = e.currentTarget.nextElementSibling as HTMLElement | null
+              if (next) next.classList.remove('hidden')
+            }}
+          />
+          <span className="hidden">
             {otherParticipant.user.fullName.charAt(0).toUpperCase()}
-          </AvatarFallback>
-        </Avatar>
+          </span>
+        </div>
       );
     }
 
     return (
-      <Avatar className="w-10 h-10">
-        <AvatarFallback className="bg-gray-100 text-gray-600">
-          {otherParticipant?.user.fullName.charAt(0).toUpperCase() || 'U'}
-        </AvatarFallback>
-      </Avatar>
+      <div className="w-10 h-10 rounded-full overflow-hidden bg-gray-100 text-gray-600 flex items-center justify-center">
+        {otherParticipant?.user.fullName.charAt(0).toUpperCase() || 'U'}
+      </div>
     );
   };
 
@@ -160,11 +169,11 @@ export default function ConversationList({
     return (
       <div className="p-4 space-y-4">
         {[...Array(5)].map((_, i) => (
-          <div key={i} className="flex items-center space-x-3 animate-pulse">
-            <div className="w-10 h-10 bg-gray-200 rounded-full"></div>
+          <div key={i} className="flex items-center space-x-3 animate-pulse p-3">
+            <div className="w-12 h-12 bg-gray-200 dark:bg-slate-700 rounded-full"></div>
             <div className="flex-1 space-y-2">
-              <div className="h-4 bg-gray-200 rounded w-3/4"></div>
-              <div className="h-3 bg-gray-200 rounded w-1/2"></div>
+              <div className="h-4 bg-gray-200 dark:bg-slate-700 rounded w-3/4"></div>
+              <div className="h-3 bg-gray-200 dark:bg-slate-700 rounded w-1/2"></div>
             </div>
           </div>
         ))}
@@ -175,11 +184,11 @@ export default function ConversationList({
   if (filteredConversations.length === 0) {
     return (
       <div className="p-8 text-center">
-        <div className="w-16 h-16 mx-auto mb-4 bg-gray-100 rounded-full flex items-center justify-center">
-          <Search className="w-8 h-8 text-gray-400" />
+        <div className="w-16 h-16 mx-auto mb-4 bg-gradient-to-r from-gray-100 to-gray-200 dark:from-slate-700 dark:to-slate-600 rounded-full flex items-center justify-center">
+          <Search className="w-8 h-8 text-gray-400 dark:text-gray-500" />
         </div>
-        <h3 className="text-lg font-medium text-gray-900 mb-2">No conversations found</h3>
-        <p className="text-gray-500">Try adjusting your search or start a new conversation.</p>
+        <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">No conversations found</h3>
+        <p className="text-gray-500 dark:text-gray-400">Try adjusting your search or start a new conversation.</p>
       </div>
     );
   }
@@ -195,10 +204,10 @@ export default function ConversationList({
           <div
             key={conversation.id}
             onClick={() => onSelectConversation(conversation)}
-            className={`group relative flex items-center space-x-3 p-3 rounded-lg cursor-pointer transition-all duration-200 ${
+            className={`group relative flex items-center space-x-3 p-4 rounded-xl cursor-pointer transition-all duration-200 ${
               isSelected 
-                ? 'bg-blue-50 border border-blue-200 shadow-sm' 
-                : 'hover:bg-gray-50 border border-transparent'
+                ? 'bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/30 dark:to-indigo-900/30 border border-blue-200 dark:border-blue-700 shadow-lg ring-1 ring-blue-200/50 dark:ring-blue-800/30' 
+                : 'hover:bg-gray-50 dark:hover:bg-slate-700 border border-transparent hover:shadow-md'
             }`}
           >
             <div className="relative">
@@ -213,7 +222,7 @@ export default function ConversationList({
                 const isOnline = other ? onlineUserIds.has(other) : false;
                 return (
                   <span className={`absolute -bottom-1 -right-1 inline-flex items-center`}>
-                    <Circle className={`w-3 h-3 ${isOnline ? 'text-green-500' : 'text-gray-300'}`} />
+                    <Circle className={`w-3 h-3 ${isOnline ? 'text-green-500' : 'text-gray-300 dark:text-neutral-600'}`} />
                   </span>
                 );
               })()}
@@ -221,13 +230,13 @@ export default function ConversationList({
             
             <div className="flex-1 min-w-0">
               <div className="flex items-center justify-between">
-                <h3 className={`text-sm font-medium truncate ${
-                  isSelected ? 'text-blue-900' : 'text-gray-900'
+                <h3 className={`text-sm font-semibold truncate ${
+                  isSelected ? 'text-blue-900 dark:text-blue-100' : 'text-gray-900 dark:text-white'
                 }`}>
                   {getConversationDisplayName(conversation)}
                 </h3>
                 <div className="flex items-center space-x-2">
-                  <span className="text-xs text-gray-500 flex items-center">
+                  <span className="text-xs text-gray-500 dark:text-neutral-400 flex items-center">
                     <Clock className="w-3 h-3 mr-1" />
                     {lastMessage.time}
                   </span>
@@ -239,7 +248,7 @@ export default function ConversationList({
                 </div>
               </div>
               <p className={`text-sm truncate ${
-                isSelected ? 'text-blue-700' : 'text-gray-500'
+                isSelected ? 'text-blue-700 dark:text-blue-200' : 'text-gray-600 dark:text-gray-300'
               }`}>
                 {lastMessage.content}
               </p>

@@ -156,6 +156,7 @@ export async function GET() {
     const summary = {
       total: users.length,
       present: attendanceData.filter(a => a.status === 'PRESENT').length,
+      late: attendanceData.filter(a => a.status === 'LATE').length,
       wfh: attendanceData.filter(a => a.status === 'WFH').length,
       leave: attendanceData.filter(a => a.status === 'LEAVE').length,
       absent: attendanceData.filter(a => a.status === 'ABSENT').length

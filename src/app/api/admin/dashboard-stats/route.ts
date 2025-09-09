@@ -93,6 +93,8 @@ export async function GET(req: NextRequest) {
       totalTasks,
       completedTasks: taskStatsMap.get('COMPLETED') || 0,
       pendingTasks: (taskStatsMap.get('NOT_STARTED') || 0) + (taskStatsMap.get('IN_PROGRESS') || 0),
+      pendingValidationTasks: taskStatsMap.get('PENDING_VALIDATION') || 0,
+      revisionTasks: taskStatsMap.get('REVISION') || 0,
       
       // Attendance stats
       todayPresent: attendanceStatsMap.get('PRESENT') || 0,

@@ -18,10 +18,8 @@ const updateEventSchema = z.object({
   visibility: z.enum(['PUBLIC', 'PRIVATE', 'CONFIDENTIAL']).optional(),
   recurrenceRule: z.string().optional(),
   recurrenceEnd: z.string().datetime().optional(),
-  projectId: z.string().optional(),
   contactId: z.string().optional(),
   taskId: z.string().optional(),
-  milestoneId: z.string().optional(),
   attendees: z.array(z.object({
     id: z.string().optional(),
     userId: z.string().optional(),
@@ -53,55 +51,14 @@ export async function GET(
       where: { id: params.id },
       include: {
         createdBy: {
-          select: {
-            id: true,
-            name: true,
-            email: true,
-            avatar: true
-          }
+          select: { id: true, fullName: true, email: true, profilePicture: true }
         },
-        attendees: {
-          include: {
-            user: {
-              select: {
-                id: true,
-                name: true,
-                email: true,
-                avatar: true
-              }
-            }
-          }
-        },
+        attendees: true,
         reminders: true,
-        project: {
-          select: {
-            id: true,
-            name: true,
-            status: true
-          }
-        },
-        contact: {
-          select: {
-            id: true,
-            name: true,
-            email: true,
-            companyName: true
-          }
-        },
-        task: {
-          select: {
-            id: true,
-            title: true,
-            status: true
-          }
-        },
-        milestone: {
-          select: {
-            id: true,
-            title: true,
-            status: true
-          }
-        }
+        project: { select: { id: true, name: true, status: true } },
+        contact: { select: { id: true, fullName: true, companyName: true } },
+        task: { select: { id: true, title: true, status: true } },
+        milestone: { select: { id: true, name: true, status: true } }
       }
     })
 
@@ -138,7 +95,27 @@ export async function PUT(
     }
 
     const body = await request.json()
-    const validatedData = updateEventSchema.parse(body)
+    const {
+      title,
+      description,
+      startTime,
+      endTime,
+      allDay,
+      location,
+      meetingLink,
+      category,
+      priority,
+      status,
+      visibility,
+      recurrenceRule,
+      recurrenceEnd,
+      projectId,
+      contactId,
+      taskId,
+      milestoneId,
+      attendees,
+      reminders
+    } = body
 
     // Check if event exists and user has permission
     const existingEvent = await prisma.calendarEvent.findUnique({
@@ -157,118 +134,144 @@ export async function PUT(
       )
 
     if (!canEdit) {
-      return NextResponse.json({ error: 'Permission denied' }, { status: 403 })
+      return NextResponse.json({ error: 'Access denied' }, { status: 403 })
     }
 
-    // Validate date range if both dates are provided
-    if (validatedData.startTime && validatedData.endTime) {
-      const startTime = new Date(validatedData.startTime)
-      const endTime = new Date(validatedData.endTime)
-      
-      if (endTime <= startTime) {
-        return NextResponse.json({ error: 'End time must be after start time' }, { status: 400 })
-      }
+    // Validation
+    if (!title?.trim()) {
+      return NextResponse.json({ error: 'Event title is required' }, { status: 400 })
     }
 
-    // Update event
-    const updateData: any = {
-      ...validatedData,
-      updatedById: session.user.id
+    if (startTime && endTime && new Date(endTime) <= new Date(startTime)) {
+      return NextResponse.json({ error: 'End time must be after start time' }, { status: 400 })
     }
 
-    // Handle date conversions
-    if (validatedData.startTime) {
-      updateData.startTime = new Date(validatedData.startTime)
-    }
-    if (validatedData.endTime) {
-      updateData.endTime = new Date(validatedData.endTime)
-    }
-    if (validatedData.recurrenceEnd) {
-      updateData.recurrenceEnd = new Date(validatedData.recurrenceEnd)
-    }
-
-    // Handle attendees update
-    if (validatedData.attendees) {
-      // Delete existing attendees and create new ones
-      await prisma.eventAttendee.deleteMany({
-        where: { eventId: params.id }
+    // Check if project exists (if specified)
+    if (projectId) {
+      const project = await prisma.project.findUnique({
+        where: { id: projectId }
       })
-      
-      updateData.attendees = {
-        create: validatedData.attendees.map(attendee => ({
-          userId: attendee.userId || null,
-          email: attendee.email || null,
-          name: attendee.name || null,
-          isOrganizer: attendee.isOrganizer || false,
-          status: attendee.status || 'PENDING'
-        }))
+      if (!project) {
+        return NextResponse.json({ error: 'Project not found' }, { status: 400 })
       }
     }
 
-    // Handle reminders update
-    if (validatedData.reminders) {
-      // Delete existing reminders and create new ones
-      await prisma.eventReminder.deleteMany({
-        where: { eventId: params.id }
+    // Check if contact exists (if specified)
+    if (contactId) {
+      const contact = await prisma.contact.findUnique({
+        where: { id: contactId }
       })
-      
-      updateData.reminders = {
-        create: validatedData.reminders.map(reminder => ({
-          reminderTime: new Date(reminder.reminderTime),
-          reminderType: reminder.reminderType,
-          message: reminder.message
-        }))
+      if (!contact) {
+        return NextResponse.json({ error: 'Contact not found' }, { status: 400 })
       }
     }
 
-    const updatedEvent = await prisma.calendarEvent.update({
+    // Check if task exists (if specified)
+    if (taskId) {
+      const task = await prisma.task.findUnique({
+        where: { id: taskId }
+      })
+      if (!task) {
+        return NextResponse.json({ error: 'Task not found' }, { status: 400 })
+      }
+    }
+
+    // Check if milestone exists (if specified)
+    if (milestoneId) {
+      const milestone = await prisma.projectMilestone.findUnique({
+        where: { id: milestoneId }
+      })
+      if (!milestone) {
+        return NextResponse.json({ error: 'Milestone not found' }, { status: 400 })
+      }
+    }
+
+    const updateData: Record<string, unknown> = {
+      title: title.trim(),
+      description: description?.trim(),
+      allDay: allDay || false,
+      location: location?.trim(),
+      meetingLink: meetingLink?.trim(),
+      category: category || 'MEETING',
+      priority: priority || 'MEDIUM',
+      status: status || 'CONFIRMED',
+      visibility: visibility || 'PRIVATE',
+      recurrenceRule: recurrenceRule?.trim(),
+      projectId: projectId || null,
+      contactId: contactId || null,
+      taskId: taskId || null,
+      milestoneId: milestoneId || null
+    }
+
+    if (startTime) updateData.startTime = new Date(startTime)
+    if (endTime) updateData.endTime = new Date(endTime)
+    if (recurrenceEnd) updateData.recurrenceEnd = new Date(recurrenceEnd)
+
+    const event = await prisma.calendarEvent.update({
       where: { id: params.id },
       data: updateData,
       include: {
         createdBy: {
-          select: {
-            id: true,
-            name: true,
-            email: true,
-            avatar: true
-          }
+          select: { id: true, fullName: true, email: true }
         },
-        attendees: {
-          include: {
-            user: {
-              select: {
-                id: true,
-                name: true,
-                email: true,
-                avatar: true
-              }
-            }
-          }
-        },
-        reminders: true,
         project: {
-          select: {
-            id: true,
-            name: true,
-            status: true
-          }
+          select: { id: true, name: true, status: true }
         },
         contact: {
-          select: {
-            id: true,
-            name: true,
-            email: true,
-            companyName: true
-          }
+          select: { id: true, fullName: true, companyName: true }
+        },
+        task: {
+          select: { id: true, title: true, status: true }
+        },
+        milestone: {
+          select: { id: true, name: true, status: true }
         }
       }
     })
 
-    return NextResponse.json(updatedEvent)
-  } catch (error) {
-    if (error instanceof z.ZodError) {
-      return NextResponse.json({ error: 'Validation error', details: error.errors }, { status: 400 })
+    // Update attendees if provided
+    if (attendees && Array.isArray(attendees)) {
+      // Remove existing attendees
+      await prisma.eventAttendee.deleteMany({
+        where: { eventId: params.id }
+      })
+
+      // Add new attendees
+      if (attendees.length > 0) {
+        await prisma.eventAttendee.createMany({
+          data: attendees.map((attendee: any) => ({
+            eventId: params.id,
+            userId: attendee.userId,
+            email: attendee.email,
+            name: attendee.name,
+            isOrganizer: attendee.isOrganizer || false
+          }))
+        })
+      }
     }
+
+    // Update reminders if provided
+    if (reminders && Array.isArray(reminders)) {
+      // Remove existing reminders
+      await prisma.eventReminder.deleteMany({
+        where: { eventId: params.id }
+      })
+
+      // Add new reminders
+      if (reminders.length > 0) {
+        await prisma.eventReminder.createMany({
+          data: reminders.map((reminder: any) => ({
+            eventId: params.id,
+            reminderTime: new Date(reminder.reminderTime),
+            reminderType: reminder.reminderType || 'NOTIFICATION',
+            message: reminder.message
+          }))
+        })
+      }
+    }
+
+    return NextResponse.json({ event })
+  } catch (error) {
     console.error('Error updating calendar event:', error)
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
@@ -285,27 +288,25 @@ export async function DELETE(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    // Check if event exists and user has permission
-    const existingEvent = await prisma.calendarEvent.findUnique({
+    const event = await prisma.calendarEvent.findUnique({
       where: { id: params.id },
       include: { attendees: true }
     })
 
-    if (!existingEvent) {
+    if (!event) {
       return NextResponse.json({ error: 'Event not found' }, { status: 404 })
     }
 
     const canDelete = session.user.role === 'ADMIN' ||
-      existingEvent.createdById === session.user.id ||
-      existingEvent.attendees.some(attendee => 
+      event.createdById === session.user.id ||
+      event.attendees.some(attendee => 
         attendee.userId === session.user.id && attendee.isOrganizer
       )
 
     if (!canDelete) {
-      return NextResponse.json({ error: 'Permission denied' }, { status: 403 })
+      return NextResponse.json({ error: 'Access denied' }, { status: 403 })
     }
 
-    // Delete event (cascading deletes will handle attendees and reminders)
     await prisma.calendarEvent.delete({
       where: { id: params.id }
     })

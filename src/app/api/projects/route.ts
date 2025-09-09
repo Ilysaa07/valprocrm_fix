@@ -3,6 +3,24 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 
+// Helper function to map milestone status
+function mapMilestoneStatus(status: string): 'NOT_STARTED' | 'IN_PROGRESS' | 'COMPLETED' | 'OVERDUE' {
+  switch (status.toUpperCase()) {
+    case 'PENDING':
+    case 'NOT_STARTED':
+      return 'NOT_STARTED'
+    case 'IN_PROGRESS':
+      return 'IN_PROGRESS'
+    case 'COMPLETED':
+      return 'COMPLETED'
+    case 'OVERDUE':
+      return 'OVERDUE'
+    default:
+      return 'NOT_STARTED'
+  }
+}
+
+// GET /api/projects - Get all projects with role-based filtering
 export async function GET(request: NextRequest) {
   try {
     const session = await getServerSession(authOptions)
@@ -15,14 +33,15 @@ export async function GET(request: NextRequest) {
     const status = searchParams.get('status') || ''
     const contactId = searchParams.get('contactId') || ''
     const serviceType = searchParams.get('serviceType') || ''
+    const memberOnly = searchParams.get('memberOnly') === 'true'
     const page = parseInt(searchParams.get('page') || '1')
     const limit = parseInt(searchParams.get('limit') || '20')
     const skip = (page - 1) * limit
 
-    const where: any = {}
+    const where: Record<string, unknown> = {}
 
     // Role-based filtering for employees
-    if (session.user.role === 'EMPLOYEE') {
+    if (session.user.role === 'EMPLOYEE' || memberOnly) {
       where.members = {
         some: {
           userId: session.user.id
@@ -72,8 +91,22 @@ export async function GET(request: NextRequest) {
           milestones: {
             orderBy: { order: 'asc' }
           },
+          tasks: {
+            include: {
+              assignee: {
+                select: { id: true, fullName: true, email: true, role: true }
+              },
+              createdBy: {
+                select: { id: true, fullName: true, email: true }
+              },
+              milestone: {
+                select: { id: true, name: true, status: true }
+              }
+            },
+            orderBy: { createdAt: 'desc' }
+          },
           _count: {
-            select: { members: true, milestones: true }
+            select: { members: true, milestones: true, tasks: true }
           }
         },
         orderBy: { updatedAt: 'desc' },
@@ -98,6 +131,7 @@ export async function GET(request: NextRequest) {
   }
 }
 
+// POST /api/projects - Create new project (Admin only)
 export async function POST(request: NextRequest) {
   try {
     const session = await getServerSession(authOptions)
@@ -115,7 +149,8 @@ export async function POST(request: NextRequest) {
       endDate,
       notes,
       memberIds = [],
-      milestones = []
+      milestones = [],
+      contactManual
     } = body
 
     // Validation
@@ -123,7 +158,18 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Nama project wajib diisi' }, { status: 400 })
     }
 
-    if (!contactId) {
+    let resolvedContactId = contactId
+    if (!resolvedContactId && contactManual?.fullName) {
+      const created = await prisma.contact.create({
+        data: {
+          fullName: contactManual.fullName.trim(),
+          companyName: contactManual.companyName || null,
+          createdById: session.user.id
+        }
+      })
+      resolvedContactId = created.id
+    }
+    if (!resolvedContactId) {
       return NextResponse.json({ error: 'Klien/Contact wajib dipilih' }, { status: 400 })
     }
 
@@ -141,7 +187,7 @@ export async function POST(request: NextRequest) {
 
     // Check if contact exists
     const contact = await prisma.contact.findUnique({
-      where: { id: contactId }
+      where: { id: resolvedContactId }
     })
 
     if (!contact) {
@@ -152,7 +198,7 @@ export async function POST(request: NextRequest) {
       data: {
         name: name.trim(),
         description: description?.trim() || null,
-        contactId,
+        contactId: resolvedContactId,
         serviceType: serviceType.trim(),
         startDate: new Date(startDate),
         endDate: new Date(endDate),
@@ -181,18 +227,25 @@ export async function POST(request: NextRequest) {
     }
 
     // Add milestones
-    if (milestones.length > 0) {
-      await prisma.projectMilestone.createMany({
-        data: milestones.map((milestone: any, index: number) => ({
+    if (Array.isArray(milestones) && milestones.length > 0) {
+      const processedMilestones = milestones
+        .filter((m: any) => (m.title || m.name))
+        .map((m: any, index: number) => ({
           projectId: project.id,
-          name: milestone.name,
-          description: milestone.description || null,
-          startDate: new Date(milestone.startDate),
-          endDate: new Date(milestone.endDate),
+          name: (m.name || m.title || '').toString(),
+          description: (m.description || null),
+          startDate: new Date(m.startDate || m.dueDate || startDate),
+          endDate: new Date(m.endDate || m.dueDate || endDate),
+          status: mapMilestoneStatus(m.status || 'PENDING'),
           order: index,
           createdById: session.user.id
         }))
-      })
+
+      if (processedMilestones.length > 0) {
+        await prisma.projectMilestone.createMany({
+          data: processedMilestones
+        })
+      }
     }
 
     return NextResponse.json({ project }, { status: 201 })

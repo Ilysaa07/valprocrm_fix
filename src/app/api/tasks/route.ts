@@ -12,7 +12,6 @@ const createTaskSchema = z.object({
   assignment: z.enum(['SPECIFIC', 'ALL_EMPLOYEES']),
   assigneeId: z.string().optional(),
   tags: z.array(z.string()).default([]),
-  projectId: z.string().optional(),
   contactId: z.string().optional(),
 })
 
@@ -34,7 +33,7 @@ export async function GET(request: NextRequest) {
     const status = searchParams.get('status') || ''
     const priority = searchParams.get('priority') || ''
     const assignment = searchParams.get('assignment') || ''
-    const projectId = searchParams.get('projectId') || ''
+
     const contactId = searchParams.get('contactId') || ''
 
     const skip = (page - 1) * limit
@@ -45,6 +44,7 @@ export async function GET(request: NextRequest) {
     if (session.user.role !== 'ADMIN') {
       where.OR = [
         { assigneeId: session.user.id },
+        { assignment: 'ALL_EMPLOYEES' },
         { createdById: session.user.id }
       ]
     }
@@ -60,7 +60,7 @@ export async function GET(request: NextRequest) {
     if (status) where.status = status
     if (priority) where.priority = priority
     if (assignment) where.assignment = assignment
-    if (projectId) where.projectId = projectId
+
     if (contactId) where.contactId = contactId
 
     const [tasks, total] = await Promise.all([
@@ -73,14 +73,39 @@ export async function GET(request: NextRequest) {
           createdBy: {
             select: { id: true, fullName: true, email: true }
           },
-          project: {
-            select: { id: true, name: true, status: true }
-          },
           contact: {
             select: { id: true, fullName: true, companyName: true }
           },
-          milestone: {
-            select: { id: true, name: true, status: true }
+          submissions: {
+            include: {
+              user: {
+                select: { id: true, fullName: true, email: true }
+              },
+              files: {
+                select: {
+                  id: true,
+                  fileUrl: true,
+                  fileName: true,
+                  fileSize: true,
+                  fileType: true
+                }
+              }
+            },
+            orderBy: { submittedAt: 'desc' }
+          },
+          feedbacks: {
+            include: {
+              user: {
+                select: { 
+                  id: true, 
+                  fullName: true, 
+                  email: true, 
+                  profilePicture: true,
+                  role: true
+                }
+              }
+            },
+            orderBy: { createdAt: 'desc' }
           },
           _count: {
             select: {
@@ -105,7 +130,7 @@ export async function GET(request: NextRequest) {
       priority: task.priority,
       assignment: task.assignment,
       assigneeId: task.assigneeId,
-      assignee: task.assignee?.fullName || null,
+      assignee: task.assignee,
       dueDate: task.dueDate,
       tags: task.tags ? JSON.parse(task.tags) : [],
       createdAt: task.createdAt,
@@ -113,8 +138,10 @@ export async function GET(request: NextRequest) {
       project: task.project,
       contact: task.contact,
       milestone: task.milestone,
-      submissions: task._count.submissions,
-      feedbacks: task._count.feedbacks,
+      validationMessage: task.validationMessage,
+      submissions: task.submissions,
+      feedbacks: task.feedbacks,
+      _count: task._count
     }))
 
     return NextResponse.json({
@@ -138,114 +165,156 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const session = await getServerSession(authOptions)
-    
-    if (!session || session.user.role !== 'ADMIN') {
-      return NextResponse.json(
-        { error: 'Unauthorized' },
-        { status: 401 }
-      )
+    if (!session?.user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
     const body = await request.json()
-    console.log('Creating task with data:', body)
-    
-    const validatedData = createTaskSchema.parse(body)
+    const {
+      title,
+      description,
+      dueDate,
+      priority,
+      assignment,
+      assigneeId,
+      tags,
+      projectId,
+      contactId,
+      milestoneId
+    } = body
 
-    if (validatedData.assignment === 'SPECIFIC' && !validatedData.assigneeId) {
-      return NextResponse.json(
-        { error: 'Assignee harus dipilih untuk tugas spesifik' },
-        { status: 400 }
-      )
+    // Validation
+    if (!title?.trim()) {
+      return NextResponse.json({ error: 'Judul tugas wajib diisi' }, { status: 400 })
     }
 
-    if (validatedData.assignment === 'SPECIFIC') {
-      const assignee = await prisma.user.findUnique({
-        where: { 
-          id: validatedData.assigneeId,
-          role: 'EMPLOYEE',
-          status: 'APPROVED'
-        }
-      })
+    if (!description?.trim()) {
+      return NextResponse.json({ error: 'Deskripsi tugas wajib diisi' }, { status: 400 })
+    }
 
+    if (!assignment) {
+      return NextResponse.json({ error: 'Tipe penugasan wajib dipilih' }, { status: 400 })
+    }
+
+    if (assignment === 'SPECIFIC' && !assigneeId) {
+      return NextResponse.json({ error: 'Assignee wajib dipilih untuk penugasan spesifik' }, { status: 400 })
+    }
+
+    // Check if assignee exists (if specified)
+    if (assigneeId) {
+      const assignee = await prisma.user.findUnique({
+        where: { id: assigneeId }
+      })
       if (!assignee) {
-        return NextResponse.json(
-          { error: 'Karyawan tidak ditemukan atau belum disetujui' },
-          { status: 400 }
-        )
+        return NextResponse.json({ error: 'Assignee tidak ditemukan' }, { status: 400 })
+      }
+    }
+
+    // Check if project exists (if specified)
+    if (projectId) {
+      const project = await prisma.project.findUnique({
+        where: { id: projectId }
+      })
+      if (!project) {
+        return NextResponse.json({ error: 'Project tidak ditemukan' }, { status: 400 })
+      }
+    }
+
+    // Check if milestone exists (if specified)
+    if (milestoneId) {
+      const milestone = await prisma.projectMilestone.findUnique({
+        where: { id: milestoneId }
+      })
+      if (!milestone) {
+        return NextResponse.json({ error: 'Milestone tidak ditemukan' }, { status: 400 })
+      }
+    }
+
+    // Check if contact exists (if specified)
+    if (contactId) {
+      const contact = await prisma.contact.findUnique({
+        where: { id: contactId }
+      })
+      if (!contact) {
+        return NextResponse.json({ error: 'Contact tidak ditemukan' }, { status: 400 })
       }
     }
 
     const task = await prisma.task.create({
       data: {
-        title: validatedData.title,
-        description: validatedData.description,
-        dueDate: validatedData.dueDate ? new Date(validatedData.dueDate) : null,
-        priority: validatedData.priority,
-        assignment: validatedData.assignment,
-        assigneeId: validatedData.assignment === 'SPECIFIC' ? validatedData.assigneeId : null,
-        projectId: validatedData.projectId || null,
-        contactId: validatedData.contactId || null,
-        tags: JSON.stringify(validatedData.tags),
-        createdById: session.user.id,
+        title: title.trim(),
+        description: description.trim(),
+        dueDate: dueDate ? new Date(dueDate) : null,
+        priority: priority || 'MEDIUM',
+        assignment,
+        assigneeId: assignment === 'SPECIFIC' ? assigneeId : null,
+        projectId: projectId || null,
+        contactId: contactId || null,
+        milestoneId: milestoneId || null,
+        tags: JSON.stringify(tags || []),
+        createdById: session.user.id
       },
       include: {
-        createdBy: {
-          select: {
-            id: true,
-            fullName: true,
-            email: true
-          }
-        },
         assignee: {
-          select: {
-            id: true,
-            fullName: true,
-            email: true
-          }
+          select: { id: true, fullName: true, email: true }
+        },
+        createdBy: {
+          select: { id: true, fullName: true, email: true }
+        },
+        project: {
+          select: { id: true, name: true, status: true }
+        },
+        contact: {
+          select: { id: true, fullName: true, companyName: true }
+        },
+        milestone: {
+          select: { id: true, name: true, status: true }
         }
       }
     })
 
-    // Transform the created task
-    const transformedTask = {
-      id: task.id,
-      title: task.title,
-      description: task.description,
-      status: task.status,
-      priority: task.priority,
-      assignment: task.assignment,
-      assigneeId: task.assigneeId,
-      assignee: task.assignee?.fullName || null,
-      dueDate: task.dueDate,
-      tags: task.tags ? JSON.parse(task.tags) : [],
-      createdAt: task.createdAt,
-      createdBy: task.createdBy
+    // Create notifications for recipients
+    try {
+      const recipientIds: string[] = []
+      if (assignment === 'ALL_EMPLOYEES') {
+        const employees = await prisma.user.findMany({
+          where: { role: 'EMPLOYEE' },
+          select: { id: true }
+        })
+        recipientIds.push(...employees.map((e) => e.id))
+      } else if (assigneeId) {
+        recipientIds.push(assigneeId)
+      }
+
+      if (recipientIds.length > 0) {
+        await prisma.notification.createMany({
+          data: recipientIds.map((uid) => ({
+            userId: uid,
+            taskId: task.id,
+            title: 'Tugas Baru',
+            message: `${task.title} telah ditugaskan kepada Anda`,
+          }))
+        })
+
+        // Emit socket event if server socket available
+        try {
+          const io = (global as any).io || (require('@/lib/socket') as any).getSocketIO?.()
+          if (io) {
+            io.to(recipientIds.map((uid: string) => `user:${uid}`)).emit('notification', {
+              title: 'Tugas Baru',
+              message: `${task.title} telah ditugaskan kepada Anda`,
+            })
+          }
+        } catch {}
+      }
+    } catch (e) {
+      console.warn('Failed to send task creation notifications:', e)
     }
 
-    console.log('Task created successfully:', transformedTask)
-
-    return NextResponse.json(
-      { 
-        message: 'Tugas berhasil dibuat',
-        task: transformedTask
-      },
-      { status: 201 }
-    )
-
+    return NextResponse.json({ task }, { status: 201 })
   } catch (error) {
-    if (error instanceof z.ZodError) {
-      console.error('Validation error:', error.errors)
-      return NextResponse.json(
-        { error: 'Validasi gagal', details: error.errors },
-        { status: 400 }
-      )
-    }
-    
-    console.error('Create task error:', error)
-    return NextResponse.json(
-      { error: 'Terjadi kesalahan server' },
-      { status: 500 }
-    )
+    console.error('Error creating task:', error)
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }
 

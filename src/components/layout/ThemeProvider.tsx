@@ -4,10 +4,24 @@ import { createContext, useContext, useEffect, useMemo, useState } from 'react'
 
 type Theme = 'light' | 'dark'
 
-const ThemeContext = createContext<{ theme: Theme; toggle: () => void }>({ theme: 'light', toggle: () => {} })
+interface ThemeContextType {
+  theme: Theme
+  toggle: () => void
+  setTheme: (theme: Theme) => void
+}
+
+const ThemeContext = createContext<ThemeContextType>({ 
+  theme: 'light', 
+  toggle: () => {},
+  setTheme: () => {}
+})
 
 export function useTheme() {
-  return useContext(ThemeContext)
+  const context = useContext(ThemeContext)
+  if (context === undefined) {
+    throw new Error('useTheme must be used within a ThemeProvider')
+  }
+  return context
 }
 
 export default function ThemeProvider({ children }: { children: React.ReactNode }) {
@@ -52,7 +66,8 @@ export default function ThemeProvider({ children }: { children: React.ReactNode 
 
   const value = useMemo(() => ({ 
     theme, 
-    toggle: () => setTheme(t => (t === 'light' ? 'dark' : 'light')) 
+    toggle: () => setTheme(t => (t === 'light' ? 'dark' : 'light')),
+    setTheme
   }), [theme])
 
   // Prevent hydration mismatch by not rendering until mounted

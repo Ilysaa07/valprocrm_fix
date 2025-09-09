@@ -31,18 +31,29 @@ export async function GET(request: NextRequest) {
       recentActivities
     ] = await Promise.allSettled([
       prisma.task.count({
-        where: { assignedToId: userId }
+        where: {
+          OR: [
+            { assigneeId: userId },
+            { assignment: 'ALL_EMPLOYEES' }
+          ]
+        }
       }),
       prisma.task.count({
         where: { 
-          assignedToId: userId,
+          OR: [
+            { assigneeId: userId },
+            { assignment: 'ALL_EMPLOYEES' }
+          ],
           status: 'COMPLETED'
         }
       }),
       prisma.task.count({
         where: { 
-          assignedToId: userId,
-          status: { in: ['PENDING', 'IN_PROGRESS'] }
+          OR: [
+            { assigneeId: userId },
+            { assignment: 'ALL_EMPLOYEES' }
+          ],
+          status: { in: ['NOT_STARTED', 'IN_PROGRESS', 'PENDING_VALIDATION', 'REVISION'] }
         }
       }),
       prisma.attendance.findFirst({
@@ -72,25 +83,25 @@ export async function GET(request: NextRequest) {
           status: 'REJECTED'
         }
       }),
-      prisma.wFHLog.count({
+      prisma.wfhLog.count({
         where: { 
           userId: userId,
           status: 'PENDING'
         }
       }),
-      prisma.wFHLog.count({
+      prisma.wfhLog.count({
         where: { 
           userId: userId,
           status: 'APPROVED'
         }
       }),
-      prisma.wFHLog.count({
+      prisma.wfhLog.count({
         where: { 
           userId: userId,
           status: 'REJECTED'
         }
       }),
-      prisma.activity.findMany({
+      prisma.contactActivity.findMany({
         where: { userId: userId },
         orderBy: { createdAt: 'desc' },
         take: 10,

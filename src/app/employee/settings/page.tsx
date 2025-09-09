@@ -6,6 +6,7 @@ import { useSession } from 'next-auth/react'
 import EmployeeLayout from '@/components/layout/EmployeeLayout'
 import { Bell, Palette, Globe, Sun, Moon, User, Camera, KeyRound } from 'lucide-react'
 import { useTheme } from '@/components/layout/ThemeProvider'
+import { useUpdateSession } from '@/hooks/useUpdateSession'
 
 interface Profile {
   id: string
@@ -23,6 +24,7 @@ interface Profile {
 export default function EmployeeSettings() {
   const { data: session } = useSession()
   const { theme, toggle } = useTheme()
+  const { updateSession } = useUpdateSession()
 
   const [profile, setProfile] = useState<Profile | null>(null)
   const [fullName, setFullName] = useState('')
@@ -113,7 +115,13 @@ export default function EmployeeSettings() {
       setSuccess('Foto profil berhasil diupload')
       
       // Update session to reflect new profile picture
-      window.location.reload()
+      await updateSession({
+        ...session,
+        user: {
+          ...session?.user,
+          image: j.profilePicture
+        }
+      })
     } catch (e: any) {
       setError(e?.message || 'Upload gagal')
     } finally {
@@ -171,7 +179,19 @@ export default function EmployeeSettings() {
               </div>
             </div>
             <div className="flex flex-col items-center gap-4">
-              <img src={profile?.profilePicture || '/valprologo.webp'} alt="Avatar" className="w-24 h-24 rounded-full object-cover border-4 border-neutral-200 dark:border-neutral-700 shadow-md" />
+              <div className="w-24 h-24 rounded-full overflow-hidden bg-slate-300 dark:bg-slate-600 flex items-center justify-center border-4 border-neutral-200 dark:border-neutral-700 shadow-md">
+                {profile?.profilePicture ? (
+                  <img 
+                    src={profile.profilePicture} 
+                    alt="Avatar" 
+                    className="w-full h-full object-cover" 
+                  />
+                ) : (
+                  <span className="text-2xl font-bold text-slate-700 dark:text-slate-300">
+                    {profile?.fullName ? profile.fullName.charAt(0) : 'U'}
+                  </span>
+                )}
+              </div>
               <div className="w-full">
                 <input id="avatar" type="file" accept="image/*" onChange={e => e.target.files && e.target.files[0] && handleUpload(e.target.files[0])} disabled={isUploading} className="w-full text-sm text-neutral-600 dark:text-neutral-400 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-medium file:bg-primary-50 dark:file:bg-primary-900/30 file:text-primary-700 dark:file:text-primary-300 hover:file:bg-primary-100 dark:hover:file:bg-primary-900/50" />
                 <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-2">JPG, PNG, atau WEBP. Maks 5MB.</p>

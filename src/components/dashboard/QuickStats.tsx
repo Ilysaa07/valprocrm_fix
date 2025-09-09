@@ -2,6 +2,7 @@
 
 import { Users, CheckSquare, Calendar, Clock, Bell, Home, CheckCircle, XCircle, AlertCircle, AlertTriangle } from 'lucide-react'
 import { useEffect, useState } from 'react'
+import { cn } from '@/lib/utils'
 
 export interface QuickStatItem {
   label: string
@@ -24,7 +25,7 @@ interface QuickStatsProps {
 }
 
 export function QuickStats({ 
-  items, 
+  items = [], 
   title, 
   layout = 'grid',
   className = '' 
@@ -36,38 +37,46 @@ export function QuickStats({
   }, [])
 
   const renderGridLayout = () => (
-    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-      {items.map((item, index) => {
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      {(items || []).map((item, index) => {
         const Icon = item.icon
         
         return (
-          <div key={index} className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-6 hover:shadow-md transition-shadow">
+          <div key={index} className="group bg-white/90 dark:bg-slate-900/90 rounded-2xl border border-blue-200/50 dark:border-slate-700/50 p-6 backdrop-blur-sm shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-[1.02]">
             <div className="flex items-center justify-between mb-4">
-              <div className={`p-3 rounded-lg ${item.color}`}>
+              <div className={cn(
+                'p-3 rounded-xl transition-all duration-200 group-hover:scale-110',
+                item.color
+              )}>
                 <Icon className="h-6 w-6 text-white" />
               </div>
             </div>
             
             <div>
-              <p className="text-sm font-medium text-gray-600 dark:text-gray-400 mb-2">
+              <p className="text-sm font-medium text-slate-600 dark:text-slate-400 mb-2">
                 {item.label}
               </p>
-              <p className="text-2xl font-bold text-gray-900 dark:text-white">
+              <p className="text-2xl font-bold text-slate-900 dark:text-white">
                 {item.value}
               </p>
               {item.description && (
-                <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+                <p className="text-sm text-slate-500 dark:text-slate-500 mt-1">
                   {item.description}
                 </p>
               )}
               
               {item.trend && (
-                <div className="mt-3 pt-3 border-t border-gray-200 dark:border-gray-700">
+                <div className="mt-3 pt-3 border-t border-slate-200/50 dark:border-slate-700/50">
                   <div className="flex items-center space-x-2">
-                    <span className={`text-sm font-medium px-2 py-1 rounded ${item.trend.isPositive ? 'text-green-700 bg-green-100 dark:text-green-400 dark:bg-green-900/30' : 'text-red-700 bg-red-100 dark:text-red-400 dark:bg-red-900/30'}`}>
+                    <span className={cn(
+                      'text-sm font-medium px-2 py-1 rounded-full transition-all duration-200',
+                      item.trend.isPositive 
+                        ? 'text-green-700 bg-green-100 dark:text-green-400 dark:bg-green-900/30' 
+                        : 'text-red-700 bg-red-100 dark:text-red-400 dark:bg-red-900/30'
+                    )}>
                       {item.trend.isPositive ? '↗' : '↘'} {item.trend.value}%
                     </span>
-                    <span className="text-xs text-gray-500 dark:text-gray-400">
+                    <span className="text-xs text-slate-500 dark:text-slate-400">
                       {item.trend.period}
                     </span>
                   </div>
@@ -82,22 +91,25 @@ export function QuickStats({
 
   const renderListLayout = () => (
     <div className="space-y-4">
-      {items.map((item, index) => {
+      {(items || []).map((item, index) => {
         const Icon = item.icon
         
         return (
-          <div key={index} className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-4 hover:shadow-md transition-shadow">
+          <div key={index} className="group bg-white/90 dark:bg-slate-900/90 rounded-xl border border-blue-200/50 dark:border-slate-700/50 p-4 backdrop-blur-sm shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-[1.01]">
             <div className="flex items-center justify-between">
               <div className="flex items-center space-x-4">
-                <div className={`p-2 rounded-lg ${item.color}`}>
+                <div className={cn(
+                  'p-2 rounded-lg transition-all duration-200 group-hover:scale-110',
+                  item.color
+                )}>
                   <Icon className="h-5 w-5 text-white" />
                 </div>
                 <div>
-                  <p className="text-sm font-medium text-gray-600 dark:text-gray-400">
+                  <p className="text-sm font-medium text-slate-600 dark:text-slate-400">
                     {item.label}
                   </p>
                   {item.description && (
-                    <p className="text-xs text-gray-500 dark:text-gray-400">
+                    <p className="text-xs text-slate-500 dark:text-slate-500">
                       {item.description}
                     </p>
                   )}
@@ -105,12 +117,18 @@ export function QuickStats({
               </div>
               
               <div className="text-right">
-                <p className="text-xl font-bold text-gray-900 dark:text-white">
+                <p className="text-xl font-bold text-slate-900 dark:text-white">
                   {item.value}
                 </p>
+                
                 {item.trend && (
-                  <div className="flex items-center justify-end space-x-1 mt-1">
-                    <span className={`text-xs font-medium ${item.trend.isPositive ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
+                  <div className="mt-1">
+                    <span className={cn(
+                      'text-xs font-medium px-2 py-1 rounded-full',
+                      item.trend.isPositive 
+                        ? 'text-green-700 bg-green-100 dark:text-green-400 dark:bg-green-900/30' 
+                        : 'text-red-700 bg-red-100 dark:text-red-400 dark:bg-red-900/30'
+                    )}>
                       {item.trend.isPositive ? '↗' : '↘'} {item.trend.value}%
                     </span>
                   </div>
@@ -123,13 +141,30 @@ export function QuickStats({
     </div>
   )
 
+  if (!mounted) {
+    return (
+      <div className="animate-pulse">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          {[...Array(4)].map((_, i) => (
+            <div key={i} className="bg-slate-200 dark:bg-slate-700 rounded-2xl p-6">
+              <div className="h-6 bg-slate-300 dark:bg-slate-600 rounded mb-4"></div>
+              <div className="h-8 bg-slate-300 dark:bg-slate-600 rounded mb-2"></div>
+              <div className="h-4 bg-slate-300 dark:bg-slate-600 rounded"></div>
+            </div>
+          ))}
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div className={className}>
       {title && (
-        <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
+        <h3 className="text-lg font-semibold text-slate-900 dark:text-white mb-4">
           {title}
         </h3>
       )}
+      
       {layout === 'grid' ? renderGridLayout() : renderListLayout()}
     </div>
   )

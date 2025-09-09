@@ -6,7 +6,8 @@ import { z } from 'zod'
 
 const createLogSchema = z.object({
   activityDescription: z.string().min(3),
-  screenshotUrl: z.string().url(),
+  // Accept absolute or relative URLs (e.g., /uploads/...) instead of enforcing full URL
+  screenshotUrl: z.string().min(1),
   latitude: z.number().min(-90).max(90),
   longitude: z.number().min(-180).max(180),
   leaveRequestId: z.string().optional(),
@@ -21,6 +22,47 @@ export async function POST(request: NextRequest) {
 
     const body = await request.json()
     const input = createLogSchema.parse(body)
+
+    // Check today's date range
+    const todayStart = new Date(); todayStart.setHours(0,0,0,0)
+    const todayEnd = new Date(); todayEnd.setHours(23,59,59,999)
+
+    // Check if user already has attendance record today
+    const existingAttendance = await prisma.attendance.findFirst({
+      where: { 
+        userId: session.user.id, 
+        checkInTime: { 
+          gte: todayStart,
+          lte: todayEnd
+        } 
+      },
+    })
+
+    if (existingAttendance) {
+      return NextResponse.json({ 
+        error: 'Anda sudah melakukan absensi kantor hari ini. Tidak dapat mengajukan WFH.' 
+      }, { status: 400 })
+    }
+
+    // Check if user already has WFH log today
+    const existingWFH = await prisma.wfhLog.findFirst({
+      where: {
+        userId: session.user.id,
+        logTime: {
+          gte: todayStart,
+          lte: todayEnd
+        },
+        status: {
+          in: ['PENDING', 'APPROVED']
+        }
+      }
+    })
+
+    if (existingWFH) {
+      return NextResponse.json({ 
+        error: 'Anda sudah mengajukan WFH hari ini. Tidak dapat mengajukan lagi.' 
+      }, { status: 400 })
+    }
 
     const log = await prisma.wfhLog.create({
       data: {

@@ -1,64 +1,110 @@
 'use client'
 
-import { useState, useEffect } from 'react'
-import { X, Calendar, Users, Tag, FileText, Plus, Trash2 } from 'lucide-react'
+import React, { useState, useEffect } from 'react'
+import { useSession } from 'next-auth/react'
+import { useToast } from '@/hooks/useToast'
+import { 
+  X, 
+  Plus, 
+  Trash2, 
+  Calendar,
+  Users,
+  Target,
+  FileText,
+  Building2
+} from 'lucide-react'
+
+interface Project {
+  id: string
+  name: string
+  description?: string
+  contactId: string
+  serviceType: string
+  startDate: string
+  endDate: string
+  status: string
+  notes?: string
+  members: Array<{
+    id: string
+    userId: string
+    role?: string
+    user: {
+      id: string
+      fullName: string
+      email: string
+      role: string
+    }
+  }>
+  milestones: Array<{
+    id: string
+    name: string
+    description?: string
+    startDate: string
+    endDate: string
+    status: string
+  }>
+}
 
 interface Contact {
   id: string
-  firstName: string
-  lastName: string
-  email: string
-  company?: string
+  fullName: string
+  companyName?: string
+  clientStatus: string
 }
 
 interface User {
   id: string
-  name: string
+  fullName: string
   email: string
   role: string
-}
-
-interface Milestone {
-  title: string
-  description?: string
-  dueDate: string
-  status: 'PENDING' | 'IN_PROGRESS' | 'COMPLETED'
 }
 
 interface ProjectModalProps {
   isOpen: boolean
   onClose: () => void
-  onSubmit: (projectData: any) => void
-  project?: any
-  isLoading?: boolean
+  onSave: (projectData: any) => void
+  project?: Project | null
+  loading?: boolean
+}
+
+interface Milestone {
+  title: string
+  description: string
+  dueDate: string
+  status: string
 }
 
 export default function ProjectModal({ 
   isOpen, 
   onClose, 
-  onSubmit, 
+  onSave, 
   project, 
-  isLoading = false 
+  loading = false 
 }: ProjectModalProps) {
+  const { data: session } = useSession()
+  const { showToast } = useToast()
+  const [contacts, setContacts] = useState<Contact[]>([])
+  const [users, setUsers] = useState<User[]>([])
+  const [milestones, setMilestones] = useState<Milestone[]>([])
+  const [showContactForm, setShowContactForm] = useState(false)
+  
   const [formData, setFormData] = useState({
     name: '',
     description: '',
-    status: 'PLANNING' as const,
-    priority: 'MEDIUM' as const,
-    serviceType: 'LEGAL_CONSULTATION' as const,
+    contactId: '',
+    serviceType: '',
     startDate: '',
     endDate: '',
-    budget: '',
-    contactId: '',
-    memberIds: [] as string[],
+    status: 'PLANNING',
+    notes: '',
+    memberIds: [] as string[]
   })
 
-  const [milestones, setMilestones] = useState<Milestone[]>([])
-  const [contacts, setContacts] = useState<Contact[]>([])
-  const [users, setUsers] = useState<User[]>([])
-  const [errors, setErrors] = useState<Record<string, string>>({})
+  const [contactForm, setContactForm] = useState({
+    fullName: '',
+    companyName: ''
+  })
 
-  // Fetch contacts and users when modal opens
   useEffect(() => {
     if (isOpen) {
       fetchContacts()
@@ -66,20 +112,38 @@ export default function ProjectModal({
       
       if (project) {
         setFormData({
-          name: project.name || '',
+          name: project.name,
           description: project.description || '',
-          status: project.status || 'PLANNING',
-          priority: project.priority || 'MEDIUM',
-          serviceType: project.serviceType || 'LEGAL_CONSULTATION',
-          startDate: project.startDate ? new Date(project.startDate).toISOString().split('T')[0] : '',
-          endDate: project.endDate ? new Date(project.endDate).toISOString().split('T')[0] : '',
-          budget: project.budget?.toString() || '',
-          contactId: project.contactId || '',
-          memberIds: project.members?.map((m: any) => m.userId) || [],
+          contactId: project.contactId,
+          serviceType: project.serviceType,
+          startDate: new Date(project.startDate).toISOString().split('T')[0],
+          endDate: new Date(project.endDate).toISOString().split('T')[0],
+          status: project.status,
+          notes: project.notes || '',
+          memberIds: project.members.map(m => m.userId)
         })
-        setMilestones(project.milestones || [])
+        
+        // Normalize milestones data to prevent controlled/uncontrolled input errors
+        const normalizedMilestones = (project.milestones || []).map((m: any) => ({
+          title: m.name || m.title || '',
+          description: m.description || '',
+          dueDate: m.dueDate || m.endDate || m.startDate ? new Date(m.dueDate || m.endDate || m.startDate).toISOString().split('T')[0] : '',
+          status: m.status || 'PENDING'
+        }))
+        setMilestones(normalizedMilestones)
       } else {
-        resetForm()
+        setFormData({
+          name: '',
+          description: '',
+          contactId: '',
+          serviceType: '',
+          startDate: '',
+          endDate: '',
+          status: 'PLANNING',
+          notes: '',
+          memberIds: []
+        })
+        setMilestones([])
       }
     }
   }, [isOpen, project])
@@ -92,7 +156,7 @@ export default function ProjectModal({
         setContacts(data.contacts || [])
       }
     } catch (error) {
-      console.error('Failed to fetch contacts:', error)
+      setContacts([])
     }
   }
 
@@ -104,391 +168,416 @@ export default function ProjectModal({
         setUsers(data.users || [])
       }
     } catch (error) {
-      console.error('Failed to fetch users:', error)
+      setUsers([])
     }
   }
 
-  const resetForm = () => {
-    setFormData({
-      name: '',
-      description: '',
-      status: 'PLANNING',
-      priority: 'MEDIUM',
-      serviceType: 'LEGAL_CONSULTATION',
-      startDate: '',
-      endDate: '',
-      budget: '',
-      contactId: '',
-      memberIds: [],
-    })
-    setMilestones([])
-    setErrors({})
-  }
-
-  const validateForm = () => {
-    const newErrors: Record<string, string> = {}
-
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    
     if (!formData.name.trim()) {
-      newErrors.name = 'Project name is required'
+      showToast('Nama proyek wajib diisi', { type: 'error' })
+      return
     }
 
     if (!formData.contactId) {
-      newErrors.contactId = 'Client selection is required'
+      showToast('Klien/Contact wajib dipilih', { type: 'error' })
+      return
     }
 
-    if (!formData.startDate) {
-      newErrors.startDate = 'Start date is required'
+    if (!formData.serviceType.trim()) {
+      showToast('Jenis layanan wajib diisi', { type: 'error' })
+      return
     }
 
-    if (!formData.endDate) {
-      newErrors.endDate = 'End date is required'
+    if (!formData.startDate || !formData.endDate) {
+      showToast('Tanggal mulai dan selesai wajib diisi', { type: 'error' })
+      return
     }
 
-    if (formData.startDate && formData.endDate && formData.startDate > formData.endDate) {
-      newErrors.endDate = 'End date must be after start date'
-    }
-
-    if (formData.budget && isNaN(Number(formData.budget))) {
-      newErrors.budget = 'Budget must be a valid number'
-    }
-
-    setErrors(newErrors)
-    return Object.keys(newErrors).length === 0
-  }
-
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault()
-    
-    if (!validateForm()) {
+    if (new Date(formData.endDate) <= new Date(formData.startDate)) {
+      showToast('Tanggal selesai harus setelah tanggal mulai', { type: 'error' })
       return
     }
 
     const projectData = {
       ...formData,
-      budget: formData.budget ? Number(formData.budget) : null,
-      milestones: milestones.filter(m => m.title.trim()),
+      milestones: milestones.filter(m => m.title.trim())
     }
 
-    onSubmit(projectData)
+    onSave(projectData)
   }
 
   const addMilestone = () => {
-    setMilestones([
-      ...milestones,
-      {
-        title: '',
-        description: '',
-        dueDate: '',
-        status: 'PENDING' as const,
-      }
-    ])
-  }
-
-  const updateMilestone = (index: number, field: keyof Milestone, value: string) => {
-    const updated = [...milestones]
-    updated[index] = { ...updated[index], [field]: value }
-    setMilestones(updated)
+    setMilestones([...milestones, {
+      title: '',
+      description: '',
+      dueDate: '',
+      status: 'PENDING'
+    }])
   }
 
   const removeMilestone = (index: number) => {
     setMilestones(milestones.filter((_, i) => i !== index))
   }
 
-  const toggleMember = (userId: string) => {
-    setFormData(prev => ({
-      ...prev,
-      memberIds: prev.memberIds.includes(userId)
-        ? prev.memberIds.filter(id => id !== userId)
-        : [...prev.memberIds, userId]
-    }))
+  const updateMilestone = (index: number, field: keyof Milestone, value: string) => {
+    setMilestones(milestones.map((milestone, i) => 
+      i === index ? { ...milestone, [field]: value } : milestone
+    ))
+  }
+
+  const createContact = async () => {
+    if (!contactForm.fullName.trim()) {
+      showToast('Nama kontak wajib diisi', { type: 'error' })
+      return
+    }
+
+    try {
+      const response = await fetch('/api/contacts', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          fullName: contactForm.fullName.trim(),
+          companyName: contactForm.companyName.trim() || null
+        })
+      })
+
+      if (response.ok) {
+        const result = await response.json()
+        setFormData(prev => ({ ...prev, contactId: result.contact.id }))
+        setContacts(prev => [...prev, result.contact])
+        setShowContactForm(false)
+        setContactForm({ fullName: '', companyName: '' })
+        showToast('Kontak berhasil dibuat', { type: 'success' })
+      } else {
+        const error = await response.json()
+        showToast(error.error || 'Gagal membuat kontak', { type: 'error' })
+      }
+    } catch (error) {
+      showToast('Terjadi kesalahan', { type: 'error' })
+    }
   }
 
   if (!isOpen) return null
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl w-full max-w-4xl max-h-[90vh] overflow-y-auto">
-        <div className="flex items-center justify-between p-6 border-b border-gray-200 dark:border-gray-700">
-          <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
-            {project ? 'Edit Project' : 'Create New Project'}
-          </h2>
-          <button
-            onClick={onClose}
-            className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
-          >
-            <X className="h-6 w-6" />
-          </button>
-        </div>
+      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
+        <div className="p-6">
+          <div className="flex items-center justify-between mb-6">
+            <h2 className="text-2xl font-bold text-gray-900 dark:text-white">
+              {project ? 'Edit Proyek' : 'Buat Proyek Baru'}
+            </h2>
+            <button
+              onClick={onClose}
+              className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+            >
+              <X className="h-6 w-6" />
+            </button>
+          </div>
 
-        <form onSubmit={handleSubmit} className="p-6 space-y-6">
-          {/* Basic Information */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                Project Name *
-              </label>
-              <input
-                type="text"
-                value={formData.name}
-                onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
-                className={`w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white ${
-                  errors.name ? 'border-red-500' : 'border-gray-300'
-                }`}
-                placeholder="Enter project name"
-              />
-              {errors.name && <p className="mt-1 text-sm text-red-600">{errors.name}</p>}
+          <form onSubmit={handleSubmit} className="space-y-6">
+            {/* Basic Information */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  Nama Proyek *
+                </label>
+                <input
+                  type="text"
+                  value={formData.name}
+                  onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  placeholder="Masukkan nama proyek"
+                  required
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  Jenis Layanan *
+                </label>
+                <select
+                  value={formData.serviceType}
+                  onChange={(e) => setFormData(prev => ({ ...prev, serviceType: e.target.value }))}
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  required
+                >
+                  <option value="">Pilih jenis layanan</option>
+                  <option value="web">Web Development</option>
+                  <option value="mobile">Mobile App</option>
+                  <option value="design">UI/UX Design</option>
+                  <option value="consulting">Konsultasi</option>
+                  <option value="maintenance">Maintenance</option>
+                </select>
+              </div>
             </div>
 
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                Client *
+                Deskripsi
+              </label>
+              <textarea
+                value={formData.description}
+                onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
+                rows={3}
+                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                placeholder="Masukkan deskripsi proyek"
+              />
+            </div>
+
+            {/* Client Selection */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                Klien/Contact *
+              </label>
+              <div className="flex items-center space-x-3">
+                <select
+                  value={formData.contactId}
+                  onChange={(e) => setFormData(prev => ({ ...prev, contactId: e.target.value }))}
+                  className="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  required
+                >
+                  <option value="">Pilih klien</option>
+                  {contacts.map(contact => (
+                    <option key={contact.id} value={contact.id}>
+                      {contact.fullName} {contact.companyName && `(${contact.companyName})`}
+                    </option>
+                  ))}
+                </select>
+                <button
+                  type="button"
+                  onClick={() => setShowContactForm(!showContactForm)}
+                  className="px-3 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center space-x-2"
+                >
+                  <Plus className="h-4 w-4" />
+                  <span>Baru</span>
+                </button>
+              </div>
+              
+              {showContactForm && (
+                <div className="mt-3 p-4 border border-gray-300 dark:border-gray-600 rounded-lg bg-gray-50 dark:bg-gray-700">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    <input
+                      type="text"
+                      value={contactForm.fullName}
+                      onChange={(e) => setContactForm(prev => ({ ...prev, fullName: e.target.value }))}
+                      className="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      placeholder="Nama lengkap"
+                    />
+                    <input
+                      type="text"
+                      value={contactForm.companyName}
+                      onChange={(e) => setContactForm(prev => ({ ...prev, companyName: e.target.value }))}
+                      className="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      placeholder="Nama perusahaan (opsional)"
+                    />
+                  </div>
+                  <div className="flex items-center space-x-2 mt-3">
+                    <button
+                      type="button"
+                      onClick={createContact}
+                      className="px-3 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
+                    >
+                      Buat Kontak
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setShowContactForm(false)}
+                      className="px-3 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors"
+                    >
+                      Batal
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Timeline */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  Tanggal Mulai *
+                </label>
+                <input
+                  type="date"
+                  value={formData.startDate}
+                  onChange={(e) => setFormData(prev => ({ ...prev, startDate: e.target.value }))}
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  required
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  Tanggal Selesai *
+                </label>
+                <input
+                  type="date"
+                  value={formData.endDate}
+                  onChange={(e) => setFormData(prev => ({ ...prev, endDate: e.target.value }))}
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  required
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  Status
+                </label>
+                <select
+                  value={formData.status}
+                  onChange={(e) => setFormData(prev => ({ ...prev, status: e.target.value }))}
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                >
+                  <option value="PLANNING">Perencanaan</option>
+                  <option value="ONGOING">Sedang Berjalan</option>
+                  <option value="ON_HOLD">Ditahan</option>
+                  <option value="COMPLETED">Selesai</option>
+                  <option value="CANCELLED">Dibatalkan</option>
+                </select>
+              </div>
+            </div>
+
+            {/* Team Members */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                Anggota Tim
               </label>
               <select
-                value={formData.contactId}
-                onChange={(e) => setFormData(prev => ({ ...prev, contactId: e.target.value }))}
-                className={`w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white ${
-                  errors.contactId ? 'border-red-500' : 'border-gray-300'
-                }`}
+                multiple
+                value={formData.memberIds}
+                onChange={(e) => {
+                  const selectedOptions = Array.from(e.target.selectedOptions, option => option.value)
+                  setFormData(prev => ({ ...prev, memberIds: selectedOptions }))
+                }}
+                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                size={5}
               >
-                <option value="">Select a client</option>
-                {contacts.map((contact) => (
-                  <option key={contact.id} value={contact.id}>
-                    {contact.firstName} {contact.lastName} {contact.company && `(${contact.company})`}
+                {users.filter(user => user.role === 'EMPLOYEE').map(user => (
+                  <option key={user.id} value={user.id}>
+                    {user.fullName} ({user.email})
                   </option>
                 ))}
               </select>
-              {errors.contactId && <p className="mt-1 text-sm text-red-600">{errors.contactId}</p>}
+              <p className="text-xs text-gray-500 mt-1">
+                Tekan Ctrl (atau Cmd di Mac) untuk memilih beberapa anggota
+              </p>
             </div>
-          </div>
 
-          <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-              Description
-            </label>
-            <textarea
-              value={formData.description}
-              onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
-              rows={3}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
-              placeholder="Enter project description"
-            />
-          </div>
-
-          {/* Project Details */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            {/* Milestones */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                Status
-              </label>
-              <select
-                value={formData.status}
-                onChange={(e) => setFormData(prev => ({ ...prev, status: e.target.value as any }))}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
-              >
-                <option value="PLANNING">Planning</option>
-                <option value="IN_PROGRESS">In Progress</option>
-                <option value="ON_HOLD">On Hold</option>
-                <option value="COMPLETED">Completed</option>
-                <option value="CANCELLED">Cancelled</option>
-              </select>
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                Priority
-              </label>
-              <select
-                value={formData.priority}
-                onChange={(e) => setFormData(prev => ({ ...prev, priority: e.target.value as any }))}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
-              >
-                <option value="LOW">Low</option>
-                <option value="MEDIUM">Medium</option>
-                <option value="HIGH">High</option>
-                <option value="URGENT">Urgent</option>
-              </select>
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                Service Type
-              </label>
-              <select
-                value={formData.serviceType}
-                onChange={(e) => setFormData(prev => ({ ...prev, serviceType: e.target.value as any }))}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
-              >
-                <option value="LEGAL_CONSULTATION">Legal Consultation</option>
-                <option value="CONTRACT_REVIEW">Contract Review</option>
-                <option value="LITIGATION">Litigation</option>
-                <option value="CORPORATE_LAW">Corporate Law</option>
-                <option value="INTELLECTUAL_PROPERTY">Intellectual Property</option>
-                <option value="REAL_ESTATE">Real Estate</option>
-                <option value="FAMILY_LAW">Family Law</option>
-                <option value="CRIMINAL_LAW">Criminal Law</option>
-                <option value="OTHER">Other</option>
-              </select>
-            </div>
-          </div>
-
-          {/* Dates and Budget */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                Start Date *
-              </label>
-              <input
-                type="date"
-                value={formData.startDate}
-                onChange={(e) => setFormData(prev => ({ ...prev, startDate: e.target.value }))}
-                className={`w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white ${
-                  errors.startDate ? 'border-red-500' : 'border-gray-300'
-                }`}
-              />
-              {errors.startDate && <p className="mt-1 text-sm text-red-600">{errors.startDate}</p>}
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                End Date *
-              </label>
-              <input
-                type="date"
-                value={formData.endDate}
-                onChange={(e) => setFormData(prev => ({ ...prev, endDate: e.target.value }))}
-                className={`w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white ${
-                  errors.endDate ? 'border-red-500' : 'border-gray-300'
-                }`}
-              />
-              {errors.endDate && <p className="mt-1 text-sm text-red-600">{errors.endDate}</p>}
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                Budget
-              </label>
-              <input
-                type="number"
-                value={formData.budget}
-                onChange={(e) => setFormData(prev => ({ ...prev, budget: e.target.value }))}
-                className={`w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white ${
-                  errors.budget ? 'border-red-500' : 'border-gray-300'
-                }`}
-                placeholder="0.00"
-                min="0"
-                step="0.01"
-              />
-              {errors.budget && <p className="mt-1 text-sm text-red-600">{errors.budget}</p>}
-            </div>
-          </div>
-
-          {/* Team Members */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-              Team Members
-            </label>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2 max-h-40 overflow-y-auto border border-gray-300 dark:border-gray-600 rounded-md p-3">
-              {users.map((user) => (
-                <label key={user.id} className="flex items-center space-x-2 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={formData.memberIds.includes(user.id)}
-                    onChange={() => toggleMember(user.id)}
-                    className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                  />
-                  <span className="text-sm text-gray-700 dark:text-gray-300">
-                    {user.name} ({user.role})
-                  </span>
+              <div className="flex items-center justify-between mb-3">
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                  Milestones/Tonggak
                 </label>
-              ))}
-            </div>
-          </div>
-
-          {/* Milestones */}
-          <div>
-            <div className="flex items-center justify-between mb-4">
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                Project Milestones
-              </label>
-              <button
-                type="button"
-                onClick={addMilestone}
-                className="flex items-center space-x-1 text-blue-600 hover:text-blue-700 text-sm"
-              >
-                <Plus className="h-4 w-4" />
-                <span>Add Milestone</span>
-              </button>
-            </div>
-
-            <div className="space-y-4">
-              {milestones.map((milestone, index) => (
-                <div key={index} className="border border-gray-300 dark:border-gray-600 rounded-md p-4">
-                  <div className="flex items-start justify-between mb-3">
-                    <h4 className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                      Milestone {index + 1}
-                    </h4>
-                    <button
-                      type="button"
-                      onClick={() => removeMilestone(index)}
-                      className="text-red-600 hover:text-red-700"
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </button>
-                  </div>
-
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
+                <button
+                  type="button"
+                  onClick={addMilestone}
+                  className="px-3 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center space-x-2"
+                >
+                  <Plus className="h-4 w-4" />
+                  <span>Tambah Milestone</span>
+                </button>
+              </div>
+              
+              <div className="space-y-3">
+                {milestones.map((milestone, index) => (
+                  <div key={index} className="p-4 border border-gray-300 dark:border-gray-600 rounded-lg bg-gray-50 dark:bg-gray-700">
+                    <div className="flex items-center justify-between mb-3">
+                      <h4 className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                        Milestone {index + 1}
+                      </h4>
+                      <button
+                        type="button"
+                        onClick={() => removeMilestone(index)}
+                        className="p-1 text-red-600 hover:bg-red-100 dark:hover:bg-red-900/30 rounded"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </button>
+                    </div>
+                    
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                       <input
                         type="text"
                         value={milestone.title}
                         onChange={(e) => updateMilestone(index, 'title', e.target.value)}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
-                        placeholder="Milestone title"
+                        className="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        placeholder="Judul milestone"
                       />
-                    </div>
-
-                    <div>
                       <input
                         type="date"
                         value={milestone.dueDate}
                         onChange={(e) => updateMilestone(index, 'dueDate', e.target.value)}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                        className="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                       />
+                      <select
+                        value={milestone.status}
+                        onChange={(e) => updateMilestone(index, 'status', e.target.value)}
+                        className="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      >
+                        <option value="PENDING">Belum Dimulai</option>
+                        <option value="IN_PROGRESS">Sedang Berjalan</option>
+                        <option value="COMPLETED">Selesai</option>
+                        <option value="OVERDUE">Terlambat</option>
+                      </select>
                     </div>
-                  </div>
-
-                  <div className="mt-3">
+                    
                     <textarea
-                      value={milestone.description || ''}
+                      value={milestone.description}
                       onChange={(e) => updateMilestone(index, 'description', e.target.value)}
+                      className="w-full mt-3 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                       rows={2}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
-                      placeholder="Milestone description (optional)"
+                      placeholder="Deskripsi milestone (opsional)"
                     />
                   </div>
-                </div>
-              ))}
+                ))}
+              </div>
             </div>
-          </div>
 
-          {/* Form Actions */}
-          <div className="flex items-center justify-end space-x-4 pt-6 border-t border-gray-200 dark:border-gray-700">
-            <button
-              type="button"
-              onClick={onClose}
-              className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 dark:bg-gray-800 dark:text-gray-300 dark:border-gray-600 dark:hover:bg-gray-700"
-            >
-              Cancel
-            </button>
-            <button
-              type="submit"
-              disabled={isLoading}
-              className="px-4 py-2 text-sm font-medium text-white bg-blue-600 border border-transparent rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              {isLoading ? 'Saving...' : project ? 'Update Project' : 'Create Project'}
-            </button>
-          </div>
-        </form>
+            {/* Notes */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                Catatan
+              </label>
+              <textarea
+                value={formData.notes}
+                onChange={(e) => setFormData(prev => ({ ...prev, notes: e.target.value }))}
+                rows={3}
+                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                placeholder="Catatan tambahan untuk proyek"
+              />
+            </div>
+
+            {/* Actions */}
+            <div className="flex items-center justify-end space-x-3 pt-6 border-t border-gray-200 dark:border-gray-700">
+              <button
+                type="button"
+                onClick={onClose}
+                className="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-600 transition-colors"
+              >
+                Batal
+              </button>
+              <button
+                type="submit"
+                disabled={loading}
+                className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center space-x-2"
+              >
+                {loading ? (
+                  <>
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                    <span>Menyimpan...</span>
+                  </>
+                ) : (
+                  <>
+                    <span>{project ? 'Update' : 'Buat'} Proyek</span>
+                  </>
+                )}
+              </button>
+            </div>
+          </form>
+        </div>
       </div>
     </div>
   )

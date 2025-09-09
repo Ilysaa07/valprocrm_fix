@@ -116,6 +116,8 @@ export async function PUT(
       }
     })
 
+    // Removed audit log on update
+
     return NextResponse.json({
       message: 'Transaksi berhasil diperbarui',
       transaction
@@ -168,6 +170,8 @@ export async function DELETE(
     await prisma.transaction.delete({
       where: { id }
     })
+
+    // Removed audit log on delete
 
     return NextResponse.json({
       message: 'Transaksi berhasil dihapus'

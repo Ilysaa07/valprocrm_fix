@@ -23,6 +23,7 @@ interface AttendanceStats {
   todayAbsent: number
   todayWFH: number
   todayLeave: number
+  todayLate: number
   totalEmployees: number
 }
 
@@ -100,6 +101,7 @@ export default function AdminAttendancePage() {
     todayAbsent: 0,
     todayWFH: 0,
     todayLeave: 0,
+    todayLate: 0,
     totalEmployees: 0
   })
   const [employeeAttendance, setEmployeeAttendance] = useState<EmployeeAttendance[]>([])
@@ -148,6 +150,7 @@ export default function AdminAttendancePage() {
           todayWFH: summary.wfh || 0,
           todayLeave: summary.leave || 0,
           todayAbsent: summary.absent || 0,
+          todayLate: summary.late || 0,
           totalEmployees: summary.total || 0
         })
         
@@ -320,7 +323,7 @@ export default function AdminAttendancePage() {
         {activeTab === 'overview' ? (
           <div className="space-y-6">
             {/* Attendance Stats Cards */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6">
               <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-6">
                 <div className="flex items-center">
                   <div className="p-2 bg-green-100 dark:bg-green-900/30 rounded-lg">
@@ -329,6 +332,17 @@ export default function AdminAttendancePage() {
                   <div className="ml-3">
                     <p className="text-sm font-medium text-gray-600 dark:text-gray-300">Hadir Hari Ini</p>
                     <p className="text-2xl font-bold text-green-600 dark:text-green-400">{attendanceStats.todayPresent}</p>
+                  </div>
+                </div>
+              </div>
+              <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-6">
+                <div className="flex items-center">
+                  <div className="p-2 bg-yellow-100 dark:bg-yellow-900/30 rounded-lg">
+                    <div className="w-6 h-6 bg-yellow-600 dark:bg-yellow-500 rounded-full"></div>
+                  </div>
+                  <div className="ml-3">
+                    <p className="text-sm font-medium text-gray-600 dark:text-gray-300">Terlambat</p>
+                    <p className="text-2xl font-bold text-yellow-600 dark:text-yellow-400">{attendanceStats.todayLate}</p>
                   </div>
                 </div>
               </div>
@@ -381,6 +395,7 @@ export default function AdminAttendancePage() {
                 </div>
                 <div>
                   <p className="text-sm text-gray-600 dark:text-gray-300 mb-2">Present: <span className="font-semibold text-green-600 dark:text-green-400">{attendanceStats.todayPresent}</span></p>
+                  <p className="text-sm text-gray-600 dark:text-gray-300 mb-2">Terlambat: <span className="font-semibold text-yellow-600 dark:text-yellow-400">{attendanceStats.todayLate}</span></p>
                   <p className="text-sm text-gray-600 dark:text-gray-300 mb-2">WFH: <span className="font-semibold text-purple-600 dark:text-purple-400">{attendanceStats.todayWFH}</span></p>
                   <p className="text-sm text-gray-600 dark:text-gray-300 mb-2">Izin: <span className="font-semibold text-blue-600 dark:text-blue-400">{attendanceStats.todayLeave}</span></p>
                   <p className="text-sm text-gray-600 dark:text-gray-300 mb-2">Absen: <span className="font-semibold text-red-600 dark:text-red-400">{attendanceStats.todayAbsent}</span></p>

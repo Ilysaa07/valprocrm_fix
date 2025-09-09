@@ -75,8 +75,8 @@ export function DashboardCalendar({
   const getStatusColor = (status: string) => {
     const colors = {
       present: 'bg-green-100 text-green-800',
-      absent: 'bg-red-100 text-red-800',
       late: 'bg-yellow-100 text-yellow-800',
+      absent: 'bg-red-100 text-red-800',
       approved: 'bg-green-100 text-green-800',
       pending: 'bg-yellow-100 text-yellow-800',
       rejected: 'bg-red-100 text-red-800',
@@ -89,8 +89,8 @@ export function DashboardCalendar({
   const getStatusLabel = (status: string) => {
     const labels = {
       present: 'Hadir',
-      absent: 'Tidak Hadir',
       late: 'Terlambat',
+      absent: 'Tidak Hadir',
       approved: 'Disetujui',
       pending: 'Menunggu',
       rejected: 'Ditolak',

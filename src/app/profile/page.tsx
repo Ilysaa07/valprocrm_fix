@@ -232,7 +232,7 @@ export default function ProfilePage() {
             
             <div className="flex items-center space-x-6">
               <div className="relative">
-                <div className="w-24 h-24 rounded-full overflow-hidden bg-gray-200 flex items-center justify-center">
+                <div className="w-24 h-24 rounded-full overflow-hidden bg-slate-300 dark:bg-slate-600 flex items-center justify-center">
                   {user.profilePicture ? (
                     <img
                       src={user.profilePicture}
@@ -240,17 +240,9 @@ export default function ProfilePage() {
                       className="w-full h-full object-cover"
                     />
                   ) : (
-                    <svg
-                      className="w-12 h-12 text-gray-400"
-                      fill="currentColor"
-                      viewBox="0 0 20 20"
-                    >
-                      <path
-                        fillRule="evenodd"
-                        d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z"
-                        clipRule="evenodd"
-                      />
-                    </svg>
+                    <span className="text-2xl font-bold text-slate-700 dark:text-slate-300">
+                      {user.fullName ? user.fullName.charAt(0) : 'U'}
+                    </span>
                   )}
                 </div>
               </div>

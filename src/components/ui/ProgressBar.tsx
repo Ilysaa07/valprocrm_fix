@@ -30,10 +30,10 @@ export default function ProgressBar({
   }
 
   const variantClasses = {
-    default: 'bg-blue-500',
-    success: 'bg-green-500',
-    warning: 'bg-yellow-500',
-    danger: 'bg-red-500'
+    default: 'bg-accent',
+    success: 'bg-success',
+    warning: 'bg-warning',
+    danger: 'bg-error'
   }
 
   const labelSizeClasses = {
@@ -46,17 +46,17 @@ export default function ProgressBar({
     <div className={cn('w-full', className)}>
       {showLabel && (
         <div className="flex items-center justify-between mb-2">
-          <span className={cn('font-medium text-gray-700', labelSizeClasses[size])}>
+          <span className={cn('font-medium text-text-primary', labelSizeClasses[size])}>
             {label || 'Progress'}
           </span>
-          <span className={cn('text-gray-500', labelSizeClasses[size])}>
+          <span className={cn('text-text-secondary', labelSizeClasses[size])}>
             {Math.round(clampedProgress)}%
           </span>
         </div>
       )}
       
       <div className={cn(
-        'w-full bg-gray-200 rounded-full overflow-hidden',
+        'w-full bg-surface rounded-full overflow-hidden',
         sizeClasses[size]
       )}>
         <div
@@ -88,8 +88,8 @@ export function UploadProgress({
   return (
     <div className={cn('space-y-2', className)}>
       <div className="flex items-center justify-between text-sm">
-        <span className="font-medium text-gray-700 truncate">{fileName}</span>
-        <span className="text-gray-500">{Math.round(progress)}%</span>
+        <span className="font-medium text-text-primary truncate">{fileName}</span>
+        <span className="text-text-secondary">{Math.round(progress)}%</span>
       </div>
       <ProgressBar 
         progress={progress} 
@@ -113,8 +113,8 @@ export function DownloadProgress({
   return (
     <div className={cn('space-y-2', className)}>
       <div className="flex items-center justify-between text-sm">
-        <span className="font-medium text-gray-700 truncate">{fileName}</span>
-        <span className="text-gray-500">{Math.round(progress)}%</span>
+        <span className="font-medium text-text-primary truncate">{fileName}</span>
+        <span className="text-text-secondary">{Math.round(progress)}%</span>
       </div>
       <ProgressBar 
         progress={progress} 
@@ -163,10 +163,10 @@ export function CircularProgress({
   const strokeDashoffset = circumference - (clampedProgress / 100) * circumference
 
   const variantColors = {
-    default: 'text-blue-500',
-    success: 'text-green-500',
-    warning: 'text-yellow-500',
-    danger: 'text-red-500'
+    default: 'text-accent',
+    success: 'text-success',
+    warning: 'text-warning',
+    danger: 'text-error'
   }
 
   return (
@@ -179,7 +179,7 @@ export function CircularProgress({
           stroke="currentColor"
           strokeWidth={strokeWidth[size]}
           fill="transparent"
-          className="text-gray-200"
+          className="text-surface"
         />
         <circle
           cx="50"
@@ -196,7 +196,7 @@ export function CircularProgress({
       </svg>
       <div className="absolute inset-0 flex items-center justify-center">
         <span className={cn(
-          'font-bold text-gray-700',
+          'font-bold text-text-primary',
           size === 'sm' ? 'text-sm' : size === 'md' ? 'text-base' : 'text-lg'
         )}>
           {Math.round(clampedProgress)}%

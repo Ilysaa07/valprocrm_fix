@@ -1,54 +1,59 @@
 'use client'
 
-import { ReactNode } from 'react'
+import React from 'react'
+import { cn } from '@/lib/utils'
+
+// ========================================
+// LAYOUT COMPONENTS
+// ========================================
 
 interface DashboardLayoutProps {
-  children: ReactNode
-  className?: string
-}
-
-interface DashboardSectionProps {
-  title?: string
-  children: ReactNode
-  className?: string
-  fullWidth?: boolean
-}
-
-interface DashboardGridProps {
-  children: ReactNode
-  cols?: 1 | 2 | 3 | 4
-  gap?: 'sm' | 'md' | 'lg'
-  className?: string
-}
-
-interface DashboardSidebarProps {
-  children: ReactNode
-  className?: string
-}
-
-interface DashboardMainProps {
-  children: ReactNode
+  children: React.ReactNode
   className?: string
 }
 
 export function DashboardLayout({ children, className = '' }: DashboardLayoutProps) {
   return (
-    <div className={`min-h-screen bg-gradient-to-br from-neutral-50 via-neutral-50 to-primary-50/30 dark:from-neutral-900 dark:via-neutral-900 dark:to-neutral-800/90 transition-colors duration-300 ${className}`}>
-      <div className="max-w-7xl mx-auto px-6 sm:px-8 lg:px-10 py-8 space-y-8">
+    <div className={cn(
+      'min-h-screen bg-slate-50 dark:bg-slate-900',
+      className
+    )}>
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-6 py-4 lg:py-6 space-y-4 lg:space-y-6">
         {children}
       </div>
     </div>
   )
 }
 
-export function DashboardSection({ title, children, className = '', fullWidth = false }: DashboardSectionProps) {
+interface DashboardSectionProps {
+  children: React.ReactNode
+  title?: string
+  subtitle?: string
+  showTitle?: boolean
+  className?: string
+}
+
+export function DashboardSection({ 
+  children, 
+  title, 
+  subtitle, 
+  showTitle = true, 
+  className = '' 
+}: DashboardSectionProps) {
   return (
-    <section className={`${fullWidth ? 'w-full' : ''} ${className}`}>
-      {title && (
-        <div className="mb-8">
-          <div className="flex items-center space-x-3">
-            <div className="w-1 h-6 bg-gradient-to-b from-primary-500 to-secondary-500 rounded-full"></div>
-            <h2 className="text-2xl font-bold bg-gradient-to-r from-neutral-900 to-neutral-700 dark:from-neutral-100 dark:to-neutral-300 bg-clip-text text-transparent">{title}</h2>
+    <section className={`space-y-3 lg:space-y-4 ${className}`}>
+      {showTitle && title && (
+        <div className="flex items-center space-x-3 mb-3 lg:mb-4">
+          <div className="w-1 h-6 bg-gradient-to-b from-blue-500 to-indigo-500 rounded-full"></div>
+          <div>
+            <h2 className="text-xl lg:text-2xl font-bold text-slate-900 dark:text-white">
+              {title}
+            </h2>
+            {subtitle && (
+              <p className="text-sm lg:text-base text-slate-600 dark:text-slate-400 mt-1">
+                {subtitle}
+              </p>
+            )}
           </div>
         </div>
       )}
@@ -57,245 +62,289 @@ export function DashboardSection({ title, children, className = '', fullWidth = 
   )
 }
 
-export function DashboardGrid({ children, cols = 2, gap = 'md', className = '' }: DashboardGridProps) {
+interface DashboardGridProps {
+  children: React.ReactNode
+  cols?: 1 | 2 | 3 | 4 | 5 | 6
+  gap?: 'sm' | 'md' | 'lg'
+  className?: string
+}
+
+export function DashboardGrid({ 
+  children, 
+  cols = 3, 
+  gap = 'md', 
+  className = '' 
+}: DashboardGridProps) {
   const gridCols = {
     1: 'grid-cols-1',
     2: 'grid-cols-1 md:grid-cols-2',
     3: 'grid-cols-1 md:grid-cols-2 lg:grid-cols-3',
-    4: 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4'
+    4: 'grid-cols-1 md:grid-cols-2 lg:grid-cols-4',
+    5: 'grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5',
+    6: 'grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6'
   }
 
   const gridGaps = {
-    sm: 'gap-4',
-    md: 'gap-6',
-    lg: 'gap-8'
+    sm: 'gap-3 lg:gap-4',
+    md: 'gap-3 lg:gap-4',
+    lg: 'gap-4 lg:gap-6'
   }
 
   return (
-    <div className={`grid ${gridCols[cols]} ${gridGaps[gap]} auto-rows-fr ${className}`}>
+    <div className={cn(
+      'grid',
+      gridCols[cols],
+      gridGaps[gap],
+      className
+    )}>
       {children}
     </div>
   )
 }
 
+// ========================================
+// SIDEBAR & MAIN LAYOUT
+// ========================================
+
+interface DashboardSidebarProps {
+  children: React.ReactNode
+  className?: string
+}
+
 export function DashboardSidebar({ children, className = '' }: DashboardSidebarProps) {
   return (
-    <aside className={`lg:w-80 ${className}`}>
+    <aside className={cn(
+      'w-64 lg:w-72 bg-white dark:bg-slate-800 border-r border-slate-200 dark:border-slate-700',
+      'p-6 space-y-6',
+      className
+    )}>
       {children}
     </aside>
   )
 }
 
+interface DashboardMainProps {
+  children: React.ReactNode
+  className?: string
+}
+
 export function DashboardMain({ children, className = '' }: DashboardMainProps) {
   return (
-    <main className={`flex-1 ${className}`}>
+    <main className={cn(
+      'flex-1 p-6 space-y-6',
+      className
+    )}>
       {children}
     </main>
   )
 }
 
-// Predefined dashboard layouts
-export function TwoColumnLayout({ 
-  children,
-  className = '' 
-}: {
-  children: ReactNode
+// ========================================
+// COLUMN LAYOUTS
+// ========================================
+
+interface TwoColumnLayoutProps {
+  sidebar: React.ReactNode
+  main: React.ReactNode
   className?: string
-}) {
+}
+
+export function TwoColumnLayout({ sidebar, main, className = '' }: TwoColumnLayoutProps) {
   return (
-    <div className={`grid grid-cols-1 lg:grid-cols-2 gap-8 ${className}`}>
-      {children}
+    <div className={cn(
+      'flex min-h-screen bg-slate-50 dark:bg-slate-900',
+      className
+    )}>
+      {sidebar}
+      {main}
     </div>
   )
 }
 
-export function ThreeColumnLayout({ 
-  leftSidebar, 
-  main, 
-  rightSidebar,
-  leftWidth = 'w-64',
-  rightWidth = 'w-80',
-  className = '' 
-}: {
-  leftSidebar: ReactNode
-  main: ReactNode
-  rightSidebar: ReactNode
-  leftWidth?: string
-  rightWidth?: string
+interface ThreeColumnLayoutProps {
+  leftSidebar: React.ReactNode
+  main: React.ReactNode
+  rightSidebar: React.ReactNode
   className?: string
-}) {
+}
+
+export function ThreeColumnLayout({ leftSidebar, main, rightSidebar, className = '' }: ThreeColumnLayoutProps) {
   return (
-    <div className={`flex flex-col lg:flex-row gap-6 ${className}`}>
-      <aside className={`lg:${leftWidth} order-2 lg:order-1`}>
-        {leftSidebar}
-      </aside>
-      <main className="flex-1 order-1 lg:order-2">
-        {main}
-      </main>
-      <aside className={`lg:${rightWidth} order-3 lg:order-3`}>
-        {rightSidebar}
-      </aside>
+    <div className={cn(
+      'flex min-h-screen bg-slate-50 dark:bg-slate-900',
+      className
+    )}>
+      {leftSidebar}
+      {main}
+      {rightSidebar}
     </div>
   )
 }
 
-export function MasonryLayout({ 
+interface FourColumnLayoutProps {
+  leftSidebar: React.ReactNode
+  main: React.ReactNode
+  rightSidebar: React.ReactNode
+  farRightSidebar: React.ReactNode
+  className?: string
+}
+
+export function FourColumnLayout({ leftSidebar, main, rightSidebar, farRightSidebar, className = '' }: FourColumnLayoutProps) {
+  return (
+    <div className={cn(
+      'flex min-h-screen bg-slate-50 dark:bg-slate-900',
+      className
+    )}>
+      {leftSidebar}
+      {main}
+      {rightSidebar}
+      {farRightSidebar}
+    </div>
+  )
+}
+
+// ========================================
+// CARD COMPONENTS
+// ========================================
+
+interface DashboardCardProps {
+  children: React.ReactNode
+  className?: string
+  padding?: 'sm' | 'md' | 'lg'
+  hover?: boolean
+}
+
+export function DashboardCard({ 
   children, 
-  columns = 3,
-  className = '' 
-}: {
-  children: ReactNode
-  columns?: 2 | 3 | 4
-  className?: string
-}) {
-  const columnClasses = {
-    2: 'columns-1 md:columns-2',
-    3: 'columns-1 md:columns-2 lg:columns-3',
-    4: 'columns-1 md:columns-2 lg:columns-3 xl:columns-4'
+  className = '', 
+  padding = 'md',
+  hover = true
+}: DashboardCardProps) {
+  const paddingClasses = {
+    sm: 'p-4',
+    md: 'p-6',
+    lg: 'p-8'
   }
 
   return (
-    <div className={`${columnClasses[columns]} gap-6 ${className}`}>
+    <div className={cn(
+      'bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700',
+      'shadow-sm',
+      paddingClasses[padding],
+      hover && 'hover:shadow-lg transition-shadow duration-200',
+      className
+    )}>
       {children}
     </div>
   )
 }
 
-export function CardGrid({ 
-  children, 
-  cols = 4,
-  gap = 'md',
-  className = '' 
-}: {
-  children: ReactNode
-  cols?: 1 | 2 | 3 | 4
-  gap?: 'sm' | 'md' | 'lg'
+interface DashboardStatCardProps {
+  title: string
+  value: string | number
+  description?: string
+  icon?: React.ComponentType<{ className?: string }>
+  trend?: {
+    value: number
+    isPositive: boolean
+    period: string
+  }
   className?: string
-}) {
-  return (
-    <DashboardGrid cols={cols} gap={gap} className={className}>
-      {children}
-    </DashboardGrid>
-  )
 }
 
-export function StatsGrid({ 
-  children, 
-  className = '' 
-}: {
-  children: ReactNode
-  className?: string
-}) {
-  return (
-    <DashboardGrid cols={4} gap="md" className={className}>
-      {children}
-    </DashboardGrid>
-  )
-}
-
-export function ContentGrid({ 
-  children, 
-  className = '' 
-}: {
-  children: ReactNode
-  className?: string
-}) {
-  return (
-    <DashboardGrid cols={2} gap="lg" className={className}>
-      {children}
-    </DashboardGrid>
-  )
-}
-
-export function SidebarLayout({ 
-  sidebar, 
-  main,
-  className = '' 
-}: {
-  sidebar: ReactNode
-  main: ReactNode
-  className?: string
-}) {
-  return (
-    <div className={`grid grid-cols-1 lg:grid-cols-2 gap-8 ${className}`}>
-      <div>{sidebar}</div>
-      <div>{main}</div>
-    </div>
-  )
-}
-
-// Utility components for common dashboard patterns
-export function DashboardHeader({ 
+export function DashboardStatCard({ 
   title, 
-  subtitle,
-  actions,
+  value, 
+  description, 
+  icon: Icon, 
+  trend, 
   className = '' 
-}: {
+}: DashboardStatCardProps) {
+  return (
+    <DashboardCard className={cn('relative overflow-hidden', className)}>
+      {Icon && (
+        <div className="absolute top-4 right-4 p-3 bg-blue-100 dark:bg-blue-900/20 rounded-xl">
+          <Icon className="h-6 w-6 text-blue-600 dark:text-blue-400" />
+        </div>
+      )}
+      
+      <div className="space-y-2">
+        <h3 className="text-sm font-medium text-slate-600 dark:text-slate-400">
+          {title}
+        </h3>
+        <p className="text-3xl font-bold text-slate-900 dark:text-white">
+          {value}
+        </p>
+        {description && (
+          <p className="text-sm text-slate-500 dark:text-slate-400">
+            {description}
+          </p>
+        )}
+        {trend && (
+          <div className="flex items-center space-x-2 pt-2">
+            <span className={cn(
+              'text-sm font-medium',
+              trend.isPositive ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'
+            )}>
+              {trend.isPositive ? '+' : ''}{trend.value}%
+            </span>
+            <span className="text-xs text-slate-500 dark:text-slate-400">
+              {trend.period}
+            </span>
+          </div>
+        )}
+      </div>
+    </DashboardCard>
+  )
+}
+
+interface DashboardMetricCardProps {
   title: string
+  value: string | number
   subtitle?: string
-  actions?: ReactNode
+  icon?: React.ComponentType<{ className?: string }>
+  color?: 'blue' | 'green' | 'purple' | 'orange' | 'red'
   className?: string
-}) {
-  return (
-    <div className={`flex flex-col sm:flex-row sm:items-center sm:justify-between mb-10 ${className}`}>
-      <div className="flex items-center space-x-4">
-        <div className="w-2 h-10 bg-gradient-to-b from-primary-500 via-secondary-500 to-accent-500 rounded-full shadow-lg"></div>
-        <div>
-          <h1 className="text-4xl font-bold bg-gradient-to-r from-primary-700 via-secondary-600 to-accent-600 dark:from-primary-400 dark:via-secondary-400 dark:to-accent-400 bg-clip-text text-transparent">{title}</h1>
-          {subtitle && (
-            <p className="mt-2 text-lg text-neutral-600 dark:text-neutral-400">{subtitle}</p>
-          )}
-        </div>
-      </div>
-      {actions && (
-        <div className="mt-6 sm:mt-0">
-          {actions}
-        </div>
-      )}
-    </div>
-  )
 }
 
-export function DashboardFooter({ 
-  children, 
+export function DashboardMetricCard({ 
+  title, 
+  value, 
+  subtitle, 
+  icon: Icon, 
+  color = 'blue',
   className = '' 
-}: {
-  children: ReactNode
-  className?: string
-}) {
-  return (
-    <footer className={`mt-16 pt-8 border-t border-neutral-200/50 dark:border-neutral-700/50 ${className}`}>
-      {children}
-    </footer>
-  )
-}
+}: DashboardMetricCardProps) {
+  const colorClasses = {
+    blue: 'bg-blue-500 text-white',
+    green: 'bg-green-500 text-white',
+    purple: 'bg-purple-500 text-white',
+    orange: 'bg-orange-500 text-white',
+    red: 'bg-red-500 text-white'
+  }
 
-export function DashboardEmptyState({ 
-  icon: Icon,
-  title,
-  description,
-  action,
-  className = '' 
-}: {
-  icon: React.ComponentType<{ className?: string }>
-  title: string
-  description: string
-  action?: ReactNode
-  className?: string
-}) {
   return (
-    <div className={`text-center py-16 ${className}`}>
-      <div className="relative inline-block">
-        <Icon className="mx-auto h-16 w-16 text-neutral-400 dark:text-neutral-500" />
-        <div className="absolute inset-0 bg-gradient-to-br from-primary-400/20 to-secondary-400/20 rounded-full blur-xl"></div>
-      </div>
-      <h3 className="mt-4 text-lg font-semibold text-neutral-900 dark:text-neutral-100">{title}</h3>
-      <p className="mt-2 text-neutral-600 dark:text-neutral-400 max-w-md mx-auto">{description}</p>
-      {action && (
-        <div className="mt-8">
-          {action}
+    <DashboardCard className={cn('text-center', className)}>
+      {Icon && (
+        <div className={cn(
+          'w-12 h-12 rounded-xl mx-auto mb-4 flex items-center justify-center',
+          colorClasses[color]
+        )}>
+          <Icon className="h-6 w-6" />
         </div>
       )}
-    </div>
+      
+      <h3 className="text-lg font-semibold text-slate-900 dark:text-white mb-2">
+        {title}
+      </h3>
+      <p className="text-3xl font-bold text-slate-900 dark:text-white mb-1">
+        {value}
+      </p>
+      {subtitle && (
+        <p className="text-sm text-slate-500 dark:text-slate-400">
+          {subtitle}
+        </p>
+      )}
+    </DashboardCard>
   )
 }

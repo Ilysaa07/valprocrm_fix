@@ -2,9 +2,9 @@
 
 import { useState } from 'react'
 import { format, startOfMonth, endOfMonth, startOfWeek, endOfWeek, addDays, isSameMonth, isSameDay, isToday } from 'date-fns'
-import { Clock, MapPin, Users, ChevronLeft, ChevronRight } from 'lucide-react'
+import { Clock, MapPin, Users } from 'lucide-react'
 
-interface CalendarEvent {
+export interface CalendarEvent {
   id: string
   title: string
   description?: string
@@ -16,22 +16,23 @@ interface CalendarEvent {
   priority: string
   status: string
   createdBy: {
-    name: string
+    fullName: string
   }
   attendees: Array<{
     id: string
     name?: string
     user?: {
-      name: string
+      fullName: string
     }
   }>
   project?: {
     name: string
   }
   contact?: {
-    name: string
+    fullName: string
     companyName?: string
   }
+  visibility: string
 }
 
 interface CalendarViewProps {
@@ -40,28 +41,27 @@ interface CalendarViewProps {
   events: CalendarEvent[]
   onEventClick: (event: CalendarEvent) => void
   onDateClick: (date: Date) => void
-  loading: boolean
 }
 
 const categoryColors = {
-  MEETING: 'bg-blue-500',
-  DEADLINE: 'bg-red-500',
-  REMINDER: 'bg-yellow-500',
-  INTERNAL: 'bg-green-500',
-  CLIENT: 'bg-purple-500',
-  PROJECT: 'bg-indigo-500',
-  PERSONAL: 'bg-pink-500',
-  HOLIDAY: 'bg-orange-500'
+  MEETING: 'bg-accent',
+  DEADLINE: 'bg-error',
+  REMINDER: 'bg-warning',
+  INTERNAL: 'bg-success',
+  CLIENT: 'bg-accent/80',
+  PROJECT: 'bg-accent/60',
+  PERSONAL: 'bg-accent/40',
+  HOLIDAY: 'bg-warning/80'
 }
 
 const priorityBorders = {
-  LOW: 'border-l-2 border-gray-400',
-  MEDIUM: 'border-l-2 border-yellow-400',
-  HIGH: 'border-l-2 border-orange-400',
-  URGENT: 'border-l-2 border-red-500'
+  LOW: 'border-l-2 border-text-muted',
+  MEDIUM: 'border-l-2 border-warning',
+  HIGH: 'border-l-2 border-warning-dark',
+  URGENT: 'border-l-2 border-error'
 }
 
-export default function CalendarView({ view, currentDate, events, onEventClick, onDateClick, loading }: CalendarViewProps) {
+export default function CalendarView({ view, currentDate, events, onEventClick, onDateClick }: CalendarViewProps) {
   const [hoveredEvent, setHoveredEvent] = useState<string | null>(null)
 
   const getEventsForDate = (date: Date) => {
@@ -125,7 +125,6 @@ export default function CalendarView({ view, currentDate, events, onEventClick, 
         </>
       )}
       
-      {/* Tooltip */}
       {hoveredEvent === event.id && (
         <div className="absolute z-50 bottom-full left-0 mb-2 p-3 bg-gray-900 text-white text-sm rounded-lg shadow-lg min-w-64 max-w-80">
           <div className="font-semibold mb-2">{event.title}</div>
@@ -137,9 +136,9 @@ export default function CalendarView({ view, currentDate, events, onEventClick, 
             {event.location && <div>📍 {event.location}</div>}
             {event.project && <div>📂 {event.project.name}</div>}
             {event.contact && (
-              <div>👤 {event.contact.name} {event.contact.companyName && `(${event.contact.companyName})`}</div>
+              <div>👤 {event.contact.fullName} {event.contact.companyName && `(${event.contact.companyName})`}</div>
             )}
-            <div>👨‍💼 Created by {event.createdBy.name}</div>
+            <div>👨‍💼 Created by {event.createdBy.fullName}</div>
           </div>
         </div>
       )}
@@ -157,7 +156,6 @@ export default function CalendarView({ view, currentDate, events, onEventClick, 
     let days = []
     let day = startDate
 
-    // Create calendar grid
     while (day <= endDate) {
       for (let i = 0; i < 7; i++) {
         const cloneDay = day
@@ -206,7 +204,6 @@ export default function CalendarView({ view, currentDate, events, onEventClick, 
 
     return (
       <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
-        {/* Week header */}
         <div className="grid grid-cols-7 border-b border-gray-200 dark:border-gray-700">
           {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(day => (
             <div key={day} className="p-4 text-center text-sm font-medium text-gray-700 dark:text-gray-300">
@@ -215,7 +212,6 @@ export default function CalendarView({ view, currentDate, events, onEventClick, 
           ))}
         </div>
         
-        {/* Calendar grid */}
         <div className="divide-y divide-gray-200 dark:divide-gray-700">
           {rows}
         </div>
@@ -230,7 +226,6 @@ export default function CalendarView({ view, currentDate, events, onEventClick, 
 
     return (
       <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
-        {/* Week header */}
         <div className="grid grid-cols-8 border-b border-gray-200 dark:border-gray-700">
           <div className="p-4"></div>
           {weekDays.map(day => (
@@ -255,9 +250,7 @@ export default function CalendarView({ view, currentDate, events, onEventClick, 
           ))}
         </div>
 
-        {/* Week grid */}
         <div className="grid grid-cols-8 divide-x divide-gray-200 dark:divide-gray-700">
-          {/* Time column */}
           <div className="divide-y divide-gray-200 dark:divide-gray-700">
             {hours.map(hour => (
               <div key={hour} className="h-16 p-2 text-xs text-gray-500 dark:text-gray-400">
@@ -266,7 +259,6 @@ export default function CalendarView({ view, currentDate, events, onEventClick, 
             ))}
           </div>
 
-          {/* Day columns */}
           {weekDays.map(day => {
             const dayEvents = getEventsForDate(day)
             return (
@@ -297,7 +289,6 @@ export default function CalendarView({ view, currentDate, events, onEventClick, 
 
     return (
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Time schedule */}
         <div className="lg:col-span-2 bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
           <div className="p-4 border-b border-gray-200 dark:border-gray-700">
             <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
@@ -324,14 +315,12 @@ export default function CalendarView({ view, currentDate, events, onEventClick, 
                     ))}
                   </div>
                 </div>
-              )
-            })}
+              )}
+            )}
           </div>
         </div>
 
-        {/* All day events and summary */}
         <div className="space-y-6">
-          {/* All day events */}
           {dayEvents.some(e => e.allDay) && (
             <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-4">
               <h4 className="text-sm font-medium text-gray-900 dark:text-white mb-3">All Day</h4>
@@ -345,7 +334,6 @@ export default function CalendarView({ view, currentDate, events, onEventClick, 
             </div>
           )}
 
-          {/* Day summary */}
           <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-4">
             <h4 className="text-sm font-medium text-gray-900 dark:text-white mb-3">Day Summary</h4>
             <div className="space-y-2 text-sm text-gray-600 dark:text-gray-400">

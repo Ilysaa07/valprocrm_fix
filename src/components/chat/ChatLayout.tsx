@@ -12,6 +12,8 @@ import { Card } from '@/components/ui/Card';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
 import { useSearchParams } from 'next/navigation';
+import { Button } from '@/components/ui/Button';
+import { MessageCircle, Plus } from 'lucide-react';
 
 interface Conversation {
   id: string;
@@ -207,13 +209,17 @@ export default function ChatLayout() {
 
   type AttachmentInput = { fileName: string; fileUrl: string; fileSize: number; fileType: string };
   const handleSendMessage = async (content: string, attachments?: AttachmentInput[]) => {
-    if (!selectedConversation || !socket) return;
+    if (!selectedConversation || !socket) {
+      console.error('No conversation selected or socket not connected');
+      return;
+    }
 
     try {
       const tempId = `temp-${Date.now()}`;
       const userIdSafe = session?.user?.id || '';
       const userNameSafe = session?.user?.name || 'You';
       const userImageSafe = (session?.user as unknown as { image?: string })?.image || undefined;
+      
       const optimistic: ChatMessage = {
         id: tempId,
         conversationId: selectedConversation.id,
@@ -230,29 +236,42 @@ export default function ChatLayout() {
           profilePicture: userImageSafe,
         },
       } as unknown as ChatMessage;
+      
+      // Add optimistic message
       setMessages(prev => [...prev, optimistic]);
 
-      fetch(`/api/chat/conversations/${selectedConversation.id}/messages`, {
+      // Send to API
+      const response = await fetch(`/api/chat/conversations/${selectedConversation.id}/messages`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ content, attachments }),
-      })
-        .then(async (res) => {
-          if (!res.ok) throw new Error('send failed');
-          const saved: ChatMessage = await res.json();
-          setMessages((prev: ChatMessage[]) => {
-            const alreadyExists = prev.some((m) => m.id === (saved as any).id);
-            if (alreadyExists) {
-              return prev.filter((m) => m.id !== tempId);
-            }
-            return prev.map((m) => (m.id === tempId ? (saved as any) : m));
-          });
-        })
-        .catch(() => {
-          setMessages((prev: ChatMessage[]) => prev.filter((m) => m.id !== tempId));
-        });
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const saved: ChatMessage = await response.json();
+      
+      // Replace optimistic message with real message
+      setMessages((prev: ChatMessage[]) => {
+        const alreadyExists = prev.some((m) => m.id === (saved as any).id);
+        if (alreadyExists) {
+          return prev.filter((m) => m.id !== tempId);
+        }
+        return prev.map((m) => (m.id === tempId ? (saved as any) : m));
+      });
+
+      console.log('Message sent successfully:', saved);
+      
     } catch (error) {
       console.error('Error sending message:', error);
+      
+      // Remove optimistic message on error
+      setMessages((prev: ChatMessage[]) => prev.filter((m) => m.id !== tempId));
+      
+      // Show error to user
+      alert('Gagal mengirim pesan. Silakan coba lagi.');
     }
   };
 
@@ -284,9 +303,9 @@ export default function ChatLayout() {
   }
 
   return (
-    <div className="flex h-[100dvh] min-h-0 bg-gradient-to-br from-neutral-50 to-neutral-100 dark:from-neutral-900 dark:to-neutral-800">
+    <div className="flex h-[100dvh] min-h-0 bg-gradient-to-br from-gray-50 to-gray-100 dark:from-slate-900 dark:to-slate-800">
       {/* Sidebar */}
-      <aside className={`${selectedConversation && isMobile ? 'hidden' : 'flex'} w-full md:w-88 lg:w-[420px] xl:w-[460px] flex-col min-h-0 border-r border-neutral-200 dark:border-neutral-800 bg-white/80 dark:bg-neutral-900/80 backdrop-blur-sm`}> 
+      <aside className={`${selectedConversation && isMobile ? 'hidden' : 'flex'} w-full md:w-88 lg:w-[420px] xl:w-[460px] flex-col min-h-0 border-r border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 shadow-lg`}> 
         <ChatHeader 
           onNewChat={() => setShowNewConversationModal(true)}
           onSearch={() => {}}
@@ -320,15 +339,24 @@ export default function ChatLayout() {
             />
           </div>
         ) : (
-          <div className="flex-1 flex items-center justify-center p-8">
+          <div className="flex-1 flex items-center justify-center p-8 bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-slate-800 dark:to-slate-700">
             <div className="text-center max-w-md">
-              <div className="w-20 h-20 mx-auto mb-6 bg-gradient-to-br from-primary-100 to-primary-200 dark:from-primary-900/30 dark:to-primary-800/30 rounded-full flex items-center justify-center">
-                <svg className="w-10 h-10 text-primary-600 dark:text-primary-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <div className="w-20 h-20 mx-auto mb-6 bg-gradient-to-br from-blue-500 to-indigo-600 dark:from-blue-600 dark:to-indigo-700 rounded-full flex items-center justify-center shadow-lg">
+                <svg className="w-10 h-10 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
                 </svg>
               </div>
-              <h3 className="text-xl font-semibold text-neutral-900 dark:text-neutral-100 mb-3">Welcome to Chat</h3>
-              <p className="text-neutral-600 dark:text-neutral-400">Select a conversation to get started</p>
+              <h3 className="text-2xl font-bold text-gray-900 dark:text-white mb-3">Welcome to Chat</h3>
+              <p className="text-gray-600 dark:text-gray-300 text-lg">Select a conversation to get started</p>
+              <div className="mt-6">
+                <Button
+                  onClick={() => setShowNewConversationModal(true)}
+                  className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg shadow-lg hover:shadow-xl transition-all duration-200 transform hover:scale-105"
+                >
+                  <Plus className="w-5 h-5 mr-2" />
+                  Start New Conversation
+                </Button>
+              </div>
             </div>
           </div>
         )}

@@ -6,7 +6,7 @@ import { z } from 'zod';
 
 const sendMessageSchema = z.object({
   content: z.string().default(''),
-  messageType: z.enum(['TEXT', 'FILE', 'IMAGE', 'AUDIO', 'VIDEO']).optional(),
+  messageType: z.enum(['TEXT', 'FILE', 'IMAGE', 'VIDEO']).optional(),
   attachments: z.array(z.object({
     fileName: z.string(),
     fileUrl: z.string(),

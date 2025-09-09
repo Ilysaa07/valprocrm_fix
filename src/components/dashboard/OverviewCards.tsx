@@ -161,10 +161,16 @@ export function taskOverviewConfig(stats: any) {
       color: 'bg-green-500'
     },
     {
-      label: 'Pending',
-      value: stats.pendingTasks || 0,
+      label: 'Menunggu Validasi',
+      value: stats.pendingValidationTasks || stats.pendingTasks || 0,
       icon: Clock,
       color: 'bg-yellow-500'
+    },
+    {
+      label: 'Revisi',
+      value: stats.revisionTasks || 0,
+      icon: Clock,
+      color: 'bg-amber-500'
     }
   ]
 }
