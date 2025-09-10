@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState, Suspense } from 'react'
+import { useEffect, useState, Suspense, useCallback } from 'react'
 import { useSearchParams } from 'next/navigation'
 import AdminLayout from '@/components/layout/AdminLayout'
 import { 
@@ -26,14 +26,14 @@ import {
 interface User {
   id: string
   email: string
-  fullName: string
-  address: string
-  gender: 'MALE' | 'FEMALE'
-  nikKtp: string
-  phoneNumber: string
+  fullName: string | null
+  address: string | null
+  gender: 'MALE' | 'FEMALE' | null
+  nikKtp: string | null
+  phoneNumber: string | null
   profilePicture?: string | null
-  bankAccountNumber?: string
-  ewalletNumber?: string
+  bankAccountNumber?: string | null
+  ewalletNumber?: string | null
   role: string
   status: 'PENDING' | 'APPROVED' | 'REJECTED'
   createdAt: string
@@ -77,11 +77,7 @@ function UsersPageInner() {
   const [showPassword, setShowPassword] = useState(false)
   const [showConfirmPassword, setShowConfirmPassword] = useState(false)
 
-  useEffect(() => {
-    fetchUsers()
-  }, [statusFilter])
-
-  const fetchUsers = async () => {
+  const fetchUsers = useCallback(async () => {
     try {
       setIsLoading(true)
       const params = new URLSearchParams()
@@ -103,12 +99,16 @@ function UsersPageInner() {
       } else {
         console.error('Error fetching users:', data.error)
       }
-    } catch (error) {
-      console.error('Error fetching users:', error)
+    } catch (_error) {
+      console.error('Error fetching users:', _error)
     } finally {
       setIsLoading(false)
     }
-  }
+  }, [statusFilter])
+
+  useEffect(() => {
+    fetchUsers()
+  }, [fetchUsers])
 
   const handleApproveReject = async (userId: string, action: 'APPROVED' | 'REJECTED') => {
     try {
@@ -130,7 +130,7 @@ function UsersPageInner() {
       } else {
         alert(data.error)
       }
-    } catch (error) {
+    } catch {
       alert('Terjadi kesalahan jaringan')
     }
   }
@@ -138,14 +138,14 @@ function UsersPageInner() {
   const handleOpenEditModal = (user: User) => {
     setUserToEdit(user)
     setFormData({
-      fullName: user.fullName,
-      address: user.address,
-      gender: user.gender,
-      nikKtp: user.nikKtp,
-      phoneNumber: user.phoneNumber,
+      fullName: user.fullName || '',
+      address: user.address || '',
+      gender: user.gender || '',
+      nikKtp: user.nikKtp || '',
+      phoneNumber: user.phoneNumber || '',
       bankAccountNumber: user.bankAccountNumber || '',
       ewalletNumber: user.ewalletNumber || '',
-      status: user.status
+      status: user.status || ''
     })
     setIsEditModalOpen(true)
   }
@@ -186,7 +186,7 @@ function UsersPageInner() {
       } else {
         alert(data.error || 'Gagal mengupdate data karyawan')
       }
-    } catch (error) {
+    } catch {
       alert('Terjadi kesalahan jaringan')
     } finally {
       setIsSubmitting(false)
@@ -251,11 +251,6 @@ function UsersPageInner() {
       return
     }
 
-    // Validasi jenis kelamin
-    if (!addUserData.gender) {
-      alert('Jenis kelamin harus dipilih')
-      return
-    }
 
     // Validasi format email
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
@@ -319,13 +314,13 @@ function UsersPageInner() {
       } else {
         if (data.details && Array.isArray(data.details)) {
           // Menampilkan detail error validasi dari Zod
-          const errorMessages = data.details.map((err: any) => `${err.path.join('.')}: ${err.message}`).join('\n')
+          const errorMessages = data.details.map((err: { path: string[]; message: string }) => `${err.path.join('.')}: ${err.message}`).join('\n')
           alert(`Validasi gagal:\n${errorMessages}`)
         } else {
           alert(data.error || 'Gagal menambahkan karyawan')
         }
       }
-    } catch (error) {
+    } catch {
       alert('Terjadi kesalahan jaringan')
     } finally {
       setIsSubmitting(false)
@@ -350,7 +345,7 @@ function UsersPageInner() {
       } else {
         alert(data.error || 'Gagal menghapus karyawan')
       }
-    } catch (error) {
+    } catch {
       alert('Terjadi kesalahan jaringan')
     } finally {
       setIsSubmitting(false)
@@ -358,7 +353,7 @@ function UsersPageInner() {
   }
 
   const filteredUsers = users.filter(user =>
-    user.fullName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    (user.fullName || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
     user.email.toLowerCase().includes(searchTerm.toLowerCase())
   )
 
@@ -443,7 +438,7 @@ function UsersPageInner() {
                       Karyawan
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-text-secondary uppercase tracking-wider">
-                      Kontak
+                      Kontak & NIK
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-text-secondary uppercase tracking-wider">
                       Status
@@ -465,7 +460,7 @@ function UsersPageInner() {
                             {user.profilePicture ? (
                               <img
                                 src={user.profilePicture}
-                                alt={user.fullName}
+                                alt={user.fullName || 'User'}
                                 className="h-10 w-10 rounded-full object-cover border border-border"
                               />
                             ) : (
@@ -475,14 +470,14 @@ function UsersPageInner() {
                             )}
                           </div>
                           <div className="ml-4">
-                            <div className="text-sm font-medium text-text-primary">{user.fullName}</div>
+                            <div className="text-sm font-medium text-text-primary">{user.fullName || 'N/A'}</div>
                             <div className="text-sm text-text-secondary">{user.email}</div>
                           </div>
                         </div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm text-text-primary">{user.phoneNumber}</div>
-                        <div className="text-sm text-text-secondary">{user.gender === 'MALE' ? 'Laki-laki' : 'Perempuan'}</div>
+                        <div className="text-sm text-text-primary">{user.phoneNumber || 'N/A'}</div>
+                        <div className="text-sm text-text-secondary">{user.nikKtp || 'N/A'}</div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         {getStatusBadge(user.status)}
@@ -492,7 +487,19 @@ function UsersPageInner() {
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm font-medium space-x-2">
                         <button
-                          onClick={() => setSelectedUser(user)}
+                          onClick={async () => {
+                            try {
+                              const res = await fetch(`/api/admin/users/${user.id}`)
+                              const data = await res.json()
+                              if (res.ok && data?.user) {
+                                setSelectedUser(data.user)
+                              } else {
+                                setSelectedUser(user)
+                              }
+                            } catch {
+                              setSelectedUser(user)
+                            }
+                          }}
                           className="text-accent hover:text-accent-hover"
                           title="Lihat Detail"
                         >
@@ -517,7 +524,19 @@ function UsersPageInner() {
                           </>
                         )}
                         <button
-                          onClick={() => handleOpenEditModal(user)}
+                          onClick={async () => {
+                            try {
+                              const res = await fetch(`/api/admin/users/${user.id}`)
+                              const data = await res.json()
+                              if (res.ok && data?.user) {
+                                handleOpenEditModal(data.user)
+                              } else {
+                                handleOpenEditModal(user)
+                              }
+                            } catch {
+                              handleOpenEditModal(user)
+                            }
+                          }}
                           className="text-warning hover:text-warning-dark"
                           title="Edit"
                         >
@@ -568,8 +587,8 @@ function UsersPageInner() {
                 <div className="flex items-center space-x-4">
                   {selectedUser.profilePicture ? (
                     <img
-                      src={selectedUser.profilePicture}
-                      alt={selectedUser.fullName}
+                      src={selectedUser.profilePicture || ''}
+                      alt={selectedUser.fullName || 'User'}
                       className="h-16 w-16 rounded-full object-cover border border-border"
                     />
                   ) : (
@@ -588,7 +607,7 @@ function UsersPageInner() {
                       <User className="inline w-4 h-4 mr-1" />
                       Nama Lengkap
                     </label>
-                    <p className="text-sm text-text-primary">{selectedUser.fullName}</p>
+                    <p className="text-sm text-text-primary">{selectedUser.fullName || 'N/A'}</p>
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-text-secondary mb-1">
@@ -599,50 +618,55 @@ function UsersPageInner() {
                   </div>
                 </div>
                 
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    <MapPin className="inline w-4 h-4 mr-1" />
-                    Alamat
-                  </label>
-                  <p className="text-sm text-gray-900">{selectedUser.address}</p>
-                </div>
-                
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-text-secondary mb-1">Jenis Kelamin</label>
-                    <p className="text-sm text-text-primary">{selectedUser.gender === 'MALE' ? 'Laki-laki' : 'Perempuan'}</p>
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-text-secondary mb-1">NIK KTP</label>
-                    <p className="text-sm text-text-primary">{selectedUser.nikKtp}</p>
-                  </div>
-                </div>
-                
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    <Phone className="inline w-4 h-4 mr-1" />
-                    Nomor HP
-                  </label>
-                  <p className="text-sm text-gray-900">{selectedUser.phoneNumber}</p>
-                </div>
-                
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {selectedUser.bankAccountNumber && (
+                {selectedUser.role !== 'ADMIN' && (
+                  <>
                     <div>
-                      <label className="block text-sm font-medium text-text-secondary mb-1">
-                        <CreditCard className="inline w-4 h-4 mr-1" />
-                        Rekening Bank
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        <MapPin className="inline w-4 h-4 mr-1" />
+                        Alamat
                       </label>
-                      <p className="text-sm text-text-primary">{selectedUser.bankAccountNumber}</p>
+                      <p className="text-sm text-gray-900">{selectedUser.address || 'N/A'}</p>
                     </div>
-                  )}
-                  {selectedUser.ewalletNumber && (
                     <div>
-                      <label className="block text-sm font-medium text-text-secondary mb-1">E-Wallet</label>
-                      <p className="text-sm text-text-primary">{selectedUser.ewalletNumber}</p>
+                      <label className="block text-sm font-medium text-text-secondary mb-1">Jenis Kelamin</label>
+                      <p className="text-sm text-text-primary">
+                        {selectedUser.gender === 'MALE' ? 'Laki-laki' : selectedUser.gender === 'FEMALE' ? 'Perempuan' : 'N/A'}
+                      </p>
                     </div>
-                  )}
-                </div>
+                    
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-sm font-medium text-text-secondary mb-1">NIK KTP</label>
+                        <p className="text-sm text-text-primary">{selectedUser.nikKtp || 'N/A'}</p>
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-text-secondary mb-1">
+                          <Phone className="inline w-4 h-4 mr-1" />
+                          Nomor HP
+                        </label>
+                        <p className="text-sm text-text-primary">{selectedUser.phoneNumber || 'N/A'}</p>
+                      </div>
+                    </div>
+                    
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      {selectedUser.bankAccountNumber && (
+                        <div>
+                          <label className="block text-sm font-medium text-text-secondary mb-1">
+                            <CreditCard className="inline w-4 h-4 mr-1" />
+                            Rekening Bank
+                          </label>
+                          <p className="text-sm text-text-primary">{selectedUser.bankAccountNumber}</p>
+                        </div>
+                      )}
+                      {selectedUser.ewalletNumber && (
+                        <div>
+                          <label className="block text-sm font-medium text-text-secondary mb-1">E-Wallet</label>
+                          <p className="text-sm text-text-primary">{selectedUser.ewalletNumber}</p>
+                        </div>
+                      )}
+                    </div>
+                  </>
+                )}
                 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Status</label>
@@ -708,106 +732,113 @@ function UsersPageInner() {
               </div>
               
               <form onSubmit={handleSubmitEdit} className="space-y-4">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-text-secondary mb-1">
-                      Nama Lengkap
-                    </label>
-                    <input
-                      type="text"
-                      name="fullName"
-                      value={formData.fullName}
-                      onChange={handleInputChange}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      required
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-text-secondary mb-1">
-                      Jenis Kelamin
-                    </label>
-                    <select
-                      name="gender"
-                      value={formData.gender}
-                      onChange={handleInputChange}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      required
-                    >
-                      <option value="MALE">Laki-laki</option>
-                      <option value="FEMALE">Perempuan</option>
-                    </select>
-                  </div>
-                </div>
-                
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Alamat
+                  <label className="block text-sm font-medium text-text-secondary mb-1">
+                    Nama Lengkap
                   </label>
                   <input
                     type="text"
-                    name="address"
-                    value={formData.address}
+                    name="fullName"
+                    value={formData.fullName}
                     onChange={handleInputChange}
                     className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                     required
                   />
                 </div>
                 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {userToEdit?.role !== 'ADMIN' && (
                   <div>
-                    <label className="block text-sm font-medium text-text-secondary mb-1">
-                      NIK KTP
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Alamat
                     </label>
                     <input
                       type="text"
-                      name="nikKtp"
-                      value={formData.nikKtp}
+                      name="address"
+                      value={formData.address}
                       onChange={handleInputChange}
                       className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                       required
                     />
                   </div>
-                  <div>
-                    <label className="block text-sm font-medium text-text-secondary mb-1">
-                      Nomor HP
-                    </label>
-                    <input
-                      type="text"
-                      name="phoneNumber"
-                      value={formData.phoneNumber}
-                      onChange={handleInputChange}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      required
-                    />
-                  </div>
-                </div>
+                )}
                 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-text-secondary mb-1">
-                      Rekening Bank
-                    </label>
-                    <input
-                      type="text"
-                      name="bankAccountNumber"
-                      value={formData.bankAccountNumber}
-                      onChange={handleInputChange}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    />
+                {userToEdit?.role !== 'ADMIN' && (
+                  <>
+                    <div>
+                      <label className="block text-sm font-medium text-text-secondary mb-1">
+                        Jenis Kelamin
+                      </label>
+                      <select
+                        name="gender"
+                        value={formData.gender}
+                        onChange={handleInputChange}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        required
+                      >
+                        <option value="">Pilih jenis kelamin</option>
+                        <option value="MALE">Laki-laki</option>
+                        <option value="FEMALE">Perempuan</option>
+                      </select>
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-sm font-medium text-text-secondary mb-1">
+                          NIK KTP
+                        </label>
+                        <input
+                          type="text"
+                          name="nikKtp"
+                          value={formData.nikKtp}
+                          onChange={handleInputChange}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                          required
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-text-secondary mb-1">
+                          Nomor HP
+                        </label>
+                        <input
+                          type="text"
+                          name="phoneNumber"
+                          value={formData.phoneNumber}
+                          onChange={handleInputChange}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                          required
+                        />
+                      </div>
+                    </div>
+                  </>
+                )}
+                
+                {userToEdit?.role !== 'ADMIN' && (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-text-secondary mb-1">
+                        Rekening Bank
+                      </label>
+                      <input
+                        type="text"
+                        name="bankAccountNumber"
+                        value={formData.bankAccountNumber}
+                        onChange={handleInputChange}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-text-secondary mb-1">
+                        E-Wallet
+                      </label>
+                      <input
+                        type="text"
+                        name="ewalletNumber"
+                        value={formData.ewalletNumber}
+                        onChange={handleInputChange}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      />
+                    </div>
                   </div>
-                  <div>
-                    <label className="block text-sm font-medium text-text-secondary mb-1">
-                      E-Wallet
-                    </label>
-                    <input
-                      type="text"
-                      name="ewalletNumber"
-                      value={formData.ewalletNumber}
-                      onChange={handleInputChange}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    />
-                  </div>
-                </div>
+                )}
                 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -966,7 +997,6 @@ function UsersPageInner() {
                       <option value="FEMALE">Perempuan</option>
                     </select>
                   </div>
-
                   <div>
                     <label className="block text-sm font-medium text-text-secondary mb-1">
                       NIK KTP *

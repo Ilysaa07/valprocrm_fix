@@ -1,178 +1,95 @@
 import { NextRequest, NextResponse } from 'next/server'
-import os from 'os'
+import { getServerSession } from 'next-auth'
+import { authOptions } from '@/lib/auth'
 import { spawn } from 'child_process'
-import { prisma } from '@/lib/prisma'
 
-type BackupConfig = {
-  enabled: boolean
-  cron: string // simple cron-like string e.g. "0 2 * * *"
-  lastRun?: string
-  lastStatus?: 'SUCCESS' | 'FAILED'
-}
+export async function GET(request: NextRequest) {
+  try {
+    const session = await getServerSession(authOptions)
+    if (!session || session.user.role !== 'ADMIN') {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+    const dbUrl = process.env.DATABASE_URL || ''
+    const conn = parseMysqlUrl(dbUrl)
 
-let config: BackupConfig = {
-  enabled: false,
-  cron: '0 2 * * *',
-  lastRun: undefined,
-  lastStatus: undefined
-}
+    const args = [
+      '-h', conn.host,
+      '-P', conn.port,
+      '-u', conn.user,
+      `-p${conn.password}`,
+      '--single-transaction',
+      '--quick',
+      '--routines',
+      '--events',
+      conn.database
+    ]
+    const mysqldump = resolveMysqlTool('MYSQLDUMP_PATH', 'mysqldump')
+    const child = spawn(mysqldump, args, { shell: process.platform === 'win32' })
 
-export async function GET(req: NextRequest) {
-  const { searchParams } = new URL(req.url)
-  const mode = searchParams.get('mode')
-  const format = searchParams.get('format') || 'json'
-  if (mode === 'download') {
-    if (format === 'sql') {
-      const dbUrl = process.env.DATABASE_URL || ''
-      if (!dbUrl.startsWith('mysql://') && !dbUrl.startsWith('mysql2://')) {
-        return new Response('-- DATABASE_URL tidak dikonfigurasi untuk MySQL. Pastikan DATABASE_URL menggunakan skema mysql://', { status: 500, headers: { 'Content-Type': 'text/plain; charset=utf-8' } })
+    const stream = new ReadableStream<Uint8Array>({
+      start(controller) {
+        child.stdout.on('data', (chunk: Buffer) => controller.enqueue(new Uint8Array(chunk)))
+        child.stderr.on('data', () => {})
+        child.on('error', (err) => {
+          try { controller.error(err) } catch {}
+        })
+        child.on('close', () => {
+          try { controller.close() } catch {}
+        })
+      },
+      cancel() {
+        try { child.kill('SIGTERM') } catch {}
       }
+    })
 
-      // Parse mysql://user:pass@host:port/dbname
-      let user = ''
-      let password = ''
-      let host = '127.0.0.1'
-      let port = '3306'
-      let database = ''
-      try {
-        const u = new URL(dbUrl)
-        user = decodeURIComponent(u.username)
-        password = decodeURIComponent(u.password)
-        host = u.hostname || host
-        port = u.port || port
-        database = u.pathname.replace(/^\//, '')
-      } catch (e) {
-        return new Response('-- DATABASE_URL MySQL tidak valid', { status: 500, headers: { 'Content-Type': 'text/plain; charset=utf-8' } })
-      }
-
-      const filename = `backup-${new Date().toISOString().replace(/[:.]/g, '-')}.sql`
-      const headers = {
+    const filename = `backup-${new Date().toISOString().replace(/[:.]/g, '-')}.sql`
+    return new NextResponse(stream as any, {
+      status: 200,
+      headers: {
         'Content-Type': 'application/sql; charset=utf-8',
         'Content-Disposition': `attachment; filename="${filename}"`,
         'Cache-Control': 'no-store'
       }
-
-      try {
-        const args = [
-          '-h', host,
-          '-P', port,
-          '-u', user,
-          `-p${password}`,
-          '--single-transaction',
-          '--quick',
-          '--routines',
-          '--events',
-          database
-        ]
-
-        const child = spawn('mysqldump', args)
-
-        const stream = new ReadableStream<Uint8Array>({
-          start(controller) {
-            child.stdout.on('data', (chunk: Buffer) => controller.enqueue(new Uint8Array(chunk)))
-            child.stderr.on('data', () => { /* ignore to avoid leaking sensitive info */ })
-            child.on('error', () => {
-              try { controller.error(new Error('mysqldump gagal dijalankan.')) } catch {}
-            })
-            child.on('close', () => {
-              try { controller.close() } catch {}
-            })
-          },
-          cancel() {
-            try { child.kill('SIGTERM') } catch {}
-          }
-        })
-
-        return new Response(stream, { headers })
-      } catch (e) {
-        // Fallback: Prisma-based SQL dump
-        try {
-          const ts = new Date().toISOString()
-          const enc = new TextEncoder()
-          const stream = new ReadableStream<Uint8Array>({
-            async start(controller) {
-              const write = (s: string) => controller.enqueue(enc.encode(s))
-              write(`-- Backup generated at ${ts}\n-- Host: ${os.hostname()}\n-- Engine: Prisma raw dump fallback\n\nBEGIN;\n`)
-              // list tables
-              const dbName = process.env.MYSQL_DATABASE || process.env.DB_NAME || ''
-              const tables: any[] = await prisma.$queryRawUnsafe('SHOW TABLES')
-              const tableNames = tables.map((row: any) => Object.values(row)[0]).filter(Boolean)
-              for (const tbl of tableNames) {
-                try {
-                  const createRows: any[] = await prisma.$queryRawUnsafe(`SHOW CREATE TABLE \`${tbl}\``)
-                  const createSql = createRows?.[0]?.['Create Table'] || createRows?.[0]?.['Create View']
-                  if (createSql) write(`\n-- Schema for ${tbl}\nDROP TABLE IF EXISTS \`${tbl}\`;\n${createSql};\n`)
-                  const rows: any[] = await prisma.$queryRawUnsafe(`SELECT * FROM \`${tbl}\``)
-                  if (rows.length) {
-                    const cols = Object.keys(rows[0]).map(c => `\`${c}\``).join(', ')
-                    write(`\n-- Data for ${tbl}\n`)
-                    for (const r of rows) {
-                      const vals = Object.values(r).map(v => sqlVal(v)).join(', ')
-                      write(`INSERT INTO \`${tbl}\` (${cols}) VALUES (${vals});\n`)
-                    }
-                  }
-                } catch {}
-              }
-              write('\nCOMMIT;\n')
-              controller.close()
-            }
-          })
-          function sqlVal(v: any): string {
-            if (v === null || v === undefined) return 'NULL'
-            if (typeof v === 'number') return Number.isFinite(v) ? String(v) : 'NULL'
-            if (typeof v === 'boolean') return v ? '1' : '0'
-            if (v instanceof Date) return `'${escapeStr(v.toISOString().slice(0, 19).replace('T', ' '))}'`
-            return `'${escapeStr(String(v))}'`
-          }
-          function escapeStr(s: string): string {
-            return s
-              .replace(/\\/g, '\\\\')
-              .replace(/\n/g, '\\n')
-              .replace(/\r/g, '\\r')
-              .replace(/\t/g, '\\t')
-              .replace(/\u0000/g, '')
-              .replace(/'/g, "\\'")
-          }
-          return new Response(stream, { headers })
-        } catch {
-          return new Response('-- Gagal menjalankan mysqldump dan fallback Prisma. Pastikan utilitas tersedia atau hak akses DB mencukupi.', { status: 500, headers: { 'Content-Type': 'text/plain; charset=utf-8' } })
-        }
-      }
-    } else {
-      const payload = {
-        generatedAt: new Date().toISOString(),
-        host: os.hostname(),
-        config,
-      }
-      const body = JSON.stringify(payload, null, 2)
-      const filename = `backup-${new Date().toISOString().replace(/[:.]/g, '-')}.json`
-      return new Response(body, {
-        headers: {
-          'Content-Type': 'application/json; charset=utf-8',
-          'Content-Disposition': `attachment; filename="${filename}"`,
-          'Cache-Control': 'no-store'
-        }
-      })
-    }
+    })
+  } catch (error: any) {
+    console.error('Backup error:', error)
+    return NextResponse.json({ error: error?.message || 'Backup failed' }, { status: 500 })
   }
-  return NextResponse.json(config, { headers: { 'Cache-Control': 'no-store' } })
 }
 
-export async function PUT(req: NextRequest) {
+function parseMysqlUrl(url: string): { host: string; port: string; user: string; password: string; database: string } {
   try {
-    const body = await req.json()
-    config = { ...config, ...body }
-    return NextResponse.json(config)
+    const normalized = url.replace(/^mysql2:/, 'mysql:')
+    const u = new URL(normalized)
+    if (u.protocol !== 'mysql:') throw new Error('Invalid protocol')
+    const user = decodeURIComponent(u.username || '')
+    const password = decodeURIComponent(u.password || '')
+    const host = u.hostname || '127.0.0.1'
+    const port = u.port && u.port.length > 0 ? u.port : '3306'
+    const database = decodeURIComponent((u.pathname || '').replace(/^\/+/, ''))
+    if (!database) throw new Error('Missing database name')
+    return { host, port, user, password, database }
   } catch {
-    return NextResponse.json({ error: 'Invalid payload' }, { status: 400 })
+    throw new Error('DATABASE_URL is not a valid MySQL URL')
   }
 }
 
-export async function POST() {
-  // Simulate backup task
-  config.lastRun = new Date().toISOString()
-  config.lastStatus = 'SUCCESS'
-  return NextResponse.json({ message: 'Backup started', ...config })
+function resolveMysqlTool(envVar: string, baseName: string): string {
+  const configured = process.env[envVar]
+  if (configured && configured.trim().length > 0) return configured
+  if (process.platform !== 'win32') return baseName
+  const candidates = [
+    `C:/Program Files/MySQL/MySQL Server 8.0/bin/${baseName}.exe`,
+    `C:/Program Files/MySQL/MySQL Server 5.7/bin/${baseName}.exe`,
+    `C:/Program Files/MySQL/MySQL Server/bin/${baseName}.exe`,
+    `C:/Program Files (x86)/MySQL/MySQL Server 8.0/bin/${baseName}.exe`,
+    `C:/Program Files (x86)/MySQL/MySQL Server/bin/${baseName}.exe`,
+    `C:/xampp/mysql/bin/${baseName}.exe`,
+    `C:/wamp64/bin/mysql/mysql8.0.31/bin/${baseName}.exe`,
+    `C:/wamp64/bin/mysql/mysql5.7.31/bin/${baseName}.exe`,
+  ]
+  for (const p of candidates) {
+    try { if (require('fs').existsSync(p)) return p } catch {}
+  }
+  return baseName
 }
-
-

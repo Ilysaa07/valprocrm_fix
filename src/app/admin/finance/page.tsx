@@ -80,6 +80,7 @@ export default function AdminFinancePage() {
   ]
 
   const expenseCategories = [
+    { value: 'PAYROLL_EXPENSE', label: 'Pembayaran Gaji' },
     { value: 'OFFICE_SUPPLIES', label: 'Perlengkapan Kantor' },
     { value: 'UTILITIES', label: 'Utilitas' },
     { value: 'RENT', label: 'Sewa' },

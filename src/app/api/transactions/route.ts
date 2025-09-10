@@ -10,7 +10,7 @@ const createTransactionSchema = z.object({
   category: z.enum([
     'SALARY', 'BONUS', 'COMMISSION', 'OTHER_INCOME',
     'OFFICE_SUPPLIES', 'UTILITIES', 'RENT', 'MARKETING', 
-    'TRAVEL', 'MEALS', 'EQUIPMENT', 'SOFTWARE', 'TRAINING', 'OTHER_EXPENSE'
+    'TRAVEL', 'MEALS', 'EQUIPMENT', 'SOFTWARE', 'TRAINING', 'PAYROLL_EXPENSE', 'OTHER_EXPENSE'
   ]),
   amount: z.number().positive('Jumlah harus lebih dari 0'),
   description: z.string().min(1, 'Deskripsi harus diisi'),

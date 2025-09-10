@@ -10,8 +10,6 @@ import {
   HelpCircle, 
   User, 
   Bell, 
-  Mail, 
-  Database, 
   Key, 
   Eye, 
   Clock, 
@@ -129,7 +127,7 @@ export default function AdminSettingsPage() {
   const [filterStatus, setFilterStatus] = useState<'ALL' | 'SUCCESS' | 'FAILED' | 'BLOCKED'>('ALL')
   const [showAddIpForm, setShowAddIpForm] = useState(false)
   const [newIpAddress, setNewIpAddress] = useState('')
-  const [backup, setBackup] = useState<{ enabled: boolean; cron: string; lastRun?: string; lastStatus?: string }>({ enabled: false, cron: '0 2 * * *' })
+  // Backup features removed per requirement
 
   useEffect(() => {
     if (status === 'loading') return
@@ -241,14 +239,7 @@ export default function AdminSettingsPage() {
     }
   }
 
-  const loadBackup = async () => {
-    try {
-      const r = await fetch('/api/admin/system/backup', { cache: 'no-store' })
-      if (!r.ok) return
-      const d = await r.json()
-      setBackup(d)
-    } catch {}
-  }
+  // Backup API integrations removed
 
   const updateSecuritySettings = async (newSettings: Partial<SecuritySettings>) => {
     try {
@@ -436,7 +427,7 @@ export default function AdminSettingsPage() {
                       <p className="text-sm text-yellow-600 dark:text-yellow-400">Disk Space</p>
                       <p className="text-2xl font-bold text-yellow-900 dark:text-yellow-100">{systemStatus.disk}%</p>
                     </div>
-                    <Database className="w-8 h-8 text-yellow-600" />
+                    <HardDrive className="w-8 h-8 text-yellow-600" />
               </div>
             </div>
                 <div className="p-4 bg-purple-50 dark:bg-purple-900/20 rounded-lg">
@@ -494,21 +485,12 @@ export default function AdminSettingsPage() {
                     Toggle
                   </Button>
                 </div>
-                <div className="flex items-center justify-between p-4 border border-gray-200 dark:border-gray-700 rounded-lg">
-              <div>
-                    <p className="font-medium text-gray-900 dark:text-white">Notifikasi Email</p>
-                    <p className="text-sm text-gray-600 dark:text-gray-400">Kirim notifikasi melalui email</p>
-              </div>
-                  <Button variant="outline" size="sm">
-                    <Mail className="w-4 h-4 mr-2" />
-                    Konfigurasi
-                  </Button>
-            </div>
+                {/* Backup & Restore */}
                 <div className="p-5 border border-gray-200 dark:border-gray-700 rounded-xl bg-white dark:bg-gray-800">
                   <div className="flex items-center justify-between gap-3">
                     <div>
-                      <p className="font-semibold text-gray-900 dark:text-white">Backup Otomatis</p>
-                      <p className="text-sm text-gray-600 dark:text-gray-400">Jalankan backup manual atau atur jadwal otomatis</p>
+                      <p className="font-semibold text-gray-900 dark:text-white">Backup & Restore</p>
+                      <p className="text-sm text-gray-600 dark:text-gray-400">Backup database (.sql → .zip) dan restore dari file .sql</p>
                     </div>
                     <div className="flex items-center gap-2">
                       <Button
@@ -516,77 +498,51 @@ export default function AdminSettingsPage() {
                         size="sm"
                         onClick={async () => {
                           try {
-                            const r = await fetch('/api/admin/system/backup', { method: 'POST' })
-                            if (!r.ok) throw new Error('Gagal menjalankan backup')
-                            showToast('Backup dimulai', { type: 'success' })
-                            loadBackup()
-                          } catch (e) {
-                            showToast('Gagal menjalankan backup', { type: 'error' })
-                          }
-                        }}
-                      >
-                        <Database className="w-4 h-4 mr-2" />
-                        Jalankan Sekarang
-                      </Button>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={async () => {
-                          try {
-                            const r = await fetch('/api/admin/system/backup?mode=download&format=sql')
-                            if (!r.ok) throw new Error('Gagal menyiapkan file')
-                            const blob = await r.blob()
+                            const res = await fetch('/api/admin/system/backup')
+                            if (!res.ok) throw new Error('Gagal menyiapkan backup')
+                            const blob = await res.blob()
                             const url = window.URL.createObjectURL(blob)
                             const a = document.createElement('a')
                             a.href = url
-                            a.download = `backup-${new Date().toISOString().split('T')[0]}.sql`
+                            a.download = `backup-${new Date().toISOString().split('T')[0]}.zip`
                             a.click()
                             window.URL.revokeObjectURL(url)
-                            showToast('Backup disimpan ke perangkat', { type: 'success' })
-                          } catch {
-                            showToast('Gagal menyimpan backup', { type: 'error' })
+                            showToast('Backup berhasil diunduh', { type: 'success' })
+                          } catch (e) {
+                            showToast('Gagal mengunduh backup', { type: 'error' })
                           }
                         }}
                       >
-                        Simpan ke Lokal
+                        Unduh Backup
                       </Button>
-                    </div>
-                  </div>
-                  <div className="mt-4 grid grid-cols-1 md:grid-cols-3 gap-3 text-sm">
-                    <div>
-                      <span className="text-gray-600 dark:text-gray-400">Terakhir:</span>
-                      <span className="ml-2 text-gray-900 dark:text-white">{backup.lastRun ? new Date(backup.lastRun).toLocaleString('id-ID') : '-'}</span>
-                    </div>
-                    <div>
-                      <span className="text-gray-600 dark:text-gray-400">Status:</span>
-                      <span className="ml-2 text-gray-900 dark:text-white">{backup.lastStatus || '-'}</span>
-                    </div>
-                    <div className="flex items-center gap-2 md:col-span-1">
-                      <label className="text-gray-600 dark:text-gray-400 whitespace-nowrap">Jadwal (cron):</label>
-                      <input
-                        value={backup.cron}
-                        onChange={(e) => setBackup(s => ({ ...s, cron: e.target.value }))}
-                        className="flex-1 min-w-[160px] px-2 py-1 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-                      />
-                      <label className="inline-flex items-center gap-2 text-gray-600 dark:text-gray-400">
-                        <input type="checkbox" checked={backup.enabled} onChange={(e) => setBackup(s => ({ ...s, enabled: e.target.checked }))} />
-                        Aktif
+
+                      <label className="inline-flex items-center gap-2">
+                        <input
+                          type="file"
+                          accept=".sql"
+                          onChange={async (e) => {
+                            const file = e.target.files?.[0]
+                            if (!file) return
+                            const confirmRestore = window.confirm('Semua data lama akan terganti. Lanjutkan restore?')
+                            if (!confirmRestore) return
+                            try {
+                              const form = new FormData()
+                              form.append('file', file)
+                              const res = await fetch('/api/admin/system/restore', { method: 'POST', body: form })
+                              const data = await res.json()
+                              if (!res.ok) throw new Error(data?.error || 'Restore gagal')
+                              showToast('Restore berhasil. Silakan refresh halaman.', { type: 'success' })
+                            } catch (err) {
+                              showToast((err as any)?.message || 'Restore gagal', { type: 'error' })
+                            } finally {
+                              e.currentTarget.value = ''
+                            }
+                          }}
+                          className="hidden"
+                          id="restore-input"
+                        />
+                        <Button variant="outline" size="sm" onClick={() => document.getElementById('restore-input')?.click()}>Restore dari .sql</Button>
                       </label>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={async () => {
-                          try {
-                            const r = await fetch('/api/admin/system/backup', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(backup) })
-                            if (!r.ok) throw new Error('Gagal menyimpan jadwal')
-                            showToast('Jadwal backup disimpan', { type: 'success' })
-                          } catch {
-                            showToast('Gagal menyimpan jadwal', { type: 'error' })
-                          }
-                        }}
-                      >
-                        Simpan
-                      </Button>
                     </div>
                   </div>
                 </div>

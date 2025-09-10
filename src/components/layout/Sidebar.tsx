@@ -30,7 +30,6 @@ import {
   Receipt,
   Grid3X3,
   Building2,
-  Cog,
   DollarSign,
   Clock,
   MapPin,
@@ -135,7 +134,8 @@ export default function Sidebar({
       title: 'Keuangan',
       items: [
         { name: 'Keuangan', href: '/admin/finance', icon: DollarSign, description: 'Manajemen keuangan', isNew: false },
-        { name: 'Invoice', href: '/admin/invoices', icon: Receipt, description: 'Manajemen invoice', isNew: false }
+        { name: 'Invoice', href: '/admin/invoices', icon: Receipt, description: 'Manajemen invoice', isNew: false },
+        { name: 'Slip Gaji', href: '/admin/payroll', icon: FileText, description: 'Manajemen slip gaji', isNew: true }
       ]
     },
     {
@@ -182,6 +182,12 @@ export default function Sidebar({
         { name: 'Absensi', href: '/employee/attendance', icon: UserCheck, description: 'Kehadiran saya', isNew: false },
         { name: 'Cuti', href: '/employee/leave-requests', icon: Clock, description: 'Pengajuan cuti', isNew: false },
         { name: 'Work From Home', href: '/employee/wfh', icon: MapPin, description: 'WFH saya', isNew: false }
+      ]
+    },
+    {
+      title: 'Keuangan',
+      items: [
+        { name: 'Slip Gaji', href: '/employee/payroll', icon: FileText, description: 'Slip gaji saya', isNew: true }
       ]
     },
     {
@@ -385,30 +391,12 @@ export default function Sidebar({
 
                           <div className="relative">
                             <item.icon className={cn(
-                              'flex-shrink-0 transition-all duration-200',
+                              'flex-shrink-0 transition-colors duration-200',
                               collapsed ? 'h-5 w-5' : 'h-4 w-4 mr-3',
                               active 
                                 ? 'text-text-inverse' 
                                 : 'text-text-muted group-hover:text-text-secondary'
                             )} />
-                            
-                            {/* Notification badge */}
-                            {hasBadge && item.badge && item.badge > 0 && (
-                              <span className={cn(
-                                'absolute -top-1 -right-1 inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 rounded-full text-xs font-bold text-white',
-                                item.name === 'Notifikasi' && unreadNotifications > 0
-                                  ? 'bg-error'
-                                  : item.name === 'Chat' && unreadMessages > 0
-                                  ? 'bg-accent'
-                                  : item.name === 'Tugas' && pendingTasks > 0
-                                  ? 'bg-warning'
-                                  : item.name === 'Pengguna' && pendingApprovals > 0
-                                  ? 'bg-accent/80'
-                                  : 'bg-text-muted'
-                              )}>
-                                {item.badge > 99 ? '99+' : item.badge}
-                              </span>
-                            )}
                           </div>
                           
                           {!collapsed && (

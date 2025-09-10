@@ -31,7 +31,6 @@ import {
 type SearchFilters = {
   query: string
   visibility: string
-  folderId: string
   tag: string
   mimeType: string
   ownerId: string
@@ -73,7 +72,6 @@ export default function AdvancedDocumentSearch() {
   const [filters, setFilters] = useState<SearchFilters>({
     query: '',
     visibility: 'ALL',
-    folderId: '',
     tag: '',
     mimeType: '',
     ownerId: '',
@@ -88,25 +86,11 @@ export default function AdvancedDocumentSearch() {
   const [results, setResults] = useState<SearchResult | null>(null)
   const [loading, setLoading] = useState(false)
   const [showAdvanced, setShowAdvanced] = useState(false)
-  const [folders, setFolders] = useState<Array<{ id: string; name: string }>>([])
   const [users, setUsers] = useState<Array<{ id: string; fullName: string }>>([])
 
   useEffect(() => {
-    loadFolders()
     loadUsers()
   }, [])
-
-  const loadFolders = async () => {
-    try {
-      const response = await fetch('/api/folders')
-      if (response.ok) {
-        const data = await response.json()
-        setFolders(data.data || [])
-      }
-    } catch (error) {
-      console.error('Failed to load folders:', error)
-    }
-  }
 
   const loadUsers = async () => {
     try {
@@ -153,7 +137,6 @@ export default function AdvancedDocumentSearch() {
     setFilters({
       query: '',
       visibility: 'ALL',
-      folderId: '',
       tag: '',
       mimeType: '',
       ownerId: '',
@@ -237,19 +220,7 @@ export default function AdvancedDocumentSearch() {
                 </select>
               </div>
 
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Folder</label>
-                <select
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors focus-ring"
-                  value={filters.folderId}
-                  onChange={(e) => handleFilterChange('folderId', e.target.value)}
-                >
-                  <option value="">Semua Folder</option>
-                  {folders.map(folder => (
-                    <option key={folder.id} value={folder.id}>{folder.name}</option>
-                  ))}
-                </select>
-              </div>
+              {/* Folder filter removed */}
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Tag</label>

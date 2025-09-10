@@ -39,6 +39,7 @@ const categoryColors = {
   HOLIDAY: 'bg-warning/80'
 }
 
+
 export default function CalendarWidget() {
   const [events, setEvents] = useState<CalendarEvent[]>([])
   const [loading, setLoading] = useState(true)

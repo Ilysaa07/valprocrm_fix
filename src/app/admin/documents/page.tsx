@@ -65,13 +65,11 @@ export default function AdminDocumentsPage() {
     title: '', 
     description: '', 
     visibility: 'PRIVATE', 
-    folderId: '', 
     tags: ''
   })
   const [loading, setLoading] = useState<boolean>(false)
   const [search, setSearch] = useState<string>('')
   const [filterVisibility, setFilterVisibility] = useState<'ALL' | 'PUBLIC' | 'PRIVATE'>('ALL')
-  const [folders, setFolders] = useState<Array<{ id: string; name: string; parentId: string | null }>>([])
   const [filterFolderId, setFilterFolderId] = useState<string>('')
   const [filterTag, setFilterTag] = useState<string>('')
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid')
@@ -110,18 +108,7 @@ export default function AdminDocumentsPage() {
 
   useEffect(() => { load() }, [filterVisibility, filterFolderId, filterTag])
 
-  useEffect(() => {
-    const lf = async () => {
-      try {
-        const r = await fetch('/api/folders', { cache: 'no-store' })
-        if (r.ok) {
-          const d = await r.json()
-          setFolders((d?.data || []).map((f: any) => ({ id: f.id, name: f.name, parentId: f.parentId || null })))
-        }
-      } catch {}
-    }
-    lf()
-  }, [])
+  // Removed folder loading
 
   const handleSubmit = async () => {
     if (!file || !form.title) return
@@ -132,14 +119,13 @@ export default function AdminDocumentsPage() {
     fd.append('file', blob, name)
     fd.append('title', form.title)
     if (form.description) fd.append('description', form.description)
-    if (form.folderId) fd.append('folderId', form.folderId)
     if (form.tags) fd.append('tags', form.tags)
     fd.append('visibility', form.visibility)
     try {
       const res = await fetch('/api/documents', { method: 'POST', body: fd })
       if (res.ok) {
         setFile(null)
-        setForm({ title: '', description: '', visibility: 'PRIVATE', folderId: '', tags: '' })
+        setForm({ title: '', description: '', visibility: 'PRIVATE', tags: '' })
         setShowUploadForm(false)
         showToast('Dokumen berhasil diunggah', { title: 'Sukses', type: 'success' })
         await load()
@@ -447,16 +433,7 @@ export default function AdminDocumentsPage() {
                     <option value="PRIVATE">Private</option>
                     <option value="PUBLIC">Public</option>
                   </select>
-                  <select
-                    className="border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors"
-                    value={filterFolderId}
-                    onChange={e => setFilterFolderId(e.target.value)}
-                  >
-                    <option value="">Semua Folder</option>
-                    {folders.map(f => (
-                      <option key={f.id} value={f.id}>{f.name}</option>
-                    ))}
-                  </select>
+                  {/* Folder filter removed */}
                   <div className="relative">
                     <Tag className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
                     <input
@@ -528,19 +505,7 @@ export default function AdminDocumentsPage() {
                         <option value="PUBLIC">🌐 Public</option>
                       </select>
                     </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Folder</label>
-                      <select 
-                        className="w-full border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors focus-ring" 
-                        value={form.folderId} 
-                        onChange={e => setForm(s => ({ ...s, folderId: e.target.value }))}
-                      >
-                        <option value="">Tidak ada folder (langsung upload)</option>
-                        {folders.map(f => (
-                          <option key={f.id} value={f.id}>{f.name}</option>
-                        ))}
-                      </select>
-                    </div>
+                    {/* Folder selection removed */}
                     <div>
                       <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">File</label>
                       <FileUpload onFileUpload={setFile} onFileRemove={() => setFile(null)} currentFile={file} />

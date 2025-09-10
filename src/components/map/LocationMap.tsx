@@ -53,16 +53,26 @@ export default function LocationMap({
     [latitude || -6.2, longitude || 106.8]
   )
   const [isClient, setIsClient] = useState(false)
-  const mapRef = useRef<L.Map>(null)
+  const mapRef = useRef<L.Map | null>(null)
 
   useEffect(() => {
     setIsClient(true)
+    return () => {
+      // Ensure Leaflet map instance is fully destroyed to avoid
+      // "Map container is already initialized" on re-mounts
+      if (mapRef.current) {
+        mapRef.current.remove()
+        mapRef.current = null
+      }
+    }
   }, [])
 
   useEffect(() => {
     if (latitude && longitude) {
       setPosition([latitude, longitude])
-      mapRef.current?.setView([latitude, longitude], 15)
+      if (mapRef.current) {
+        mapRef.current.setView([latitude, longitude], 15)
+      }
     }
   }, [latitude, longitude])
 
@@ -92,7 +102,12 @@ export default function LocationMap({
         center={position}
         zoom={15}
         style={{ height: '100%', width: '100%', borderRadius: '0.5rem' }}
-        ref={mapRef as any}
+        whenCreated={(map) => {
+          // Capture map instance once; React re-renders won't re-initialize
+          if (!mapRef.current) {
+            mapRef.current = map
+          }
+        }}
       >
         <TileLayer
           attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
