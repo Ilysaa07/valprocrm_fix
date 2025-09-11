@@ -7,7 +7,6 @@ import { Menu } from 'lucide-react'
 import { useTheme } from './ThemeProvider'
 import Sidebar from './Sidebar'
 import NotificationDropdown from '../NotificationDropdown'
-import { cn } from '@/lib/utils'
 
 interface AdminLayoutProps {
   children: React.ReactNode
@@ -33,6 +32,7 @@ export default function AdminLayout({ children, title, description }: AdminLayou
     const handleResize = () => {
       if (window.innerWidth < 1280) {
         setSidebarCollapsed(true)
+        setMobileSidebarOpen(false) // Close mobile sidebar on resize
       }
     }
 
@@ -40,6 +40,24 @@ export default function AdminLayout({ children, title, description }: AdminLayou
     handleResize()
     return () => window.removeEventListener('resize', handleResize)
   }, [])
+
+  // Handle body scroll lock when mobile sidebar is open
+  useEffect(() => {
+    if (mobileSidebarOpen) {
+      document.body.style.overflow = 'hidden'
+    } else {
+      document.body.style.overflow = 'unset'
+    }
+
+    return () => {
+      document.body.style.overflow = 'unset'
+    }
+  }, [mobileSidebarOpen])
+
+  // Debug mobile sidebar state
+  useEffect(() => {
+    console.log('Mobile sidebar state:', mobileSidebarOpen)
+  }, [mobileSidebarOpen])
 
   if (status === 'loading') {
     return (
@@ -56,32 +74,36 @@ export default function AdminLayout({ children, title, description }: AdminLayou
   return (
     <div className="h-screen min-h-screen bg-bg flex">
       {/* Desktop Sidebar */}
-      <Sidebar
-        role="ADMIN"
-        collapsed={sidebarCollapsed}
-        setCollapsed={setSidebarCollapsed}
-        theme={theme}
-        toggleTheme={toggleTheme}
-        unreadNotifications={5}
-        unreadMessages={3}
-        pendingTasks={8}
-        pendingApprovals={2}
-        isMobile={false}
-      />
+      <div className="hidden xl:block">
+        <Sidebar
+          role="ADMIN"
+          collapsed={sidebarCollapsed}
+          setCollapsed={setSidebarCollapsed}
+          theme={theme}
+          toggleTheme={toggleTheme}
+          unreadNotifications={5}
+          unreadMessages={3}
+          pendingTasks={8}
+          pendingApprovals={2}
+          isMobile={false}
+        />
+      </div>
 
       {/* Mobile Sidebar Overlay */}
       {mobileSidebarOpen && (
         <div 
           className="fixed inset-0 bg-black/50 z-40 xl:hidden backdrop-blur-sm"
-          onClick={() => setMobileSidebarOpen(false)}
+          onClick={() => {
+            console.log('Overlay clicked, closing sidebar')
+            setMobileSidebarOpen(false)
+          }}
         />
       )}
 
       {/* Mobile Sidebar */}
-      <div className={cn(
-        "fixed left-0 top-0 z-50 xl:hidden transition-transform duration-300",
-        mobileSidebarOpen ? "translate-x-0" : "-translate-x-full"
-      )}>
+      <div className={`fixed left-0 top-0 z-50 xl:hidden w-80 h-screen transition-transform duration-300 ease-in-out ${
+        mobileSidebarOpen ? 'translate-x-0' : '-translate-x-full'
+      }`}>
         <Sidebar
           role="ADMIN"
           collapsed={false}
@@ -106,8 +128,13 @@ export default function AdminLayout({ children, title, description }: AdminLayou
             {/* Left Section */}
             <div className="flex items-center space-x-3">
               <button
-                onClick={() => setMobileSidebarOpen(true)}
-                className="xl:hidden p-2 rounded-lg hover:bg-card-hover transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-accent/40"
+                onClick={() => {
+                  console.log('Hamburger clicked, current state:', mobileSidebarOpen)
+                  setMobileSidebarOpen(!mobileSidebarOpen)
+                }}
+                className="xl:hidden p-2 rounded-lg hover:bg-card-hover transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-accent/40 bg-card border border-border shadow-sm flex items-center justify-center"
+                aria-label="Open sidebar menu"
+                title="Open sidebar menu"
               >
                 <Menu className="h-5 w-5 text-text-secondary" />
               </button>
@@ -142,8 +169,16 @@ export default function AdminLayout({ children, title, description }: AdminLayou
                     </span>
                   </div>
                 </div>
-                <div className="w-8 h-8 rounded-full bg-accent flex items-center justify-center text-text-inverse text-lg font-bold">
-                  {session.user?.name?.charAt(0) || 'A'}
+                <div className="w-8 h-8 rounded-full bg-accent flex items-center justify-center text-text-inverse text-lg font-bold overflow-hidden">
+                  {session.user?.image ? (
+                    <img 
+                      src={session.user.image} 
+                      alt={session.user.name || 'Admin'} 
+                      className="w-full h-full object-cover"
+                    />
+                  ) : (
+                    session.user?.name?.charAt(0) || 'A'
+                  )}
                 </div>
               </div>
             </div>

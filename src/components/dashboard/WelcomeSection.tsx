@@ -29,7 +29,7 @@ interface WelcomeSectionProps extends WelcomeConfig {
 }
 
 export function WelcomeSection({ 
-  title, 
+  title: _title, 
   subtitle, 
   showDateTime = true, 
   showRole = true, 
@@ -37,7 +37,7 @@ export function WelcomeSection({
   user,
   currentDate = new Date(),
   className = '',
-  realTimeData
+  realTimeData: _realTimeData
 }: WelcomeSectionProps) {
   const formatDate = (date: Date) => {
     return date.toLocaleDateString('id-ID', {
@@ -152,11 +152,11 @@ export function WelcomeSection({
         <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between mb-8">
           <div className="flex-1">
             <div className="flex items-center space-x-4 mb-4">
-              <div className="w-12 h-12 rounded-full bg-slate-300 dark:bg-slate-600 flex items-center justify-center">
+              <div className="w-12 h-12 rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center shadow-lg overflow-hidden">
                 {user?.image ? (
-                  <img src={user.image} alt="Profile" className="w-full h-full object-cover rounded-full" />
+                  <img src={user.image} alt="Profile" className="w-full h-full object-cover" />
                 ) : (
-                  <span className="text-lg font-bold text-slate-700 dark:text-slate-300">
+                  <span className="text-lg font-bold text-white">
                     {user?.name ? user.name.charAt(0) : 'U'}
                   </span>
                 )}
@@ -260,7 +260,7 @@ export function WelcomeSection({
 }
 
 // Configuration functions for admin and employee welcome sections
-export function adminWelcomeConfig(user?: { name?: string; role?: string }, currentDate?: Date) {
+export function adminWelcomeConfig(_user?: { name?: string; role?: string }, _currentDate?: Date) {
   return {
     title: 'Selamat Datang di Dashboard Admin',
     subtitle: 'Kelola sistem perusahaan, monitor kinerja karyawan, dan buat keputusan yang tepat',
@@ -270,7 +270,7 @@ export function adminWelcomeConfig(user?: { name?: string; role?: string }, curr
   }
 }
 
-export function employeeWelcomeConfig(user?: { name?: string; role?: string }, currentDate?: Date) {
+export function employeeWelcomeConfig(_user?: { name?: string; role?: string }, _currentDate?: Date) {
   return {
     title: 'Selamat Datang di Dashboard Karyawan',
     subtitle: 'Kelola tugas Anda, catat kehadiran, dan ajukan permohonan dengan mudah',

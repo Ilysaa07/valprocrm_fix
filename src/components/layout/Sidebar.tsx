@@ -1,7 +1,7 @@
 'use client'
 
 import React, { useState, useEffect } from 'react'
-import { useSession, signOut } from 'next-auth/react'
+import { signOut } from 'next-auth/react'
 import { usePathname } from 'next/navigation'
 import Link from 'next/link'
 import { cn } from '@/lib/utils'
@@ -26,14 +26,10 @@ import {
   Moon,
   ChevronDown,
   BarChart3,
-  UserCircle,
   Receipt,
-  Grid3X3,
-  Building2,
   DollarSign,
   Clock,
-  MapPin,
-  Briefcase
+  MapPin
 } from 'lucide-react'
 
 interface NavItem {
@@ -76,10 +72,9 @@ export default function Sidebar({
   pendingTasks = 0,
   pendingApprovals = 0,
   isMobile = false,
-  isOpen = false,
+  isOpen: _isOpen = false,
   onClose
 }: SidebarProps) {
-  const { data: session } = useSession()
   const pathname = usePathname()
   const { theme, toggle: toggleTheme } = useTheme()
   const [mounted, setMounted] = useState(false)
@@ -241,17 +236,10 @@ export default function Sidebar({
 
     // Mobile-specific classes
     if (isMobile) {
-      baseClasses.push(
-        'fixed left-0 top-0 z-50',
-        isOpen ? 'translate-x-0' : '-translate-x-full'
-      )
-    } else {
+      // For mobile, we don't need positioning since parent handles it
       baseClasses.push('relative')
-    }
-
-    // Responsive visibility - Use proper breakpoints
-    if (!isMobile) {
-      baseClasses.push('hidden xl:block') // Show on xl screens and up (1280px+)
+    } else {
+      baseClasses.push('relative') // Desktop sidebar
     }
 
     return baseClasses.join(' ')
@@ -364,7 +352,6 @@ export default function Sidebar({
                 <ul className="space-y-1">
                   {section.items.map((item, itemIndex) => {
                     const active = isActive(item.href)
-                    const hasBadge = item.badge && item.badge > 0
                     
                     return (
                       <li key={itemIndex}>
@@ -454,7 +441,7 @@ export default function Sidebar({
           )}
           
           <button
-            onClick={() => signOut()}
+            onClick={() => signOut({ callbackUrl: '/auth/login' })}
             className="flex items-center space-x-2 px-3 py-2 rounded-lg hover:bg-error/10 text-error border border-error/30 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-error/40"
           >
             <LogOut className="h-4 w-4" />

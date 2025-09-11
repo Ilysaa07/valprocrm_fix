@@ -41,12 +41,14 @@ class SocketClient {
   private static socket: Socket | null = null
 
   public static getSocket(): Socket {
-    if (!this.socket) {
+    if (!this.socket && typeof window !== 'undefined') {
       this.socket = io(process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000', {
         path: '/socket.io',
         transports: ['polling', 'websocket'],
         reconnection: true,
-        reconnectionAttempts: 5,
+        reconnectionAttempts: 3,
+        timeout: 5000,
+        forceNew: true
       })
     }
     return this.socket

@@ -8,11 +8,9 @@ import { v4 as uuidv4 } from 'uuid'
 const STICKERS_DIR = join(process.cwd(), 'public/uploads/stickers')
 
 const DEFAULTS = [
-  { url: '/valprologo.webp', name: 'valprologo.webp', type: 'image/webp' },
+  { url: '/logometa.png', name: 'logometa.png', type: 'image/png' },
   { url: '/globe.svg', name: 'globe.svg', type: 'image/svg+xml' },
   { url: '/window.svg', name: 'window.svg', type: 'image/svg+xml' },
-  { url: '/next.svg', name: 'next.svg', type: 'image/svg+xml' },
-  { url: '/vercel.svg', name: 'vercel.svg', type: 'image/svg+xml' },
 ]
 
 export async function GET() {

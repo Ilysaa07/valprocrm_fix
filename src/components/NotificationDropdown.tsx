@@ -155,6 +155,8 @@ export default function NotificationDropdown() {
           path: '/socket.io',
           transports: ['websocket', 'polling'],
           withCredentials: true,
+          reconnection: false,
+          timeout: 3000,
         })
       socketRef.current = s
       s.on('notification', (payload: { title: string; message: string; conversationId?: string }) => {

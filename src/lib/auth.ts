@@ -82,6 +82,7 @@ export const authOptions: NextAuthOptions = {
   },
   pages: {
     signIn: '/auth/login',
+    signOut: '/auth/login',
     error: '/auth/error',
   },
   secret: process.env.NEXTAUTH_SECRET || 'fallback-secret-key',
