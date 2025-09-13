@@ -38,13 +38,7 @@ export const authOptions: NextAuthOptions = {
           const email = credentials.email.toLowerCase()
 
           // Throttle lookup by email or IP
-          type ThrottleRepo = {
-            findFirst: (args: unknown) => Promise<unknown>
-            upsert: (args: unknown) => Promise<unknown>
-            update: (args: unknown) => Promise<unknown>
-          }
-          const throttleRepo = (prisma as unknown as { loginThrottle: ThrottleRepo }).loginThrottle
-          const throttle = await throttleRepo.findFirst({
+          const throttle = await prisma.loginThrottle.findFirst({
             where: {
               OR: [
                 { email },
@@ -52,7 +46,7 @@ export const authOptions: NextAuthOptions = {
               ]
             }
           })
-          const th: { id?: string; failedCount?: number; lockedUntil?: Date } = (throttle as unknown as { id?: string; failedCount?: number; lockedUntil?: Date }) || {}
+          const th = throttle as { id?: string; failedCount?: number; lockedUntil?: Date } | null
           if (th?.lockedUntil && th.lockedUntil > new Date()) {
             // Still locked
             return null
@@ -75,11 +69,19 @@ export const authOptions: NextAuthOptions = {
             // count failure
             const failedCount = (th?.failedCount || 0) + 1
             const lockedUntil = failedCount >= MAX_ATTEMPTS ? new Date(Date.now() + LOCK_MINUTES * 60 * 1000) : null
-            await throttleRepo.upsert({
-              where: { id: th?.id || '' },
-              update: { failedCount, lockedUntil, lastAttempt: new Date(), email, ip: String(ip) },
-              create: { failedCount, lockedUntil, lastAttempt: new Date(), email, ip: String(ip) }
-            })
+            
+            if (th?.id) {
+              // Update existing throttle record
+              await prisma.loginThrottle.update({
+                where: { id: th.id },
+                data: { failedCount, lockedUntil, lastAttempt: new Date(), email, ip: String(ip) }
+              })
+            } else {
+              // Create new throttle record
+              await prisma.loginThrottle.create({
+                data: { failedCount, lockedUntil, lastAttempt: new Date(), email, ip: String(ip) }
+              })
+            }
             return null
           }
 
@@ -89,17 +91,25 @@ export const authOptions: NextAuthOptions = {
           if (!isPasswordValid) {
             const failedCount = (th?.failedCount || 0) + 1
             const lockedUntil = failedCount >= MAX_ATTEMPTS ? new Date(Date.now() + LOCK_MINUTES * 60 * 1000) : null
-            await throttleRepo.upsert({
-              where: { id: th?.id || '' },
-              update: { failedCount, lockedUntil, lastAttempt: new Date(), email, ip: String(ip) },
-              create: { failedCount, lockedUntil, lastAttempt: new Date(), email, ip: String(ip) }
-            })
+            
+            if (th?.id) {
+              // Update existing throttle record
+              await prisma.loginThrottle.update({
+                where: { id: th.id },
+                data: { failedCount, lockedUntil, lastAttempt: new Date(), email, ip: String(ip) }
+              })
+            } else {
+              // Create new throttle record
+              await prisma.loginThrottle.create({
+                data: { failedCount, lockedUntil, lastAttempt: new Date(), email, ip: String(ip) }
+              })
+            }
             return null
           }
 
           // success: reset counter
-          if (th) {
-            await throttleRepo.update({
+          if (th?.id) {
+            await prisma.loginThrottle.update({
               where: { id: th.id },
               data: { failedCount: 0, lockedUntil: null, lastAttempt: new Date() }
             })
