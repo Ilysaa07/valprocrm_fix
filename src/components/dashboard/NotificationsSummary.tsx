@@ -173,10 +173,7 @@ export function NotificationsSummary({
                       {showMarkAsRead && !notification.isRead && (
                         <button
                           className="text-xs text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
-                          onClick={() => {
-                            // Handle mark as read
-                            console.log('Mark as read:', notification.id)
-                          }}
+                          onClick={() => { /* TODO: mark as read */ }}
                         >
                           Tandai dibaca
                         </button>

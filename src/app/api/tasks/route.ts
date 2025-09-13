@@ -107,6 +107,15 @@ export async function GET(request: NextRequest) {
             },
             orderBy: { createdAt: 'desc' }
           },
+          files: {
+            include: {
+              document: {
+                include: {
+                  currentVer: true
+                }
+              }
+            }
+          },
           _count: {
             select: {
               submissions: true,
@@ -140,6 +149,15 @@ export async function GET(request: NextRequest) {
       milestone: task.milestone,
       validationMessage: task.validationMessage,
       submissions: task.submissions,
+      attachments: task.files.map(f => ({
+        id: f.id,
+        documentId: f.documentId,
+        title: f.document.title,
+        url: f.document.currentVer?.fileUrl || null,
+        size: f.document.sizeBytes,
+        mimeType: f.document.mimeType,
+        uploadedAt: f.document.currentVer?.uploadedAt || null
+      })),
       feedbacks: task.feedbacks,
       _count: task._count
     }))

@@ -172,27 +172,13 @@ export interface QuickStatItem {
   }
 }
 
-// Calendar Event Types
-export interface CalendarEvent {
-  id: string
-  title: string
-  date: string
-  type: 'attendance' | 'leave' | 'wfh' | 'task' | 'meeting' | 'holiday' | 'birthday'
-  status?: 'present' | 'absent' | 'late' | 'approved' | 'pending' | 'rejected' | 'completed' | 'overdue'
-  description?: string
-  startTime?: string
-  endTime?: string
-  participants?: string[]
-  location?: string
-  priority?: 'low' | 'medium' | 'high'
-}
 
 // Search Result Types
 export interface SearchResult {
   id: string
   title: string
   description: string
-  type: 'user' | 'document' | 'task' | 'attendance' | 'leave' | 'wfh' | 'invoice' | 'folder'
+  type: 'user' | 'document' | 'task' | 'attendance' | 'leave' | 'wfh' | 'folder'
   url: string
   metadata?: {
     status?: string

@@ -9,14 +9,13 @@ import { Button } from '@/components/ui/Button'
 import { 
   CheckCircle,
   Clock,
-  AlertCircle,
   FileText,
   Upload,
-  Eye,
-  Calendar,
-  Tag
+  Eye
 } from 'lucide-react'
 // Inline submission UI; legacy modal removed
+
+interface TaskAttachment { id: string; documentId: string; title: string; url: string | null; size: number; mimeType: string; uploadedAt: string | null }
 
 interface Task {
   id: string
@@ -42,6 +41,7 @@ interface Task {
   submissions?: TaskSubmission[]
   feedbacks?: TaskFeedback[]
   validationMessage?: string
+  attachments?: TaskAttachment[]
 }
 
 interface TaskSubmission {
@@ -71,6 +71,9 @@ export default function EmployeeTasksPage() {
   const [submitFiles, setSubmitFiles] = useState<File[]>([])
   const [loading, setLoading] = useState(true)
   const [activeTab, setActiveTab] = useState<'assigned' | 'completed'>('assigned')
+  const [attSearch, setAttSearch] = useState('')
+  const [attPage, setAttPage] = useState(1)
+  const [attPageSize, setAttPageSize] = useState(6)
 
   useEffect(() => {
     if (status === 'loading') return
@@ -118,6 +121,26 @@ export default function EmployeeTasksPage() {
       }
     } catch (error) {
       console.error('Error starting task:', error)
+    }
+  }
+
+  const handleUpdateStatus = async (taskId: string, status: Task['status']) => {
+    try {
+      const response = await fetch(`/api/tasks/${taskId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status })
+      })
+      if (response.ok) {
+        await fetchTasks()
+        if (selectedTask && selectedTask.id === taskId) {
+          // refresh selected task view
+          const updated = (await (await fetch(`/api/tasks/${taskId}`)).json()).task
+          setSelectedTask(updated)
+        }
+      }
+    } catch (e) {
+      console.error('Failed to update status', e)
     }
   }
 
@@ -185,6 +208,24 @@ export default function EmployeeTasksPage() {
       day: 'numeric'
     })
   }
+  const daysRemaining = (dateString?: string) => {
+    if (!dateString) return null
+    const now = new Date()
+    const due = new Date(dateString)
+    const diffMs = due.getTime() - now.getTime()
+    const diffDays = Math.ceil(diffMs / (1000 * 60 * 60 * 24))
+    return diffDays
+  }
+  const statusProgress = (status: Task['status']) => {
+    switch (status) {
+      case 'NOT_STARTED': return 0
+      case 'IN_PROGRESS': return 50
+      case 'REVISION': return 60
+      case 'PENDING_VALIDATION': return 75
+      case 'COMPLETED': return 100
+      default: return 0
+    }
+  }
 
   const assignedTasks = tasks.filter(task => 
     task.assignment === 'ALL_EMPLOYEES' || task.assigneeId === session?.user?.id
@@ -206,6 +247,14 @@ export default function EmployeeTasksPage() {
   return (
     <EmployeeLayout>
       <div className="p-6 space-y-6">
+        {/* Breadcrumbs */}
+        <nav className="text-xs text-gray-500 dark:text-gray-400" aria-label="Breadcrumb">
+          <ol className="inline-flex items-center space-x-1">
+            <li><a href="/employee" className="hover:underline">Dashboard</a></li>
+            <li>/</li>
+            <li className="text-gray-700 dark:text-gray-200">Tugas</li>
+          </ol>
+        </nav>
         {/* Header */}
         <div className="flex items-center justify-between">
           <div>
@@ -344,7 +393,16 @@ export default function EmployeeTasksPage() {
                         </span>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
-                        {task.dueDate ? formatDate(task.dueDate) : '-'}
+                        {task.dueDate ? (
+                          <div className="flex items-center gap-2">
+                            <span>{formatDate(task.dueDate)}</span>
+                            {(() => { const d = daysRemaining(task.dueDate); return d !== null ? (
+                              <span className={`inline-flex px-2 py-0.5 rounded-full text-xs ${d < 0 ? 'bg-red-100 text-red-700' : d <= 3 ? 'bg-amber-100 text-amber-700' : 'bg-emerald-100 text-emerald-700'}`}>
+                                {d < 0 ? `Terlambat ${Math.abs(d)}h` : `${d}h lagi`}
+                              </span>
+                            ) : null })()}
+                          </div>
+                        ) : '-'}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                         <div className="flex items-center space-x-2">
@@ -372,6 +430,15 @@ export default function EmployeeTasksPage() {
                               Submit
                             </Button>
                           )}
+                          <Button
+                            onClick={() => handleUpdateStatus(task.id, 'COMPLETED')}
+                            variant={task.status === 'COMPLETED' ? 'success' : 'outline'}
+                            size="sm"
+                            disabled={task.status === 'COMPLETED'}
+                            className={`${task.status === 'COMPLETED' ? 'text-white' : 'text-green-600 hover:text-green-700'}`}
+                          >
+                            {task.status === 'COMPLETED' ? 'Tugas Selesai' : 'Tandai Selesai'}
+                          </Button>
                         </div>
                       </td>
                     </tr>
@@ -388,12 +455,32 @@ export default function EmployeeTasksPage() {
             <div className="flex items-start justify-between">
               <div>
                 <h2 className="text-lg font-semibold text-gray-900 dark:text-white">{selectedTask.title}</h2>
-                <p className="text-sm text-gray-600 dark:text-gray-400">{getStatusText(selectedTask.status)}</p>
+                <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
+                  <span>{getStatusText(selectedTask.status)}</span>
+                  {selectedTask.dueDate && (
+                    <>
+                      <span>•</span>
+                      <span>Deadline: {formatDate(selectedTask.dueDate)}</span>
+                      {(() => { const d = daysRemaining(selectedTask.dueDate); return d !== null ? (
+                        <span className={`inline-flex px-2 py-0.5 rounded-full text-xs ${d < 0 ? 'bg-red-100 text-red-700' : d <= 3 ? 'bg-amber-100 text-amber-700' : 'bg-emerald-100 text-emerald-700'}`}>
+                          {d < 0 ? `Terlambat ${Math.abs(d)}h` : `${d}h lagi`}
+                        </span>
+                      ) : null })()}
+                    </>
+                  )}
+                </div>
                 {selectedTask.status === 'REVISION' && selectedTask.validationMessage && (
                   <p className="mt-1 text-sm text-amber-700 bg-amber-50 border border-amber-200 rounded px-2 py-1">Catatan Revisi: {selectedTask.validationMessage}</p>
                 )}
               </div>
               <Button variant="outline" onClick={() => setSelectedTask(null)}>Tutup</Button>
+            </div>
+            {/* Progress */}
+            <div className="mt-3">
+              <div className="h-2 w-full bg-gray-200 dark:bg-gray-700 rounded">
+                <div className="h-2 bg-blue-600 rounded" style={{ width: `${statusProgress(selectedTask.status)}%` }} />
+              </div>
+              <div className="text-xs text-gray-500 dark:text-gray-400 mt-1">Progress {statusProgress(selectedTask.status)}%</div>
             </div>
             <div className="mt-4 space-y-4">
               <div>
@@ -401,7 +488,64 @@ export default function EmployeeTasksPage() {
                 <p className="text-sm text-gray-900 dark:text-gray-100 whitespace-pre-wrap">{selectedTask.description}</p>
               </div>
 
-              {(selectedTask.status === 'IN_PROGRESS' || selectedTask.status === 'REVISION') && (
+              {/* Lampiran dari Admin (terintegrasi Dokumen) */}
+              <div className="border rounded p-4">
+                <h3 className="text-sm font-medium text-gray-700 mb-2">Lampiran Tugas</h3>
+                {(() => {
+                  const all = selectedTask.attachments || []
+                  const filtered = all.filter(a => a.title.toLowerCase().includes(attSearch.toLowerCase()))
+                  const pages = Math.max(1, Math.ceil(filtered.length / attPageSize))
+                  const safePage = Math.min(attPage, pages)
+                  const start = (safePage - 1) * attPageSize
+                  const pageItems = filtered.slice(start, start + attPageSize)
+                  return (
+                    <>
+                      <div className="flex items-center gap-2 mb-3">
+                        <input value={attSearch} onChange={(e) => { setAttSearch(e.target.value); setAttPage(1) }} placeholder="Cari lampiran..." className="px-3 py-2 border rounded text-sm w-full md:w-64" />
+                        <select value={attPageSize} onChange={(e) => { setAttPageSize(parseInt(e.target.value)); setAttPage(1) }} className="px-2 py-2 border rounded text-sm">
+                          {[6,9,12].map(n => (<option key={n} value={n}>{n}/hal</option>))}
+                        </select>
+                      </div>
+                      {pageItems.length > 0 ? (
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                          {pageItems.map(att => (
+                            <div key={att.id} className="border rounded p-3 bg-white dark:bg-gray-900">
+                              <div className="text-sm font-medium text-gray-900 dark:text-gray-100 truncate" title={att.title}>{att.title}</div>
+                              <div className="text-xs text-gray-600 dark:text-gray-400 mt-1">{att.mimeType} • {Math.round(att.size/1024)} KB</div>
+                              {att.url && (
+                                att.mimeType.startsWith('image/') ? (
+                                  // eslint-disable-next-line @next/next/no-img-element
+                                  <img src={att.url} alt={att.title} className="mt-2 max-h-40 w-full object-contain rounded" />
+                                ) : att.mimeType === 'application/pdf' ? (
+                                  <object data={att.url} type="application/pdf" className="mt-2 w-full h-40 rounded" />
+                                ) : null
+                              )}
+                              <div className="mt-2">
+                                {att.url ? (
+                                  <a href={att.url} target="_blank" rel="noreferrer" className="text-blue-600 dark:text-blue-400 text-xs underline">Unduh</a>
+                                ) : (
+                                  <span className="text-xs text-gray-500">URL tidak tersedia</span>
+                                )}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <p className="text-sm text-gray-500">Tidak ada lampiran tugas.</p>
+                      )}
+                      <div className="flex items-center justify-between mt-3 text-xs text-gray-600 dark:text-gray-400">
+                        <div>Halaman {safePage} dari {pages} • {filtered.length} file</div>
+                        <div className="flex gap-2">
+                          <button disabled={safePage <= 1} onClick={() => setAttPage(p => Math.max(1, p - 1))} className={`px-2 py-1 border rounded ${safePage <= 1 ? 'opacity-50 cursor-not-allowed' : ''}`}>Sebelumnya</button>
+                          <button disabled={safePage >= pages} onClick={() => setAttPage(p => Math.min(pages, p + 1))} className={`px-2 py-1 border rounded ${safePage >= pages ? 'opacity-50 cursor-not-allowed' : ''}`}>Berikutnya</button>
+                        </div>
+                      </div>
+                    </>
+                  )
+                })()}
+              </div>
+
+              {(selectedTask.status !== 'COMPLETED') && (
                 <div className="border rounded p-4">
                   <h3 className="text-sm font-medium text-gray-700 mb-2">Submit Tugas</h3>
                   <div className="space-y-3">
@@ -423,6 +567,25 @@ export default function EmployeeTasksPage() {
                   </div>
                 </div>
               )}
+
+              {/* Actions: Selesai / Revisi */}
+              <div className="flex gap-2">
+                <Button
+                  onClick={() => handleUpdateStatus(selectedTask.id, 'COMPLETED')}
+                  disabled={selectedTask.status === 'COMPLETED'}
+                  className={`${selectedTask.status === 'COMPLETED' ? 'bg-green-600 text-white cursor-not-allowed' : 'bg-green-600 hover:bg-green-700 text-white'}`}
+                >
+                  {selectedTask.status === 'COMPLETED' ? 'Tugas Selesai' : 'Tandai Selesai'}
+                </Button>
+                {selectedTask.status === 'COMPLETED' && (
+                  <Button
+                    variant="outline"
+                    onClick={() => handleUpdateStatus(selectedTask.id, 'REVISION')}
+                  >
+                    Revisi
+                  </Button>
+                )}
+              </div>
 
               {/* Uploaded Files */}
               <div className="border rounded p-4">

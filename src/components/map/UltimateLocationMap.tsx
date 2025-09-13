@@ -1,11 +1,10 @@
 'use client'
-
 import React, { useEffect, useState, useMemo } from 'react'
-import OlMapComponent from './OlMapComponent'
+import MapboxMapComponent from './MapboxMapComponent'
 
-interface LocationMapProps {
-  latitude?: number | null
-  longitude?: number | null
+interface UltimateLocationMapProps {
+  latitude?: number
+  longitude?: number
   radius?: number
   editable?: boolean
   onLocationChange?: (lat: number, lng: number) => void
@@ -14,16 +13,16 @@ interface LocationMapProps {
   className?: string
 }
 
-export default function LocationMap({
-  latitude = -6.2,
-  longitude = 106.8,
-  radius = 200,
+export default function UltimateLocationMap({
+  latitude,
+  longitude,
+  radius = 100,
   editable = false,
   onLocationChange,
-  height = '300px',
+  height = '400px',
   width = '100%',
   className = '',
-}: LocationMapProps) {
+}: UltimateLocationMapProps) {
   const [isClient, setIsClient] = useState(false)
   const [mapKey, setMapKey] = useState(0)
 
@@ -32,18 +31,13 @@ export default function LocationMap({
     setIsClient(true)
   }, [])
 
-  // Force map recreation when position changes significantly
+  // Force remount when coordinates change
   useEffect(() => {
     if (isClient && latitude && longitude) {
-      // Add a delay to ensure proper cleanup
-      const timer = setTimeout(() => {
-        setMapKey(prev => prev + 1)
-      }, 500)
-      return () => clearTimeout(timer)
+      setMapKey(prev => prev + 1)
     }
   }, [isClient, latitude, longitude])
 
-  // Memoize the map component to prevent unnecessary re-renders
   const mapComponent = useMemo(() => {
     if (!isClient) {
       return (
@@ -56,7 +50,7 @@ export default function LocationMap({
     }
 
     return (
-      <OlMapComponent
+      <MapboxMapComponent
         key={mapKey}
         latitude={latitude || -6.2}
         longitude={longitude || 106.8}

@@ -92,7 +92,6 @@ export default function TransactionChart() {
         s.on('transactions_updated', refresh)
         s.on('transaction_created', refresh)
         s.on('transaction_deleted', refresh)
-        s.on('invoice_status_changed', refresh)
       } catch {}
     })()
 

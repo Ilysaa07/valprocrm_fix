@@ -83,7 +83,6 @@ export default function ChatLayout() {
     });
 
     newSocket.on('authenticated', () => {
-      console.log('Socket authenticated');
       fetchConversations();
     });
 
@@ -262,7 +261,7 @@ export default function ChatLayout() {
         return prev.map((m) => (m.id === tempId ? (saved as any) : m));
       });
 
-      console.log('Message sent successfully:', saved);
+      // message persisted
       
     } catch (error) {
       console.error('Error sending message:', error);

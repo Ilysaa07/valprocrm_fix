@@ -24,7 +24,6 @@ import {
   QuickStats,
   adminQuickStats,
 } from '@/components/dashboard'
-import CalendarWidget from '@/components/calendar/CalendarWidget'
 import { 
   Users, 
   CheckSquare, 
@@ -245,24 +244,14 @@ export default function AdminDashboard() {
 
         {/* Main Dashboard Content */}
         <div className="space-y-4 lg:space-y-6">
-          {/* Row 1: Quick Stats & Calendar */}
-          <DashboardGrid cols={3} gap="md">
-            {/* Quick Stats - Takes 2 columns */}
-            <div className="lg:col-span-2">
+          {/* Row 1: Quick Stats */}
+          <DashboardGrid cols={1} gap="md">
+            {/* Quick Stats - Takes full width */}
+            <div>
               <DashboardCard>
                 <div className="space-y-4">
                   <h3 className="text-lg lg:text-xl font-semibold text-slate-900 dark:text-white">Statistik Cepat</h3>
                   <QuickStats items={quickStats} />
-                </div>
-              </DashboardCard>
-            </div>
-            
-            {/* Calendar Widget - Takes 1 column */}
-            <div>
-              <DashboardCard>
-                <div className="space-y-4">
-                  <h3 className="text-lg lg:text-xl font-semibold text-slate-900 dark:text-white">Kalender</h3>
-                  <CalendarWidget />
                 </div>
               </DashboardCard>
             </div>

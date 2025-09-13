@@ -196,14 +196,6 @@ export async function POST(req: NextRequest) {
         );
       }
       const [a, b] = directPair;
-      console.log('Create DIRECT conversation debug', {
-        originalParticipantIds: participantIds,
-        allParticipantIds,
-        normalizedParticipantIds,
-        finalParticipantIds,
-        pair: directPair,
-        currentUserId: currentUserIdForRole,
-      });
       const existingConversation = await prisma.conversation.findFirst({
         where: {
           type: 'DIRECT',
@@ -239,12 +231,6 @@ export async function POST(req: NextRequest) {
 
     // Create new conversation
     try {
-      console.log('Create conversation debug before insert', {
-        type,
-        name,
-        finalParticipantIds,
-        currentUserId: currentUserIdForRole,
-      });
       const conversation = await prisma.conversation.create({
         data: {
           name: type === 'GROUP' ? name : null,

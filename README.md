@@ -1,30 +1,31 @@
-# Valpro Portal - Employee Management System
+# Valpro CRM - Employee Management System
 
-A comprehensive CRM and employee management system built with Next.js, featuring task management, attendance tracking, payroll processing, and real-time communication.
+A comprehensive employee management system built with Next.js, featuring task management, attendance tracking, payroll, and more.
 
 ## Features
 
-- **User Management**: Role-based access control (Admin/Employee)
+- **User Management**: Admin and employee roles with secure authentication
 - **Task Management**: Create, assign, and track tasks with file attachments
-- **Attendance System**: Check-in/out with location tracking and WFH validation
-- **Payroll Management**: Automated salary calculations and slip generation
-- **Real-time Chat**: Team communication with file sharing and stickers
-- **Document Management**: Secure file storage with version control
-- **Calendar Integration**: Event scheduling and reminders
-- **Analytics Dashboard**: Performance metrics and reporting
-- **Mobile Responsive**: Optimized for all device sizes
+- **Attendance System**: Check-in/out, leave requests, and WFH tracking
+- **Payroll Management**: Comprehensive payroll system with components
+- **Document Management**: Secure document storage and sharing
+- **Project Management**: Project tracking with milestones and team members
+- **Contact Management**: Client and contact relationship management
+- **Real-time Chat**: Internal communication system
+- **Analytics Dashboard**: Comprehensive reporting and analytics
 
 ## Tech Stack
 
 - **Frontend**: Next.js 15, React 18, TypeScript
-- **Styling**: Tailwind CSS, Radix UI
+- **Backend**: Next.js API Routes
 - **Database**: MySQL with Prisma ORM
-- **Authentication**: NextAuth.js with Argon2 password hashing
-- **Real-time**: Socket.IO for live updates
-- **File Storage**: Local file system with organized structure
-- **PDF Generation**: jsPDF for reports and invoices
+- **Authentication**: NextAuth.js
+- **Styling**: Tailwind CSS
+- **UI Components**: Radix UI
+- **Charts**: Recharts
+- **Real-time**: Socket.io
 
-## Getting Started
+## Quick Start
 
 ### Prerequisites
 
@@ -34,138 +35,128 @@ A comprehensive CRM and employee management system built with Next.js, featuring
 
 ### Installation
 
-1. Clone the repository
-```bash
-git clone <repository-url>
-cd valpro-portal
-```
+1. **Clone the repository**
+   ```bash
+   git clone https://github.com/Ilysaa07/valprocrm.git
+   cd valprocrm
+   ```
 
-2. Install dependencies
-```bash
-npm install
-```
+2. **Install dependencies**
+   ```bash
+   npm install
+   ```
 
-3. Set up environment variables
-```bash
-cp env.deployment.example .env
-```
+3. **Setup environment variables**
+   ```bash
+   cp .env.example .env
+   # Edit .env with your configuration
+   ```
 
-Edit `.env` with your configuration:
-```env
-DATABASE_URL="mysql://username:password@localhost:3306/valpro_portal"
-NEXTAUTH_URL="http://localhost:3000"
-NEXTAUTH_SECRET="your-secret-key"
-NEXT_PUBLIC_APP_URL="http://localhost:3000"
-```
+4. **Setup database**
+   ```bash
+   npm run db:push
+   ```
 
-4. Set up the database
-```bash
-npm run db:generate
-npm run db:migrate
-```
+5. **Create admin user**
+   ```bash
+   npm run adminval:buat
+   ```
 
-5. Create admin user
-```bash
-npm run admin:create
-```
-
-6. Start the development server
-```bash
-npm run dev
-```
+6. **Start development server**
+   ```bash
+   npm run dev
+   ```
 
 ## Production Deployment
 
-### Using PM2
+### Using the deployment script
 
-1. Build the application
 ```bash
-npm run build
+chmod +x deploy.sh
+./deploy.sh
 ```
 
-2. Start with PM2
-```bash
-npm run pm2:start
-```
+### Manual deployment
 
-3. Monitor the application
-```bash
-npm run pm2:logs
-npm run pm2:monit
-```
+1. **Build the application**
+   ```bash
+   npm run build
+   ```
 
-### Environment Configuration
+2. **Start with PM2**
+   ```bash
+   pm2 start npm --name "valprocrm" -- start
+   ```
 
-For production, ensure these environment variables are set:
+3. **Setup Nginx reverse proxy**
+   - Copy `nginx.conf` to `/etc/nginx/sites-available/valprocrm`
+   - Enable the site and restart Nginx
+
+4. **Setup SSL with Certbot**
+   ```bash
+   sudo certbot --nginx -d crm.valprointertech.com
+   ```
+
+## Environment Variables
 
 ```env
+# Database Configuration
+DATABASE_URL="mysql://username:password@localhost:3306/valprocrm"
+
+# NextAuth Configuration
+NEXTAUTH_URL="https://crm.valprointertech.com"
+NEXTAUTH_SECRET="your-super-secret-jwt-key"
+
+# Application Configuration
 NODE_ENV="production"
-DATABASE_URL="mysql://username:password@localhost:3306/valpro_portal"
-NEXTAUTH_URL="https://yourdomain.com"
-NEXTAUTH_SECRET="strong-secret-key"
-NEXT_PUBLIC_APP_URL="https://yourdomain.com"
+NEXT_PUBLIC_APP_URL="https://crm.valprointertech.com"
+
+# File Upload Configuration
+UPLOAD_DIR="./storage"
+MAX_FILE_SIZE="10485760"
+
+# Socket.IO Configuration
+SOCKET_PORT="3001"
+
+# Rate Limiting
+RATE_LIMIT_MAX="100"
+RATE_LIMIT_WINDOW="900000"
 ```
+
+## Available Scripts
+
+- `npm run dev` - Start development server
+- `npm run build` - Build for production
+- `npm run start` - Start production server
+- `npm run lint` - Run ESLint
+- `npm run db:push` - Push database schema
+- `npm run adminval:buat` - Create admin user
 
 ## Project Structure
 
 ```
 src/
-├── app/                 # Next.js app router pages
-│   ├── admin/          # Admin dashboard pages
-│   ├── employee/       # Employee dashboard pages
-│   ├── api/            # API routes
-│   └── auth/           # Authentication pages
-├── components/         # Reusable React components
-│   ├── layout/         # Layout components
-│   ├── ui/             # UI components
-│   └── dashboard/      # Dashboard-specific components
-├── lib/                # Utility libraries
-├── hooks/              # Custom React hooks
-└── types/              # TypeScript type definitions
+├── app/                 # Next.js app router
+│   ├── admin/          # Admin pages
+│   ├── employee/       # Employee pages
+│   ├── api/           # API routes
+│   └── auth/          # Authentication pages
+├── components/         # React components
+│   ├── dashboard/     # Dashboard components
+│   ├── layout/        # Layout components
+│   └── ui/           # UI components
+├── lib/               # Utility libraries
+├── hooks/             # Custom React hooks
+└── types/             # TypeScript type definitions
 ```
-
-## Database Schema
-
-The system uses MySQL with Prisma ORM. Key entities include:
-
-- **Users**: Employee and admin accounts
-- **Tasks**: Work assignments and tracking
-- **Attendance**: Check-in/out records
-- **Payroll**: Salary calculations and payments
-- **Documents**: File management system
-- **Messages**: Chat and notifications
-
-## API Endpoints
-
-- `/api/auth/*` - Authentication endpoints
-- `/api/admin/*` - Admin-specific operations
-- `/api/employee/*` - Employee-specific operations
-- `/api/tasks/*` - Task management
-- `/api/attendance/*` - Attendance tracking
-- `/api/payroll/*` - Payroll operations
-- `/api/chat/*` - Real-time messaging
-
-## Security Features
-
-- Password hashing with Argon2
-- JWT-based session management
-- Role-based access control
-- File upload validation
-- SQL injection prevention with Prisma
-- XSS protection with Next.js
 
 ## Contributing
 
 1. Fork the repository
 2. Create a feature branch
 3. Make your changes
-4. Test thoroughly
-5. Submit a pull request
+4. Submit a pull request
 
 ## License
 
-This project is licensed under the MIT License.
-
-## Support
-
-For support and questions, please contact the development team.
+MIT License - see LICENSE file for details

@@ -42,6 +42,11 @@ class SocketClient {
 
   public static getSocket(): Socket {
     if (!this.socket && typeof window !== 'undefined') {
+      // Opt-in only: require explicit flag to enable socket client
+      if (process.env.NEXT_PUBLIC_SOCKET_ENABLED !== 'true') {
+        // @ts-expect-error allow null for disabled mode
+        return { on: () => {}, off: () => {}, disconnect: () => {} } as Socket
+      }
       this.socket = io(process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000', {
         path: '/socket.io',
         transports: ['polling', 'websocket'],

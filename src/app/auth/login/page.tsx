@@ -22,10 +22,34 @@ export default function LoginPage() {
     email: '',
     password: '',
   })
+  const [needCaptcha, setNeedCaptcha] = useState(false)
+  const [captchaAnswer, setCaptchaAnswer] = useState('')
+  const [captchaA, setCaptchaA] = useState(0)
+  const [captchaB, setCaptchaB] = useState(0)
 
   useEffect(() => {
     setMounted(true)
   }, [])
+
+  useEffect(() => {
+    const loadThrottle = async () => {
+      if (!formData.email) return
+      try {
+        const res = await fetch(`/api/auth/throttle?email=${encodeURIComponent(formData.email)}`, { cache: 'no-store' })
+        if (res.ok) {
+          const data = await res.json()
+          const show = data.failedCount >= 3 || data.isLocked
+          setNeedCaptcha(show)
+          if (show) {
+            const a = Math.floor(Math.random() * 8) + 1
+            const b = Math.floor(Math.random() * 8) + 1
+            setCaptchaA(a); setCaptchaB(b); setCaptchaAnswer('')
+          }
+        }
+      } catch {}
+    }
+    loadThrottle()
+  }, [formData.email])
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setFormData({ ...formData, [e.target.name]: e.target.value })
@@ -36,6 +60,15 @@ export default function LoginPage() {
     e.preventDefault()
     setIsLoading(true)
     setError('')
+
+    if (needCaptcha) {
+      const expected = captchaA + captchaB
+      if (parseInt(captchaAnswer || '0') !== expected) {
+        setIsLoading(false)
+        setError('Verifikasi CAPTCHA tidak valid')
+        return
+      }
+    }
 
     try {
       const result = await signIn('credentials', {
@@ -222,6 +255,28 @@ export default function LoginPage() {
               </p>
             </div>
           </form>
+
+          {/* CAPTCHA */}
+          {needCaptcha && (
+            <div className="px-2 sm:px-0">
+              <div className="mt-4 p-3 rounded-xl border border-yellow-300 bg-yellow-50">
+                <label className="block text-sm font-medium text-yellow-800 mb-2">
+                  Verifikasi Keamanan
+                </label>
+                <div className="flex items-center gap-2">
+                  <span className="text-sm text-yellow-800">Berapa {captchaA} + {captchaB}?</span>
+                  <input
+                    value={captchaAnswer}
+                    onChange={e=>setCaptchaAnswer(e.target.value)}
+                    inputMode="numeric"
+                    className="border rounded px-3 py-1 text-sm w-24"
+                    placeholder="Jawab"
+                  />
+                </div>
+                <p className="text-xs text-yellow-700 mt-2">Kami meminta verifikasi tambahan karena percobaan login yang tidak biasa.</p>
+              </div>
+            </div>
+          )}
 
           {/* Mobile Features Toggle */}
           <div className="lg:hidden">

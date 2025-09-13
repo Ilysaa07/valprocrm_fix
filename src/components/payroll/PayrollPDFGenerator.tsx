@@ -25,10 +25,21 @@ export default function PayrollPDFGenerator({ payroll }: PayrollPDFGeneratorProp
   }
 
   const generatePDF = async () => {
-    const doc = new jsPDF()
+    // A4 portrait in millimeters ensures predictable sizing
+    const doc = new jsPDF({ orientation: 'p', unit: 'mm', format: 'a4' })
     const pageWidth = doc.internal.pageSize.getWidth()
     const pageHeight = doc.internal.pageSize.getHeight()
+    const marginLeft = 20
+    const marginRight = 20
+    const contentWidth = pageWidth - marginLeft - marginRight
     let yPosition = 20
+
+    const ensureSpace = (needed: number) => {
+      if (yPosition + needed > pageHeight - 20) {
+        doc.addPage()
+        yPosition = 20
+      }
+    }
 
     // Add logo
     try {
@@ -39,23 +50,17 @@ export default function PayrollPDFGenerator({ payroll }: PayrollPDFGeneratorProp
       await new Promise((resolve, reject) => {
         logoImg.onload = () => {
           try {
-            doc.addImage(logoImg, 'PNG', 20, 10, 30, 20)
+            doc.addImage(logoImg, 'PNG', marginLeft, 10, 30, 20)
             resolve(true)
           } catch (error) {
-            console.log('Error adding logo:', error)
             resolve(false)
           }
         }
-        logoImg.onerror = () => {
-          console.log('Logo not found, continuing without logo')
-          resolve(false)
-        }
+        logoImg.onerror = () => { resolve(false) }
         // Timeout after 2 seconds
         setTimeout(() => resolve(false), 2000)
       })
-    } catch (error) {
-      console.log('Logo loading failed, continuing without logo')
-    }
+    } catch {}
 
     // Header with color accent
     doc.setFontSize(20)
@@ -71,9 +76,11 @@ export default function PayrollPDFGenerator({ payroll }: PayrollPDFGeneratorProp
     doc.text('PT. VALPRO INTERTECH', pageWidth / 2, yPosition, { align: 'center' })
     yPosition += 5
     doc.setTextColor(0, 0, 0) // Reset to black for address
-    doc.text('Jl. Raya Gading Tutuka No. 175B Soreang', pageWidth / 2, yPosition, { align: 'center' })
+    const address1 = doc.splitTextToSize('Jl. Raya Gading Tutuka No. 175B Soreang', contentWidth)
+    doc.text(address1 as string[], pageWidth / 2, yPosition, { align: 'center' })
     yPosition += 5
-    doc.text('Kab. Bandung Jawa Barat, Indonesia', pageWidth / 2, yPosition, { align: 'center' })
+    const address2 = doc.splitTextToSize('Kab. Bandung Jawa Barat, Indonesia', contentWidth)
+    doc.text(address2 as string[], pageWidth / 2, yPosition, { align: 'center' })
     yPosition += 5
     doc.text('Telp: 081399710085', pageWidth / 2, yPosition, { align: 'center' })
     yPosition += 15
@@ -81,14 +88,14 @@ export default function PayrollPDFGenerator({ payroll }: PayrollPDFGeneratorProp
     // Line separator with color
     doc.setDrawColor(4, 45, 100) // #042d64
     doc.setLineWidth(1)
-    doc.line(20, yPosition, pageWidth - 20, yPosition)
+    doc.line(marginLeft, yPosition, pageWidth - marginRight, yPosition)
     yPosition += 10
 
     // Employee Info
     doc.setFontSize(14)
     doc.setFont('helvetica', 'bold')
     doc.setTextColor(4, 45, 100) // #042d64
-    doc.text('INFORMASI KARYAWAN', 20, yPosition)
+    doc.text('INFORMASI KARYAWAN', marginLeft, yPosition)
     yPosition += 10
 
     doc.setFontSize(10)
@@ -107,7 +114,8 @@ export default function PayrollPDFGenerator({ payroll }: PayrollPDFGeneratorProp
     ]
 
     employeeDetails.forEach(([label, value], index) => {
-      const x = index % 2 === 0 ? 20 : pageWidth / 2 + 10
+      ensureSpace(7)
+      const x = index % 2 === 0 ? marginLeft : pageWidth / 2 + 10
       const y = yPosition + (Math.floor(index / 2) * 7)
       
       doc.setFont('helvetica', 'bold')
@@ -124,7 +132,8 @@ export default function PayrollPDFGenerator({ payroll }: PayrollPDFGeneratorProp
     doc.setFontSize(14)
     doc.setFont('helvetica', 'bold')
     doc.setTextColor(4, 45, 100) // #042d64
-    doc.text('RINGKASAN GAJI', 20, yPosition)
+    ensureSpace(18)
+    doc.text('RINGKASAN GAJI', marginLeft, yPosition)
     yPosition += 8
 
     doc.setFontSize(10)
@@ -157,14 +166,15 @@ export default function PayrollPDFGenerator({ payroll }: PayrollPDFGeneratorProp
         doc.setTextColor(0, 0, 0) // Black for normal items
       }
 
-      doc.text(label, 20, yPosition)
-      doc.text(amount, pageWidth - 20, yPosition, { align: 'right' })
+      ensureSpace(isTotal ? 9 : 7)
+      doc.text(label, marginLeft, yPosition)
+      doc.text(amount, pageWidth - marginRight, yPosition, { align: 'right' })
       yPosition += isTotal ? 7 : 5
 
       if (isGross) {
         doc.setDrawColor(4, 45, 100) // #042d64 for separator line
         doc.setLineWidth(0.5)
-        doc.line(20, yPosition - 2, pageWidth - 20, yPosition - 2)
+        doc.line(marginLeft, yPosition - 2, pageWidth - marginRight, yPosition - 2)
         yPosition += 3
       }
     })
@@ -175,7 +185,8 @@ export default function PayrollPDFGenerator({ payroll }: PayrollPDFGeneratorProp
     doc.setFontSize(14)
     doc.setFont('helvetica', 'bold')
     doc.setTextColor(4, 45, 100) // #042d64
-    doc.text('DETAIL KOMPONEN GAJI', 20, yPosition)
+    ensureSpace(15)
+    doc.text('DETAIL KOMPONEN GAJI', marginLeft, yPosition)
     yPosition += 8
 
     doc.setFontSize(9)
@@ -183,49 +194,55 @@ export default function PayrollPDFGenerator({ payroll }: PayrollPDFGeneratorProp
 
     // Table header with color accent
     doc.setFillColor(4, 45, 100) // #042d64 background
-    doc.rect(20, yPosition - 4, pageWidth - 40, 7, 'F')
+    doc.rect(marginLeft, yPosition - 4, contentWidth, 7, 'F')
     
     doc.setFont('helvetica', 'bold')
     doc.setTextColor(255, 255, 255) // White text on colored background
-    doc.text('No', 25, yPosition)
-    doc.text('Komponen', 35, yPosition)
-    doc.text('Jumlah', pageWidth - 60, yPosition, { align: 'right' })
-    doc.text('Pajak', pageWidth - 30, yPosition, { align: 'center' })
+    const colNoX = marginLeft + 5
+    const colNameX = marginLeft + 15
+    const colAmountX = pageWidth - marginRight - 30
+    const colTaxX = pageWidth - marginRight - 10
+    const nameColWidth = colAmountX - colNameX - 5
+    doc.text('No', colNoX, yPosition)
+    doc.text('Komponen', colNameX, yPosition)
+    doc.text('Jumlah', colAmountX, yPosition, { align: 'right' })
+    doc.text('Pajak', colTaxX, yPosition, { align: 'center' })
     yPosition += 7
 
     // Table rows
     payroll.components.forEach((component, index) => {
-      if (yPosition > pageHeight - 30) {
-        doc.addPage()
-        yPosition = 20
-      }
+      // Prepare wrapped name text
+      const wrappedName = doc.splitTextToSize(component.name, nameColWidth)
+      const rowHeight = Array.isArray(wrappedName) ? Math.max(5, wrappedName.length * 5) : 5
+      ensureSpace(rowHeight + 3)
 
       // Alternate row colors
       if (index % 2 === 0) {
         doc.setFillColor(248, 249, 250) // Light gray for even rows
-        doc.rect(20, yPosition - 3, pageWidth - 40, 5, 'F')
+        doc.rect(marginLeft, yPosition - 3, contentWidth, rowHeight, 'F')
       }
 
       doc.setFont('helvetica', 'normal')
       doc.setTextColor(0, 0, 0) // Black text for table content
-      doc.text((index + 1).toString(), 25, yPosition)
-      doc.text(component.name, 35, yPosition)
-      doc.text(formatCurrency(component.amount), pageWidth - 60, yPosition, { align: 'right' })
-      doc.text(component.isTaxable ? 'Ya' : 'Tidak', pageWidth - 30, yPosition, { align: 'center' })
-      yPosition += 5
+      doc.text((index + 1).toString(), colNoX, yPosition)
+      doc.text(wrappedName as string[], colNameX, yPosition)
+      doc.text(formatCurrency(component.amount), colAmountX, yPosition, { align: 'right' })
+      doc.text(component.isTaxable ? 'Ya' : 'Tidak', colTaxX, yPosition, { align: 'center' })
+      yPosition += rowHeight
     })
 
     // Footer
     yPosition = pageHeight - 30
     doc.setDrawColor(4, 45, 100) // #042d64 for footer line
     doc.setLineWidth(0.5)
-    doc.line(20, yPosition, pageWidth - 20, yPosition)
+    doc.line(marginLeft, yPosition, pageWidth - marginRight, yPosition)
     yPosition += 10
 
     doc.setFontSize(8)
     doc.setFont('helvetica', 'normal')
     doc.setTextColor(4, 45, 100) // #042d64 for footer text
-    doc.text('Dokumen ini dibuat secara otomatis oleh sistem PT. VALPRO INTERTECH', pageWidth / 2, yPosition, { align: 'center' })
+    const footerText = doc.splitTextToSize('Dokumen ini dibuat secara otomatis oleh sistem PT. VALPRO INTERTECH', contentWidth)
+    doc.text(footerText as string[], pageWidth / 2, yPosition, { align: 'center' })
     yPosition += 5
     doc.setTextColor(0, 0, 0) // Black for date
     doc.text(`Dicetak pada: ${formatDate(new Date().toISOString())}`, pageWidth / 2, yPosition, { align: 'center' })

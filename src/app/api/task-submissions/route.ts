@@ -44,6 +44,8 @@ export async function POST(request: NextRequest) {
       'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
       'application/vnd.ms-excel',
       'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      'text/csv',
+      'application/csv',
       'application/zip',
       'application/x-zip-compressed',
       'text/plain'
@@ -108,28 +110,33 @@ export async function POST(request: NextRequest) {
       }, { status: 400 })
     }
 
-    // Upload files BEFORE starting DB transaction to avoid timeouts
+    // Upload files locally to avoid cross-endpoint dependency and cookie issues
     const uploadedFiles: Array<{ url: string; name: string; size: number; type: string }> = []
+    try {
+      const { writeFile, mkdir } = await import('fs/promises')
+      const { join } = await import('path')
+      const { existsSync } = await import('fs')
+      const { v4: uuidv4 } = await import('uuid')
+
+      const uploadDir = join(process.cwd(), 'public/uploads/submissions')
+      if (!existsSync(uploadDir)) {
+        await mkdir(uploadDir, { recursive: true })
+      }
+
     for (const file of files) {
       if (file.size > 0) {
-        try {
-          const uploadFormData = new FormData()
-          uploadFormData.append('file', file)
-          const uploadResponse = await fetch(`${process.env.NEXTAUTH_URL || 'http://localhost:3000'}/api/upload`, {
-            method: 'POST',
-            body: uploadFormData,
-            headers: { 'Cookie': request.headers.get('cookie') || '' }
-          })
-          if (uploadResponse.ok) {
-            const uploadResult = await uploadResponse.json()
-            uploadedFiles.push({ url: uploadResult.file.url, name: uploadResult.file.name, size: uploadResult.file.size, type: uploadResult.file.type })
-          } else {
-            console.error('File upload failed:', await uploadResponse.text())
-          }
-        } catch (uploadError) {
-          console.error('Error uploading file:', uploadError)
+          const bytes = await file.arrayBuffer()
+          const buffer = Buffer.from(bytes)
+          const ext = (file.name.split('.').pop() || 'dat').toLowerCase()
+          const uniqueFilename = `submission_${taskId}_${session.user.id}_${uuidv4()}.${ext}`
+          const uploadPath = join(uploadDir, uniqueFilename)
+          await writeFile(uploadPath, buffer)
+          const fileUrl = `/uploads/submissions/${uniqueFilename}`
+          uploadedFiles.push({ url: fileUrl, name: file.name, size: file.size, type: file.type })
         }
       }
+    } catch (e) {
+      console.error('Local upload failed:', e)
     }
 
     // Use transaction for DB operations only
@@ -166,20 +173,41 @@ export async function POST(request: NextRequest) {
 
       // Save all files in TaskSubmissionFile table
       if (uploadedFiles.length > 0) {
-        // Simpan semua file termasuk yang pertama
-        const allFiles = uploadedFiles.map((f) => ({
+        // Simpan semua file dan integrasikan ke dokumen (public)
+        for (const f of uploadedFiles) {
+          // Buat dokumen & versi
+          const doc = await tx.document.create({
+            data: {
+              title: f.name,
+              description: `Submission untuk ${task.title}`,
+              ownerId: session.user.id,
+              visibility: 'PUBLIC',
+              sizeBytes: f.size,
+              mimeType: f.type,
+              versions: {
+                create: {
+                  version: 1,
+                  fileUrl: f.url,
+                  uploadedBy: session.user.id
+                }
+              }
+            },
+            include: { versions: true }
+          })
+          await tx.document.update({ where: { id: doc.id }, data: { currentVerId: doc.versions[0].id } })
+
+          // Simpan referensi file submission untuk legacy tampilan
+          await tx.taskSubmissionFile.create({
+            data: {
           submissionId: submission.id,
           fileUrl: f.url,
           fileName: f.name,
           fileSize: f.size,
           fileType: f.type,
-        }))
-        
-        // Simpan semua file
-        try { 
-          await tx.taskSubmissionFile.createMany({ data: allFiles }) 
-        } catch (e) {
-          console.error('Error saving files:', e)
+            }
+          })
+          // Also link submission document to task attachments list
+          await tx.taskFile.create({ data: { taskId: task.id, documentId: doc.id, uploadedBy: session.user.id } })
         }
       }
 

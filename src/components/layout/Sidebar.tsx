@@ -16,7 +16,6 @@ import {
   Bell, 
   Menu, 
   X, 
-  Calendar,
   FileText,
   UserCheck,
   ChevronRight,
@@ -26,7 +25,6 @@ import {
   Moon,
   ChevronDown,
   BarChart3,
-  Receipt,
   DollarSign,
   Clock,
   MapPin
@@ -113,7 +111,6 @@ export default function Sidebar({
       title: 'Dashboard',
       items: [
         { name: 'Ringkasan', href: '/admin', icon: Home, description: 'Ringkasan sistem', isNew: false },
-        { name: 'Kalender', href: '/admin/calendar', icon: Calendar, description: 'Jadwal & acara', isNew: false },
         { name: 'Analitik', href: '/admin/analytics', icon: BarChart3, description: 'Laporan & statistik', isNew: true }
       ]
     },
@@ -129,7 +126,6 @@ export default function Sidebar({
       title: 'Keuangan',
       items: [
         { name: 'Keuangan', href: '/admin/finance', icon: DollarSign, description: 'Manajemen keuangan', isNew: false },
-        { name: 'Invoice', href: '/admin/invoices', icon: Receipt, description: 'Manajemen invoice', isNew: false },
         { name: 'Slip Gaji', href: '/admin/payroll', icon: FileText, description: 'Manajemen slip gaji', isNew: true }
       ]
     },
@@ -161,7 +157,6 @@ export default function Sidebar({
       title: 'Dashboard',
       items: [
         { name: 'Ringkasan', href: '/employee', icon: Home, description: 'Ringkasan kerja', isNew: false },
-        { name: 'Kalender', href: '/employee/calendar', icon: Calendar, description: 'Jadwal saya', isNew: false }
       ]
     },
     {
@@ -441,7 +436,11 @@ export default function Sidebar({
           )}
           
           <button
-            onClick={() => signOut({ callbackUrl: '/auth/login' })}
+            onClick={() => signOut({ 
+              callbackUrl: process.env.NEXT_PUBLIC_APP_URL 
+                ? `${process.env.NEXT_PUBLIC_APP_URL}/auth/login` 
+                : '/auth/login' 
+            })}
             className="flex items-center space-x-2 px-3 py-2 rounded-lg hover:bg-error/10 text-error border border-error/30 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-error/40"
           >
             <LogOut className="h-4 w-4" />

@@ -4,11 +4,11 @@ import { useEffect, useState } from 'react'
 import dynamic from 'next/dynamic'
 import AdminLayout from '@/components/layout/AdminLayout'
 
-// Dynamically import LocationMap to avoid SSR issues
-const LocationMap = dynamic(() => import('@/components/map/LocationMap'), {
-  ssr: false,
-  loading: () => <div className="h-[420px] bg-gray-100 rounded animate-pulse" />
-})
+// Dynamically import SimpleDynamicLocationMap to avoid SSR issues
+  const LocationMap = dynamic(() => import('@/components/map/SimpleDynamicLocationMap'), {
+    ssr: false,
+    loading: () => <div className="h-[420px] bg-gray-100 rounded animate-pulse" />
+  })
 
 interface OfficeLocation {
   id: string
@@ -689,7 +689,7 @@ export default function AdminAttendancePage() {
                   longitude={lng ?? undefined}
                   radius={radius}
                   editable
-                  onLocationChange={(la, lo) => { setLat(la); setLng(lo) }}
+                  onLocationChange={(la: number, lo: number) => { setLat(la); setLng(lo) }}
                   height="420px"
                 />
               </div>

@@ -617,59 +617,7 @@ export default function EmployeeDashboard({
       </Card>
 
       {/* Additional Widgets Row */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Mini Calendar Widget */}
-        <Card>
-          <div className="p-6 pb-4">
-            <div className="flex items-center space-x-2">
-              <CalendarIcon className="h-5 w-5 text-accent" />
-              <h2 className="text-xl font-semibold text-text-primary">Kalender</h2>
-            </div>
-          </div>
-          <CardBody className="pt-0">
-            <div className="space-y-4">
-              <div className="text-center">
-                <div className="text-3xl font-bold text-accent mb-1">
-                  {new Date().getDate()}
-                </div>
-                <div className="text-sm text-text-secondary">
-                  {new Date().toLocaleDateString('id-ID', { 
-                    month: 'long', 
-                    year: 'numeric' 
-                  })}
-                </div>
-                <div className="text-xs text-text-muted mt-1">
-                  {new Date().toLocaleDateString('id-ID', { weekday: 'long' })}
-                </div>
-              </div>
-              
-              <div className="space-y-2">
-                <div className="flex items-center justify-between text-sm">
-                  <span className="text-text-secondary">Hari ini</span>
-                  <Badge className="bg-accent text-accent-dark">
-                    {new Date().toLocaleDateString('id-ID')}
-                  </Badge>
-                </div>
-                <div className="flex items-center justify-between text-sm">
-                  <span className="text-text-secondary">Jam</span>
-                  <span className="font-medium text-text-primary">
-                    {new Date().toLocaleTimeString('id-ID', { 
-                      hour: '2-digit', 
-                      minute: '2-digit' 
-                    })}
-                  </span>
-                </div>
-              </div>
-              
-              <Link href="/employee/attendance">
-                <Button variant="outline" className="w-full">
-                  <Calendar className="h-4 w-4 mr-2" />
-                  Lihat Absensi
-                </Button>
-              </Link>
-            </div>
-          </CardBody>
-        </Card>
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
 
         {/* Productivity Tips */}
         <Card>

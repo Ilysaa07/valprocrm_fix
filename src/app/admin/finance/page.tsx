@@ -73,7 +73,7 @@ export default function AdminFinancePage() {
   })
 
   const incomeCategories = [
-    { value: 'SALARY', label: 'Gaji' },
+    { value: 'ORDER_PAYMENT', label: 'Pembayaran Pesanan' },
     { value: 'BONUS', label: 'Bonus' },
     { value: 'COMMISSION', label: 'Komisi' },
     { value: 'OTHER_INCOME', label: 'Pemasukan Lainnya' }

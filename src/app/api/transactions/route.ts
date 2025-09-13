@@ -3,18 +3,18 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { z } from 'zod'
-import { Prisma } from '@prisma/client'
+import { Prisma, TransactionType, TransactionCategory } from '@prisma/client'
 
 const createTransactionSchema = z.object({
   type: z.enum(['INCOME', 'EXPENSE']),
   category: z.enum([
-    'SALARY', 'BONUS', 'COMMISSION', 'OTHER_INCOME',
+    'ORDER_PAYMENT', 'BONUS', 'COMMISSION', 'OTHER_INCOME',
     'OFFICE_SUPPLIES', 'UTILITIES', 'RENT', 'MARKETING', 
     'TRAVEL', 'MEALS', 'EQUIPMENT', 'SOFTWARE', 'TRAINING', 'PAYROLL_EXPENSE', 'OTHER_EXPENSE'
   ]),
-  amount: z.number().positive('Jumlah harus lebih dari 0'),
+  amount: z.coerce.number().positive('Jumlah harus lebih dari 0'),
   description: z.string().min(1, 'Deskripsi harus diisi'),
-  date: z.string().datetime('Format tanggal tidak valid'),
+  date: z.union([z.string().datetime('Format tanggal tidak valid'), z.date()]),
 })
 
 // GET - Mendapatkan daftar transaksi
@@ -40,11 +40,11 @@ export async function GET(request: NextRequest) {
     const where: Prisma.TransactionWhereInput = {}
 
     if (type) {
-      where.type = type
+      where.type = type as TransactionType
     }
 
     if (category) {
-      where.category = category
+      where.category = category as TransactionCategory
     }
 
     if (startDate && endDate) {
@@ -125,13 +125,14 @@ export async function POST(request: NextRequest) {
     const body = await request.json()
     const validatedData = createTransactionSchema.parse(body)
 
+    const parsedDate = typeof validatedData.date === 'string' ? new Date(validatedData.date) : validatedData.date
     const transaction = await prisma.transaction.create({
       data: {
         type: validatedData.type,
-        category: validatedData.category,
+        category: validatedData.category as TransactionCategory,
         amount: validatedData.amount,
         description: validatedData.description,
-        date: new Date(validatedData.date),
+        date: parsedDate,
         createdById: session.user.id
       },
       include: {
@@ -161,10 +162,13 @@ export async function POST(request: NextRequest) {
     }
     
     console.error('Create transaction error:', error)
-    return NextResponse.json(
-      { error: 'Terjadi kesalahan server' },
-      { status: 500 }
-    )
+    if (error instanceof Prisma.PrismaClientKnownRequestError) {
+      return NextResponse.json(
+        { error: 'Terjadi kesalahan server', code: error.code, meta: error.meta },
+        { status: 500 }
+      )
+    }
+    return NextResponse.json({ error: 'Terjadi kesalahan server' }, { status: 500 })
   }
 }
 

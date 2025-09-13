@@ -8,7 +8,7 @@ interface SearchResult {
   id: string
   title: string
   description: string
-  type: 'user' | 'document' | 'task' | 'attendance' | 'leave' | 'wfh' | 'invoice' | 'folder'
+  type: 'user' | 'document' | 'task' | 'attendance' | 'leave' | 'wfh' | 'folder'
   url: string
   metadata?: {
     status?: string
@@ -105,11 +105,6 @@ export function DashboardSearch({
       label: 'WFH',
       color: 'bg-pink-100 text-pink-800'
     },
-    invoice: {
-      icon: FileText,
-      label: 'Invoice',
-      color: 'bg-yellow-100 text-yellow-800'
-    },
     folder: {
       icon: Building,
       label: 'Folder',
@@ -168,7 +163,6 @@ export function DashboardSearch({
       'kehadiran',
       'izin',
       'wfh',
-      'invoice',
       'laporan'
     ]
     
@@ -672,7 +666,7 @@ export function DashboardSearch({
 // Predefined search configurations
 export const adminSearchConfig = {
   title: 'Pencarian Admin',
-  searchTypes: ['user', 'document', 'task', 'attendance', 'leave', 'wfh', 'invoice', 'folder'],
+  searchTypes: ['user', 'document', 'task', 'attendance', 'leave', 'wfh', 'folder'],
   showFilters: true,
   showRecentSearches: true,
   showSearchSuggestions: true,

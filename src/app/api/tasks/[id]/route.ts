@@ -72,6 +72,13 @@ export async function GET(
           },
           orderBy: { submittedAt: 'desc' }
         },
+        files: {
+          include: {
+            document: {
+              include: { currentVer: true }
+            }
+          }
+        },
         feedbacks: {
           include: {
             user: {
@@ -123,6 +130,15 @@ export async function GET(
       createdBy: task.createdBy,
       validationMessage: task.validationMessage,
       submissions: task.submissions,
+      attachments: task.files.map(f => ({
+        id: f.id,
+        documentId: f.documentId,
+        title: f.document.title,
+        url: f.document.currentVer?.fileUrl || null,
+        size: f.document.sizeBytes,
+        mimeType: f.document.mimeType,
+        uploadedAt: f.document.currentVer?.uploadedAt || null
+      })),
       feedbacks: task.feedbacks
     }
 

@@ -15,6 +15,18 @@ export function Card({ children, className = '' }: CardProps) {
   )
 }
 
+export function CardHeader({ children, className = '' }: { children: React.ReactNode; className?: string }) {
+  return <div className={`p-6 pb-0 ${className}`}>{children}</div>
+}
+
+export function CardContent({ children, className = '' }: { children: React.ReactNode; className?: string }) {
+  return <div className={`p-6 ${className}`}>{children}</div>
+}
+
+export function CardTitle({ children, className = '' }: { children: React.ReactNode; className?: string }) {
+  return <h3 className={`text-lg font-semibold text-text-primary ${className}`}>{children}</h3>
+}
+
 export function CardBody({ children, className = '' }: { children: React.ReactNode; className?: string }) {
   return <div className={`p-5 ${className}`}>{children}</div>
 }

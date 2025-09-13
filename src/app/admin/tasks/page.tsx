@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/Button'
 import { Plus, Search, Eye, CheckCircle, AlertCircle, RefreshCw } from 'lucide-react'
 
 interface TaskSubmissionFile { id: string; fileUrl: string; fileName: string; fileSize?: number; fileType?: string }
+interface TaskAttachment { id: string; documentId: string; title: string; url: string | null; size: number; mimeType: string; uploadedAt: string | null }
 interface TaskSubmission { id: string; taskId: string; userId: string; submittedAt: string; files?: TaskSubmissionFile[] }
 interface TaskFeedback { id: string; taskId: string; userId: string; message: string; createdAt: string }
 interface Task {
@@ -26,6 +27,7 @@ interface Task {
   createdBy: { id: string; fullName: string; email: string }
   submissions?: TaskSubmission[]
   feedbacks?: TaskFeedback[]
+  attachments?: TaskAttachment[]
 }
 
 interface User { id: string; fullName: string; email: string; role: string; status: string }
@@ -41,6 +43,7 @@ export default function AdminTasksPage() {
   const [createForm, setCreateForm] = useState({
     title: '', description: '', dueDate: '', priority: 'MEDIUM' as Task['priority'], assignment: 'ALL_EMPLOYEES' as Task['assignment'], assigneeId: ''
   })
+  const [createFiles, setCreateFiles] = useState<File[]>([])
 
   useEffect(() => {
     if (status === 'loading') return
@@ -84,8 +87,22 @@ export default function AdminTasksPage() {
         })
       })
       if (!res.ok) throw new Error('failed')
+      const json = await res.json()
+      const newTaskId: string = json.task?.id
+
+      // Upload any selected files for this new task
+      if (newTaskId && createFiles.length > 0) {
+        for (const f of createFiles) {
+          const fd = new FormData()
+          fd.append('taskId', newTaskId)
+          fd.append('file', f)
+          await fetch('/api/tasks/upload-document', { method: 'POST', body: fd })
+        }
+      }
+
       setShowCreate(false)
       setCreateForm({ title: '', description: '', dueDate: '', priority: 'MEDIUM', assignment: 'ALL_EMPLOYEES', assigneeId: '' })
+      setCreateFiles([])
       fetchTasks()
     } catch {}
   }
@@ -148,6 +165,13 @@ export default function AdminTasksPage() {
               <div><label className="block text-sm text-text-secondary mb-1">Judul</label><input className="w-full border border-border rounded px-3 py-2 bg-surface text-text-primary" value={createForm.title} onChange={(e) => setCreateForm(p => ({ ...p, title: e.target.value }))} /></div>
               <div><label className="block text-sm text-text-secondary mb-1">Deadline</label><input type="date" className="w-full border border-border rounded px-3 py-2 bg-surface text-text-primary" value={createForm.dueDate} onChange={(e) => setCreateForm(p => ({ ...p, dueDate: e.target.value }))} /></div>
               <div className="md:col-span-2"><label className="block text-sm text-text-secondary mb-1">Deskripsi</label><textarea className="w-full border border-border rounded px-3 py-2 bg-surface text-text-primary" rows={3} value={createForm.description} onChange={(e) => setCreateForm(p => ({ ...p, description: e.target.value }))} /></div>
+              <div className="md:col-span-2">
+                <label className="block text-sm text-text-secondary mb-1">Lampiran (opsional)</label>
+                <input type="file" multiple onChange={(e) => setCreateFiles(Array.from(e.target.files || []))} className="w-full border border-border rounded px-3 py-2 bg-surface text-text-primary" />
+                {createFiles.length > 0 && (
+                  <div className="mt-2 text-xs text-text-secondary">{createFiles.length} file dipilih</div>
+                )}
+              </div>
               <div><label className="block text-sm text-text-secondary mb-1">Prioritas</label><select className="w-full border border-border rounded px-3 py-2 bg-surface text-text-primary" value={createForm.priority} onChange={(e) => setCreateForm(p => ({ ...p, priority: e.target.value as any }))}><option value="LOW">Rendah</option><option value="MEDIUM">Sedang</option><option value="HIGH">Tinggi</option><option value="URGENT">Urgent</option></select></div>
               <div><label className="block text-sm text-text-secondary mb-1">Penugasan</label><select className="w-full border border-border rounded px-3 py-2 bg-surface text-text-primary" value={createForm.assignment} onChange={(e) => setCreateForm(p => ({ ...p, assignment: e.target.value as any }))}><option value="ALL_EMPLOYEES">Semua Karyawan</option><option value="SPECIFIC">User Tertentu</option></select></div>
               {createForm.assignment === 'SPECIFIC' && (
@@ -243,11 +267,15 @@ export default function AdminTasksPage() {
                       <div key={s.id} className="border rounded p-3">
                         <div className="flex items-center justify-between">
                           <div className="text-sm text-text-secondary">Dikirim: {new Date(s.submittedAt).toLocaleString('id-ID')}</div>
-                          <div className="flex gap-2">
-                            <Button size="sm" onClick={() => handleSubmissionValidation(s.id, 'approve')} className="bg-success hover:bg-success-dark"><CheckCircle className="w-4 h-4 mr-1" />Setujui</Button>
-                            <Button size="sm" variant="outline" onClick={() => { const fb = prompt('Masukkan catatan revisi (opsional)') || undefined; handleSubmissionValidation(s.id, 'revise', fb) }}>Minta Revisi</Button>
-                            <Button size="sm" variant="outline" onClick={() => handleSubmissionValidation(s.id, 'reject')}>Tolak</Button>
-                          </div>
+                          {selectedTask.status !== 'COMPLETED' ? (
+                            <div className="flex gap-2">
+                              <Button size="sm" onClick={() => handleSubmissionValidation(s.id, 'approve')} className="bg-success hover:bg-success-dark"><CheckCircle className="w-4 h-4 mr-1" />Setujui</Button>
+                              <Button size="sm" variant="outline" onClick={() => { const fb = prompt('Masukkan catatan revisi (opsional)') || undefined; handleSubmissionValidation(s.id, 'revise', fb) }}>Minta Revisi</Button>
+                              <Button size="sm" variant="outline" onClick={() => handleSubmissionValidation(s.id, 'reject')}>Tolak</Button>
+                            </div>
+                          ) : (
+                            <div className="text-xs text-text-secondary">Tugas sudah selesai</div>
+                          )}
                         </div>
                         {s.files && s.files.length > 0 && (
                           <div className="mt-2 grid grid-cols-1 md:grid-cols-3 gap-3">
@@ -290,6 +318,30 @@ export default function AdminTasksPage() {
                         fetchTasks()
                       }}>{getStatusText(st)}</Button>
                     ))}
+                  </div>
+                </div>
+                <div>
+                  <h3 className="text-sm font-medium text-text-secondary">Lampiran Tugas</h3>
+                  <div className="mt-2">
+                    {(selectedTask.attachments && selectedTask.attachments.length > 0) ? (
+                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                        {selectedTask.attachments.map(att => (
+                          <div key={att.id} className="border rounded p-3 bg-surface">
+                            <div className="text-sm font-medium text-text-primary truncate" title={att.title}>{att.title}</div>
+                            <div className="text-xs text-text-secondary mt-1">{att.mimeType} • {Math.round(att.size/1024)} KB</div>
+                            <div className="mt-2">
+                              {att.url ? (
+                                <a href={att.url} target="_blank" rel="noreferrer" className="text-accent text-xs underline">Unduh</a>
+                              ) : (
+                                <span className="text-text-muted text-xs">URL tidak tersedia</span>
+                              )}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <p className="text-sm text-text-muted">Belum ada lampiran.</p>
+                    )}
                   </div>
                 </div>
               </div>

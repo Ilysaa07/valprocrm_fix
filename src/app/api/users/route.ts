@@ -49,7 +49,7 @@ export async function GET(request: NextRequest) {
       }
     })
 
-    console.log(`Fetched ${users.length} users with filters:`, { role, status })
+    // fetched users
 
     return NextResponse.json({ users })
 

@@ -5,6 +5,7 @@ import { writeFile, mkdir } from 'fs/promises'
 import { join } from 'path'
 import { v4 as uuidv4 } from 'uuid'
 import { existsSync } from 'fs'
+import { prisma } from '@/lib/prisma'
 
 export async function POST(request: NextRequest) {
   try {
@@ -19,12 +20,26 @@ export async function POST(request: NextRequest) {
 
     const data = await request.formData()
     const file: File | null = data.get('file') as unknown as File
+    const taskId = (data.get('taskId') as string) || ''
 
     if (!file) {
       return NextResponse.json(
         { error: 'File tidak ditemukan' },
         { status: 400 }
       )
+    }
+
+    if (!taskId) {
+      return NextResponse.json(
+        { error: 'taskId wajib disertakan' },
+        { status: 400 }
+      )
+    }
+
+    // Ensure task exists and user can upload
+    const task = await prisma.task.findUnique({ where: { id: taskId } })
+    if (!task) {
+      return NextResponse.json({ error: 'Tugas tidak ditemukan' }, { status: 404 })
     }
 
     // Validasi tipe file - dokumen dan gambar
@@ -36,6 +51,8 @@ export async function POST(request: NextRequest) {
       'application/vnd.ms-powerpoint',
       'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
       'application/vnd.ms-excel',
+      'text/csv',
+      'application/csv',
       'text/plain',
       'image/jpeg',
       'image/png',
@@ -78,16 +95,53 @@ export async function POST(request: NextRequest) {
     // Save file
     await writeFile(uploadPath, buffer)
 
-    // Return file info
+    // Compose public URL
     const fileUrl = `/uploads/tasks/${uniqueFilename}`
-    
+
+    // Create Document + Version and link to Task via TaskFile
+    const document = await prisma.document.create({
+      data: {
+        title: file.name,
+        description: `Lampiran tugas ${task.title}`,
+        ownerId: session.user.id,
+        visibility: 'PUBLIC',
+        sizeBytes: file.size,
+        mimeType: file.type,
+        versions: {
+          create: {
+            version: 1,
+            fileUrl: fileUrl,
+            uploadedBy: session.user.id
+          }
+        }
+      },
+      include: { versions: true }
+    })
+
+    // set current version
+    const createdVersion = document.versions[0]
+    await prisma.document.update({
+      where: { id: document.id },
+      data: { currentVerId: createdVersion.id }
+    })
+
+    // Link to task
+    await prisma.taskFile.create({
+      data: {
+        taskId: task.id,
+        documentId: document.id,
+        uploadedBy: session.user.id
+      }
+    })
+
     return NextResponse.json({
-      message: 'Dokumen berhasil diupload',
+      message: 'Dokumen berhasil diupload dan ditautkan ke tugas',
       file: {
         url: fileUrl,
         name: file.name,
         size: file.size,
-        type: file.type
+        type: file.type,
+        documentId: document.id
       }
     })
 

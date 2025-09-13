@@ -29,9 +29,7 @@ model User {
   documentAcls             DocumentAcl[]
   documentDownloadLogs     DocumentDownloadLog[]
   ownedDocuments           Document[]
-  invoiceHistoryChanges    InvoiceHistory[]
-  createdInvoices          Invoice[]                 @relation("InvoiceCreator")
-  updatedInvoices          Invoice[]                 @relation("InvoiceUpdater")
+  uploadedTaskFiles        TaskFile[]
   decidedLeaveRequests     LeaveRequest[]            @relation("LeaveRequestDecider")
   leaveRequests            LeaveRequest[]            @relation("LeaveRequestUser")
   messageDeletes           MessageDelete[]
@@ -52,9 +50,6 @@ model User {
   projectMembers           ProjectMember[]
   projectMilestones        ProjectMilestone[]
   projectTemplates         ProjectTemplate[]         @relation("ProjectTemplateCreator")
-  createdEvents            CalendarEvent[]           @relation("EventCreator")
-  updatedEvents            CalendarEvent[]           @relation("EventUpdater")
-  eventAttendees           EventAttendee[]           @relation("EventAttendeeUser")
   payrolls                 Payroll[]                 @relation("PayrollEmployee")
   createdPayrolls          Payroll[]                 @relation("PayrollCreator")
   updatedPayrolls          Payroll[]                 @relation("PayrollUpdater")
@@ -87,7 +82,7 @@ model Task {
   project           Project?           @relation(fields: [projectId], references: [id], onDelete: SetNull)
   contact           Contact?           @relation(fields: [contactId], references: [id], onDelete: SetNull)
   milestone         ProjectMilestone?  @relation(fields: [milestoneId], references: [id], onDelete: SetNull)
-  events            CalendarEvent[]    // Events related to this task
+  files             TaskFile[]
 
   @@index([assigneeId], map: "tasks_assigneeId_fkey")
   @@index([createdById], map: "tasks_createdById_fkey")
@@ -95,6 +90,22 @@ model Task {
   @@index([contactId])
   @@index([milestoneId])
   @@map("tasks")
+}
+
+model TaskFile {
+  id          String   @id @default(cuid())
+  taskId      String
+  documentId  String
+  uploadedBy  String
+  createdAt   DateTime @default(now())
+  task        Task     @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  document    Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  uploader    User     @relation(fields: [uploadedBy], references: [id])
+
+  @@index([taskId])
+  @@index([documentId])
+  @@index([uploadedBy])
+  @@map("task_files")
 }
 
 model TaskSubmission {
@@ -254,68 +265,6 @@ model TaskFeedback {
   @@map("task_feedback")
 }
 
-model Invoice {
-  id             String           @id @default(cuid())
-  invoiceNumber  String           @unique
-  issueDate      DateTime
-  dueDate        DateTime
-  clientName     String
-  clientAddress  String?          @db.Text
-  clientEmail    String?
-  clientPhone    String?
-  notes          String?          @db.Text
-  subtotal       Decimal          @db.Decimal(15, 2)
-  taxAmount      Decimal          @default(0.00) @db.Decimal(15, 2)
-  discountAmount Decimal          @default(0.00) @db.Decimal(15, 2)
-  grandTotal     Decimal          @db.Decimal(15, 2)
-  paidAmount     Decimal          @default(0.00) @db.Decimal(15, 2)
-  status         InvoiceStatus    @default(UNPAID)
-  createdById    String
-  updatedById    String?
-  createdAt      DateTime         @default(now())
-  updatedAt      DateTime         @updatedAt
-  history        InvoiceHistory[]
-  items          InvoiceItem[]
-  createdBy      User             @relation("InvoiceCreator", fields: [createdById], references: [id])
-  updatedBy      User?            @relation("InvoiceUpdater", fields: [updatedById], references: [id])
-
-  @@index([invoiceNumber], map: "invoice_number_idx")
-  @@index([status], map: "invoice_status_idx")
-  @@index([dueDate], map: "invoice_dueDate_idx")
-  @@index([createdById], map: "invoice_createdById_idx")
-  @@index([updatedById], map: "invoices_updatedById_fkey")
-  @@map("invoices")
-}
-
-model InvoiceItem {
-  id          String   @id @default(cuid())
-  invoiceId   String
-  description String
-  quantity    Decimal  @db.Decimal(10, 2)
-  unitPrice   Decimal  @db.Decimal(15, 2)
-  total       Decimal  @db.Decimal(15, 2)
-  createdAt   DateTime @default(now())
-  invoice     Invoice  @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
-
-  @@index([invoiceId])
-  @@map("invoice_items")
-}
-
-model InvoiceHistory {
-  id          String         @id @default(cuid())
-  invoiceId   String
-  oldStatus   InvoiceStatus?
-  newStatus   InvoiceStatus
-  changedById String
-  notes       String?        @db.Text
-  changedAt   DateTime       @default(now())
-  changedBy   User           @relation(fields: [changedById], references: [id])
-  invoice     Invoice        @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
-
-  @@index([invoiceId])
-  @@index([changedById])
-  @@map("invoice_history")
-}
 
 model Conversation {
   id              String                    @id @default(cuid())
@@ -461,6 +410,7 @@ model Document {
   currentVer   DocumentVersion?      @relation("CurrentVersion", fields: [currentVerId], references: [id])
   folder       Folder?               @relation(fields: [folderId], references: [id])
   owner        User                  @relation(fields: [ownerId], references: [id])
+  taskFiles    TaskFile[]
 
   @@index([folderId])
   @@index([ownerId])
@@ -521,6 +471,28 @@ model DocumentDownloadLog {
   @@map("document_download_logs")
 }
 
+model LoginThrottle {
+  id           String   @id @default(cuid())
+  email        String?
+  ip           String?
+  failedCount  Int      @default(0)
+  lockedUntil  DateTime?
+  lastAttempt  DateTime @default(now())
+
+  @@index([email])
+  @@index([ip])
+  @@map("login_throttle")
+}
+
+model RateLimit {
+  id               String   @id @default(cuid())
+  key              String   @unique
+  count            Int      @default(0)
+  windowExpiresAt  DateTime
+
+  @@map("rate_limit")
+}
+
 enum Role {
   ADMIN
   EMPLOYEE
@@ -564,7 +536,7 @@ enum TransactionType {
 }
 
 enum TransactionCategory {
-  SALARY
+  ORDER_PAYMENT
   BONUS
   COMMISSION
   OTHER_INCOME
@@ -626,12 +598,6 @@ enum LeaveStatus {
   REJECTED
 }
 
-enum InvoiceStatus {
-  UNPAID
-  PAID
-  OVERDUE
-  PARTIAL
-}
 
 enum ValidationStatus {
   PENDING
@@ -659,7 +625,6 @@ model Contact {
   activityLogs    ContactActivity[]
   projects        Project[]
   tasks           Task[]            // Tasks related to this contact
-  events          CalendarEvent[]   // Events related to this contact
   createdBy       User              @relation("ContactCreator", fields: [createdById], references: [id])
   updatedBy       User?             @relation("ContactUpdater", fields: [updatedById], references: [id])
 
@@ -729,7 +694,6 @@ model Project {
   members         ProjectMember[]
   milestones      ProjectMilestone[]
   tasks           Task[]            // Tasks related to this project
-  events          CalendarEvent[]   // Events related to this project
 
   @@index([contactId])
   @@index([createdById])
@@ -769,7 +733,6 @@ model ProjectMilestone {
   project     Project         @relation(fields: [projectId], references: [id], onDelete: Cascade)
   createdBy   User            @relation(fields: [createdById], references: [id])
   tasks       Task[]          // Tasks related to this milestone
-  events      CalendarEvent[] // Events related to this milestone
 
   @@index([projectId])
   @@index([createdById])
@@ -794,133 +757,6 @@ model ProjectTemplate {
   @@map("project_templates")
 }
 
-model CalendarEvent {
-  id              String              @id @default(cuid())
-  title           String
-  description     String?             @db.Text
-  startTime       DateTime
-  endTime         DateTime
-  allDay          Boolean             @default(false)
-  location        String?
-  meetingLink     String?
-  category        EventCategory       @default(MEETING)
-  priority        EventPriority       @default(MEDIUM)
-  status          EventStatus         @default(CONFIRMED)
-  visibility      EventVisibility     @default(PRIVATE)
-  recurrenceRule  String?             // RRULE format for recurring events
-  recurrenceEnd   DateTime?
-  parentEventId   String?             // For recurring event instances
-  createdById     String
-  updatedById     String?
-  projectId       String?             // Link to project
-  contactId       String?             // Link to contact/client
-  taskId          String?             // Link to task
-  milestoneId     String?             // Link to project milestone
-  createdAt       DateTime            @default(now())
-  updatedAt       DateTime            @updatedAt
-  attendees       EventAttendee[]
-  reminders       EventReminder[]
-  parentEvent     CalendarEvent?      @relation("EventRecurrence", fields: [parentEventId], references: [id])
-  childEvents     CalendarEvent[]     @relation("EventRecurrence")
-  createdBy       User                @relation("EventCreator", fields: [createdById], references: [id])
-  updatedBy       User?               @relation("EventUpdater", fields: [updatedById], references: [id])
-  project         Project?            @relation(fields: [projectId], references: [id], onDelete: SetNull)
-  contact         Contact?            @relation(fields: [contactId], references: [id], onDelete: SetNull)
-  task            Task?               @relation(fields: [taskId], references: [id], onDelete: SetNull)
-  milestone       ProjectMilestone?   @relation(fields: [milestoneId], references: [id], onDelete: SetNull)
-
-  @@index([createdById])
-  @@index([updatedById])
-  @@index([startTime])
-  @@index([endTime])
-  @@index([category])
-  @@index([projectId])
-  @@index([contactId])
-  @@index([taskId])
-  @@index([milestoneId])
-  @@index([parentEventId])
-  @@map("calendar_events")
-}
-
-model EventAttendee {
-  id              String              @id @default(cuid())
-  eventId         String
-  userId          String?
-  email           String?
-  name            String?
-  status          AttendeeStatus      @default(PENDING)
-  isOrganizer     Boolean             @default(false)
-  createdAt       DateTime            @default(now())
-  updatedAt       DateTime            @updatedAt
-  event           CalendarEvent       @relation(fields: [eventId], references: [id], onDelete: Cascade)
-  user            User?               @relation("EventAttendeeUser", fields: [userId], references: [id])
-
-  @@index([eventId])
-  @@index([userId])
-  @@index([email])
-  @@map("event_attendees")
-}
-
-model EventReminder {
-  id              String              @id @default(cuid())
-  eventId         String
-  reminderTime    DateTime
-  reminderType    ReminderType        @default(NOTIFICATION)
-  message         String?
-  isSent          Boolean             @default(false)
-  sentAt          DateTime?
-  createdAt       DateTime            @default(now())
-  event           CalendarEvent       @relation(fields: [eventId], references: [id], onDelete: Cascade)
-
-  @@index([eventId])
-  @@index([reminderTime])
-  @@index([isSent])
-  @@map("event_reminders")
-}
-
-enum EventCategory {
-  MEETING
-  DEADLINE
-  REMINDER
-  INTERNAL
-  CLIENT
-  PROJECT
-  PERSONAL
-  HOLIDAY
-}
-
-enum EventPriority {
-  LOW
-  MEDIUM
-  HIGH
-  URGENT
-}
-
-enum EventStatus {
-  CONFIRMED
-  TENTATIVE
-  CANCELLED
-}
-
-enum EventVisibility {
-  PUBLIC
-  PRIVATE
-  CONFIDENTIAL
-}
-
-enum AttendeeStatus {
-  PENDING
-  ACCEPTED
-  DECLINED
-  TENTATIVE
-}
-
-enum ReminderType {
-  NOTIFICATION
-  EMAIL
-  SMS
-  WHATSAPP
-}
 
 model Payroll {
   id                String            @id @default(cuid())

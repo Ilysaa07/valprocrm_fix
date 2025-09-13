@@ -31,6 +31,7 @@ import {
 import PayrollModal from '@/components/payroll/PayrollModal'
 import EmployeeBankWarning from '@/components/payroll/EmployeeBankWarning'
 import NoEligibleEmployeesWarning from '@/components/payroll/NoEligibleEmployeesWarning'
+import PayrollPDFGenerator from '@/components/payroll/PayrollPDFGenerator'
 
 interface PayrollComponent {
   id?: string
@@ -41,7 +42,7 @@ interface PayrollComponent {
   description?: string
 }
 
-interface Payroll {
+export interface Payroll {
   id: string
   employeeId: string
   period: string
@@ -524,6 +525,10 @@ export default function AdminPayrollPage() {
                       <Eye className="w-3 h-3" />
                       Lihat
                     </Button>
+                    {/* Download PDF Slip Gaji */}
+                    <div className="hidden sm:block">
+                      <PayrollPDFGenerator payroll={payroll} />
+                    </div>
                     {payroll.status === 'DRAFT' && (
                       <>
                         <Button

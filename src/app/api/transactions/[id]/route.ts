@@ -7,13 +7,13 @@ import { z } from 'zod'
 const updateTransactionSchema = z.object({
   type: z.enum(['INCOME', 'EXPENSE']).optional(),
   category: z.enum([
-    'SALARY', 'BONUS', 'COMMISSION', 'OTHER_INCOME',
+    'ORDER_PAYMENT', 'BONUS', 'COMMISSION', 'OTHER_INCOME',
     'OFFICE_SUPPLIES', 'UTILITIES', 'RENT', 'MARKETING', 
-    'TRAVEL', 'MEALS', 'EQUIPMENT', 'SOFTWARE', 'TRAINING', 'OTHER_EXPENSE'
+    'TRAVEL', 'MEALS', 'EQUIPMENT', 'SOFTWARE', 'TRAINING', 'PAYROLL_EXPENSE', 'OTHER_EXPENSE'
   ]).optional(),
   amount: z.number().positive('Jumlah harus lebih dari 0').optional(),
   description: z.string().min(1, 'Deskripsi harus diisi').optional(),
-  date: z.string().datetime('Format tanggal tidak valid').optional(),
+  date: z.union([z.string().datetime('Format tanggal tidak valid'), z.date()]).optional(),
 })
 
 // GET - Mendapatkan detail transaksi
@@ -100,7 +100,7 @@ export async function PUT(
     if (validatedData.category) updateData.category = validatedData.category
     if (validatedData.amount) updateData.amount = validatedData.amount
     if (validatedData.description) updateData.description = validatedData.description
-    if (validatedData.date) updateData.date = new Date(validatedData.date)
+    if (validatedData.date) updateData.date = new Date(validatedData.date as any)
 
     const transaction = await prisma.transaction.update({
       where: { id },
