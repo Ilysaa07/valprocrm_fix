@@ -30,7 +30,6 @@ export { QuickStats, adminQuickStats, employeeQuickStats, attendanceQuickStats, 
 
 // Additional Dashboard Components
 export { DashboardNotifications, adminNotifications, employeeNotifications } from '../DashboardNotifications'
-export { DashboardCalendar, attendanceCalendarConfig, leaveCalendarConfig, taskCalendarConfig, wfhCalendarConfig, generateSampleEvents } from '../DashboardCalendar'
 export { DashboardSearch, adminSearchConfig, employeeSearchConfig, documentSearchConfig, userSearchConfig } from '../DashboardSearch'
 export { DashboardHelp, adminHelpConfig, employeeHelpConfig, quickHelpConfig, comprehensiveHelpConfig } from '../DashboardHelp'
 
@@ -49,7 +48,6 @@ export type {
   ActivityItem,
   ChartData,
   QuickStatItem,
-  CalendarEvent,
   SearchResult,
   SearchFilter,
   HelpArticle,
