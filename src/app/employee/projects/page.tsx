@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react'
 import { useSession } from 'next-auth/react'
 import { redirect } from 'next/navigation'
-import { useToast } from '@/hooks/useToast'
+import { useToast } from '@/components/providers/ToastProvider'
 import EmployeeLayout from '@/components/layout/EmployeeLayout'
 import { 
   Search, 

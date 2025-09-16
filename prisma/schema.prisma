@@ -44,6 +44,7 @@ model User {
   wfhLogs                  WfhLog[]
   createdContacts          Contact[]                 @relation("ContactCreator")
   updatedContacts          Contact[]                 @relation("ContactUpdater")
+  createdInvoices          Invoice[]                 @relation("InvoiceCreator")
   contactActivities        ContactActivity[]
   createdProjects          Project[]                 @relation("ProjectCreator")
   updatedProjects          Project[]                 @relation("ProjectUpdater")
@@ -553,6 +554,19 @@ enum TransactionCategory {
   OTHER_EXPENSE
 }
 
+enum InvoiceStatus {
+  DRAFT
+  SENT
+  PAID
+  PARTIAL
+  OVERDUE
+}
+
+enum DiscountType {
+  FIXED
+  PERCENTAGE
+}
+
 
 enum ConversationType {
   DIRECT
@@ -701,6 +715,101 @@ model Project {
   @@index([startDate])
   @@index([endDate])
   @@map("projects")
+}
+
+model Company {
+  id                String   @id @default(cuid())
+  name              String   @default("PT. VALPRO INTERTECH")
+  slogan            String   @default("Business Entity Partner")
+  address           String   @default("JL. Raya Gading Tutuka No.1758, Soreang Kab.Bandung Jawa Barat Indonesia")
+  email             String   @default("mail@valprointertech.com")
+  phone             String   @default("081399710085")
+  website           String   @default("valprointertech.com")
+  briAccountNumber  String   @default("2105 0100 0365 563")
+  briAccountName    String   @default("a.n PT Valpro Inter Tech")
+  bcaAccountNumber  String   @default("4373249575")
+  bcaAccountName    String   @default("a.n PT Valpro Inter Tech")
+  logo              String?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  @@map("company")
+}
+
+model Invoice {
+  id                String        @id @default(cuid())
+  invoiceNumber     String        @unique @default("INV-001")
+  invoiceTitle      String        @default("INVOICE")
+  date              DateTime      @default(now())
+  dueDate           DateTime
+  companyName       String        @default("PT. VALPRO INTERTECH")
+  companyAddress    String        @default("JL. Raya Gading Tutuka No.1758, Soreang Kab.Bandung Jawa Barat Indonesia")
+  companyPhone      String        @default("081399710085")
+  companyEmail      String        @default("mail@valprointertech.com")
+  bankName          String?       @default("BCA")
+  accountNumber     String?       @default("")
+  accountHolder     String?       @default("")
+  clientName        String
+  clientAddress     String
+  clientPhone       String
+  clientEmail       String
+  subtotal          Decimal       @db.Decimal(15, 2)
+  discountType      DiscountType  @default(PERCENTAGE)
+  discountValue     Decimal       @default(0.00) @db.Decimal(10, 2)
+  discountAmount    Decimal       @default(0.00) @db.Decimal(15, 2)
+  taxRate           Decimal       @db.Decimal(5, 2) @default(0)
+  taxAmount         Decimal       @db.Decimal(15, 2) @default(0)
+  shippingAmount    Decimal       @default(0.00) @db.Decimal(15, 2)
+  total             Decimal       @db.Decimal(15, 2)
+  amountPaid        Decimal       @default(0.00) @db.Decimal(15, 2)
+  balanceDue        Decimal       @default(0.00) @db.Decimal(15, 2)
+  notes             String?       @db.Text
+  status            InvoiceStatus @default(DRAFT)
+  createdById       String
+  createdAt         DateTime      @default(now())
+  updatedAt         DateTime      @updatedAt
+  
+  createdBy         User          @relation("InvoiceCreator", fields: [createdById], references: [id])
+  items             InvoiceItem[]
+  
+  @@index([createdById])
+  @@index([status])
+  @@index([date])
+  @@index([dueDate])
+  @@map("invoices")
+}
+
+model InvoiceItem {
+  id          String   @id @default(cuid())
+  invoiceId   String
+  description String
+  quantity    Int
+  unitPrice   Decimal  @db.Decimal(15, 2)
+  total       Decimal  @db.Decimal(15, 2)
+  createdAt   DateTime @default(now())
+  
+  invoice     Invoice  @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  subItems    InvoiceSubItem[]
+  
+  @@index([invoiceId])
+  @@map("invoice_items")
+}
+
+model InvoiceSubItem {
+  id           String   @id @default(cuid())
+  invoiceItemId String
+  name         String
+  description  String?
+  quantity     Int      @default(1)
+  unitPrice    Decimal  @db.Decimal(15, 2)
+  total        Decimal  @db.Decimal(15, 2)
+  orderIndex   Int      @default(0)
+  createdAt    DateTime @default(now())
+
+  item         InvoiceItem @relation(fields: [invoiceItemId], references: [id], onDelete: Cascade)
+
+  @@index([invoiceItemId])
+  @@map("invoice_subitems")
 }
 
 model ProjectMember {

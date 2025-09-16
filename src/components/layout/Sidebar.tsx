@@ -27,7 +27,8 @@ import {
   BarChart3,
   DollarSign,
   Clock,
-  MapPin
+  MapPin,
+  Receipt
 } from 'lucide-react'
 
 interface NavItem {
@@ -73,7 +74,6 @@ export default function Sidebar({
   isOpen: _isOpen = false,
   onClose
 }: SidebarProps) {
-  const pathname = usePathname()
   const { theme, toggle: toggleTheme } = useTheme()
   const [mounted, setMounted] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
@@ -83,6 +83,7 @@ export default function Sidebar({
     'Komunikasi': true,
     'Sistem': true,
     'Kerja': true,
+    'Keuangan': true,
     'Profil': true
   })
   
@@ -103,6 +104,7 @@ export default function Sidebar({
     setMounted(true)
   }, [])
 
+  const pathname = usePathname()
   const isActive = (href: string) => pathname === href
 
   // Define navigation sections based on role
@@ -126,6 +128,7 @@ export default function Sidebar({
       title: 'Keuangan',
       items: [
         { name: 'Keuangan', href: '/admin/finance', icon: DollarSign, description: 'Manajemen keuangan', isNew: false },
+        { name: 'Invoice', href: '/admin/invoices', icon: Receipt, description: 'Manajemen invoice', isNew: true },
         { name: 'Slip Gaji', href: '/admin/payroll', icon: FileText, description: 'Manajemen slip gaji', isNew: true }
       ]
     },
@@ -177,6 +180,7 @@ export default function Sidebar({
     {
       title: 'Keuangan',
       items: [
+        { name: 'Invoice', href: '/employee/invoices', icon: Receipt, description: 'Invoice saya', isNew: true },
         { name: 'Slip Gaji', href: '/employee/payroll', icon: FileText, description: 'Slip gaji saya', isNew: true }
       ]
     },
@@ -437,9 +441,9 @@ export default function Sidebar({
           
           <button
             onClick={() => signOut({ 
-              callbackUrl: process.env.NEXT_PUBLIC_APP_URL 
-                ? `${process.env.NEXT_PUBLIC_APP_URL}/auth/login` 
-                : '/auth/login' 
+              callbackUrl: typeof window !== 'undefined' 
+                ? `${window.location.origin}/auth/login`
+                : 'https://crm.valprointertech.com/auth/login'
             })}
             className="flex items-center space-x-2 px-3 py-2 rounded-lg hover:bg-error/10 text-error border border-error/30 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-error/40"
           >

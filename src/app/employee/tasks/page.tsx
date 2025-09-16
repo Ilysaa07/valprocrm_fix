@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { showSuccess, showError, showConfirm } from '@/lib/swal';
 import { useSession } from 'next-auth/react'
 import { redirect } from 'next/navigation'
 import EmployeeLayout from '@/components/layout/EmployeeLayout'
@@ -163,7 +164,7 @@ export default function EmployeeTasksPage() {
       fetchTasks()
     } catch (e) {
       console.error(e)
-      alert(`Gagal submit: ${e instanceof Error ? e.message : 'Unknown error'}`)
+      await showError("Error!", `Gagal submit: ${e instanceof Error ? e.message : 'Unknown error'}`)
     } finally {
       setSubmitting(false)
     }

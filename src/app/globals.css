@@ -2,6 +2,71 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Invoice Print Styles */
+@import '../styles/invoice-print.css';
+
+/* SweetAlert2 Animations */
+@keyframes fade-in {
+  from {
+    opacity: 0;
+    transform: scale(0.8);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes fade-out {
+  from {
+    opacity: 1;
+    transform: scale(1);
+  }
+  to {
+    opacity: 0;
+    transform: scale(0.8);
+  }
+}
+
+.animate-fade-in {
+  animation: fade-in 0.3s ease-out;
+}
+
+.animate-fade-out {
+  animation: fade-out 0.2s ease-in;
+}
+
+/* Toast Animations */
+@keyframes slide-in-from-right {
+  from {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+@keyframes slide-out-to-right {
+  from {
+    transform: translateX(0);
+    opacity: 1;
+  }
+  to {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+}
+
+.animate-in {
+  animation: slide-in-from-right 0.3s ease-out;
+}
+
+.animate-out {
+  animation: slide-out-to-right 0.3s ease-in;
+}
+
 /* Import design tokens */
 @import '../styles/design-tokens.css';
 

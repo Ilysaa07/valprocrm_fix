@@ -1,61 +1,48 @@
-'use client'
+import React from 'react'
+import { cn } from '@/lib/utils'
 
-import { ReactNode, ButtonHTMLAttributes } from 'react'
-
-interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
-  children: ReactNode
-  variant?: 'primary' | 'secondary' | 'danger' | 'success' | 'outline' | 'ghost'
-  size?: 'sm' | 'md' | 'lg'
-  loading?: boolean
-  icon?: ReactNode
+interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
+  variant?: 'default' | 'destructive' | 'outline' | 'secondary' | 'ghost' | 'link'
+  size?: 'default' | 'sm' | 'lg' | 'icon'
+  className?: string
 }
 
 export function Button({ 
-  children, 
-  variant = 'primary',
-  size = 'md',
-  loading = false,
-  icon,
-  className = '',
-  disabled,
-  ...props
+  className, 
+  variant = 'default', 
+  size = 'default', 
+  ...props 
 }: ButtonProps) {
-  const baseClasses = 'inline-flex items-center justify-center font-medium rounded-lg transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2'
+  const baseClasses = 'inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:pointer-events-none disabled:opacity-50'
   
-  const variantClasses = {
-    primary: 'bg-accent text-text-inverse hover:bg-accent-hover focus:ring-accent shadow-soft hover:shadow-medium',
-    secondary: 'bg-surface text-text-primary hover:bg-card-hover focus:ring-border border border-border',
-    danger: 'bg-error text-text-inverse hover:bg-error-dark focus:ring-error shadow-soft hover:shadow-medium',
-    success: 'bg-success text-text-inverse hover:bg-success-dark focus:ring-success shadow-soft hover:shadow-medium',
-    outline: 'border border-border bg-surface text-text-primary hover:bg-card-hover focus:ring-accent',
-    ghost: 'bg-transparent text-text-primary hover:bg-card-hover focus:ring-border'
+  const variants = {
+    default: 'bg-blue-600 text-white hover:bg-blue-700',
+    destructive: 'bg-red-600 text-white hover:bg-red-700',
+    outline: 'border border-gray-300 bg-white hover:bg-gray-50',
+    secondary: 'bg-gray-100 text-gray-900 hover:bg-gray-200',
+    ghost: 'hover:bg-gray-100',
+    link: 'text-blue-600 underline-offset-4 hover:underline'
   }
   
-  const sizeClasses = {
-    sm: 'px-3 py-1.5 text-sm',
-    md: 'px-4 py-2 text-sm',
-    lg: 'px-6 py-3 text-base'
+  const sizes = {
+    default: 'h-10 px-4 py-2',
+    sm: 'h-9 rounded-md px-3',
+    lg: 'h-11 rounded-md px-8',
+    icon: 'h-10 w-10'
   }
-
-  const isDisabled = disabled || loading
-
+  
   return (
     <button
-      className={`${baseClasses} ${variantClasses[variant]} ${sizeClasses[size]} ${isDisabled ? 'opacity-50 cursor-not-allowed' : 'hover:scale-105 active:scale-95'} ${className || ''}`}
-      disabled={isDisabled}
-      {...props}
-    >
-      {loading && (
-        <svg className="animate-spin -ml-1 mr-2 h-4 w-4" fill="none" viewBox="0 0 24 24">
-          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-        </svg>
+      className={cn(
+        baseClasses,
+        variants[variant],
+        sizes[size],
+        className
       )}
-      {icon && !loading && <span className="mr-2">{icon}</span>}
-      {children}
-    </button>
+      {...props}
+    />
   )
 }
 
+// Default export for backward compatibility
 export default Button
-

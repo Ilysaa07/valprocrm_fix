@@ -1,6 +1,7 @@
 "use client"
 
 import { useEffect, useState } from 'react'
+import { showSuccess, showError, showConfirm } from '@/lib/swal';
 import AdminLayout from '@/components/layout/AdminLayout'
 
 interface LeaveRequest {
@@ -45,7 +46,7 @@ export default function AdminLeaveRequestsPage() {
     })
     const json = await res.json()
     if (!res.ok) {
-      alert(json.error || 'Gagal memperbarui status')
+      await showError("Error!", json.error || 'Gagal memperbarui status')
     } else {
       fetchData()
     }

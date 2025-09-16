@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import { showSuccess, showError, showConfirm } from '@/lib/swal';
 import { useSession } from 'next-auth/react'
 import { redirect } from 'next/navigation'
 import AdminLayout from '@/components/layout/AdminLayout'
@@ -108,7 +109,8 @@ export default function AdminTasksPage() {
   }
 
   const handleDeleteTask = async (taskId: string) => {
-    if (!confirm('Hapus tugas ini?')) return
+    const result = await showConfirm("Konfirmasi", 'Hapus tugas ini?', "Ya", "Batal");
+    if (!result.isConfirmed) return
     await fetch(`/api/tasks/${taskId}`, { method: 'DELETE' })
     fetchTasks()
   }

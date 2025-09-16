@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useRef } from 'react';
+import { showSuccess, showError, showConfirm } from '@/lib/swal';
 import { useSession } from 'next-auth/react';
 import { io, Socket } from 'socket.io-client';
 import ConversationList from './ConversationList';
@@ -270,7 +271,7 @@ export default function ChatLayout() {
       setMessages((prev: ChatMessage[]) => prev.filter((m) => m.id !== tempId));
       
       // Show error to user
-      alert('Gagal mengirim pesan. Silakan coba lagi.');
+      await showError("Error!", 'Gagal mengirim pesan. Silakan coba lagi.');
     }
   };
 

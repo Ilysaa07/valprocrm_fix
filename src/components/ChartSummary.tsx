@@ -1,5 +1,6 @@
 'use client'
 
+import React from 'react'
 import { Card, CardBody } from '@/components/ui/Card'
 import { TrendingUp, TrendingDown, Minus, BarChart3, PieChart, Activity } from 'lucide-react'
 
@@ -197,7 +198,7 @@ export function ChartSummary({
           <div className="flex items-center space-x-2">
             {getChartIcon() && (
               <div className="p-2 bg-surface rounded-lg">
-                {getChartIcon() && <getChartIcon() className="h-4 w-4 text-gray-600 dark:text-gray-400" />}
+                {getChartIcon() && React.createElement(getChartIcon(), { className: "h-4 w-4 text-gray-600 dark:text-gray-400" })}
               </div>
             )}
             

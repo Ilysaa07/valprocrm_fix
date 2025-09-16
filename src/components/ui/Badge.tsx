@@ -1,50 +1,28 @@
-'use client'
-
-import { ReactNode } from 'react'
+import React from 'react'
+import { cn } from '@/lib/utils'
 
 interface BadgeProps {
-  children: ReactNode
-  variant?: 'default' | 'success' | 'warning' | 'danger' | 'info' | 'secondary' | 'outline' | 'destructive'
-  size?: 'sm' | 'md' | 'lg'
+  children: React.ReactNode
   className?: string
+  variant?: 'default' | 'secondary' | 'destructive' | 'outline'
 }
 
-export default function Badge({ 
-  children, 
-  variant = 'default',
-  size = 'md',
-  className = ''
-}: BadgeProps) {
-  const baseClasses = 'inline-flex items-center font-medium rounded-full'
+export function Badge({ children, className, variant = 'default' }: BadgeProps) {
+  const baseClasses = 'inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium'
   
-  const variantStyles = {
-    default: 'bg-surface text-text-primary',
-    success: 'bg-success/20 text-success-dark',
-    warning: 'bg-warning/20 text-warning-dark',
-    danger: 'bg-error/20 text-error-dark',
-    info: 'bg-accent/20 text-accent-dark',
-    secondary: 'bg-surface text-text-secondary',
-    outline: 'bg-card text-text-primary border border-border',
-    destructive: 'bg-error/20 text-error-dark'
+  const variantClasses = {
+    default: 'bg-blue-100 text-blue-800',
+    secondary: 'bg-gray-100 text-gray-800',
+    destructive: 'bg-red-100 text-red-800',
+    outline: 'border border-gray-200 text-gray-800'
   }
   
-  const sizeClasses = {
-    sm: 'px-2 py-0.5 text-xs',
-    md: 'px-2.5 py-1 text-sm',
-    lg: 'px-3 py-1.5 text-base'
-  }
-
   return (
-    <span
-      className={`
-        ${baseClasses}
-        ${variantStyles[variant]}
-        ${sizeClasses[size]}
-        ${className || ''}
-      `}
-    >
+    <span className={cn(baseClasses, variantClasses[variant], className)}>
       {children}
     </span>
   )
 }
 
+// Default export for backward compatibility
+export default Badge

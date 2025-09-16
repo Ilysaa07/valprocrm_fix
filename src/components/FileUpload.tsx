@@ -2,6 +2,7 @@
 
 import { useState, useRef } from 'react'
 import { Upload, File, X, CheckCircle } from 'lucide-react'
+import { showError } from '@/lib/swal'
 
 interface FileUploadProps {
   onFileUpload: (fileData: {
@@ -46,7 +47,7 @@ export default function FileUpload({
 
     // Validate file size
     if (file.size > maxSize * 1024 * 1024) {
-      alert(`Ukuran file terlalu besar. Maksimal ${maxSize}MB.`)
+      await showError('File Terlalu Besar!', `Ukuran file terlalu besar. Maksimal ${maxSize}MB.`)
       return
     }
 
@@ -61,7 +62,7 @@ export default function FileUpload({
     ]
 
     if (!allowedTypes.includes(file.type)) {
-      alert('Tipe file tidak didukung. Hanya PDF, DOC, DOCX, JPG, JPEG, dan PNG yang diperbolehkan.')
+      await showError('Tipe File Tidak Didukung!', 'Tipe file tidak didukung. Hanya PDF, DOC, DOCX, JPG, JPEG, dan PNG yang diperbolehkan.')
       return
     }
 
@@ -81,11 +82,11 @@ export default function FileUpload({
       if (response.ok) {
         onFileUpload(data.file)
       } else {
-        alert(data.error || 'Gagal mengupload file')
+        await showError('Upload Gagal!', data.error || 'Gagal mengupload file')
       }
     } catch (error) {
       console.error('Upload error:', error)
-      alert('Terjadi kesalahan saat mengupload file')
+      await showError('Error!', 'Terjadi kesalahan saat mengupload file')
     } finally {
       setUploading(false)
     }

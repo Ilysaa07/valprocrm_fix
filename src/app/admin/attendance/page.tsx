@@ -1,6 +1,7 @@
 "use client"
 
 import { useEffect, useState } from 'react'
+import { showSuccess, showError, showConfirm } from '@/lib/swal';
 import dynamic from 'next/dynamic'
 import AdminLayout from '@/components/layout/AdminLayout'
 
@@ -217,10 +218,10 @@ export default function AdminAttendancePage() {
       const json = await res.json()
       if (!res.ok) throw new Error(json.error || 'Gagal menyimpan lokasi')
       await load()
-      alert('Lokasi disimpan')
+      await showError("Error!", 'Lokasi disimpan')
     } catch (e) {
       const msg = e instanceof Error ? e.message : 'Gagal menyimpan lokasi'
-      alert(msg)
+      await showError("Error!", msg)
     }
   }
 
@@ -234,14 +235,14 @@ export default function AdminAttendancePage() {
       
       if (res.ok) {
         await load() // Reload data
-        alert(`${type === 'leave' ? 'Permohonan izin' : 'Log WFH'} berhasil ${action === 'approve' ? 'disetujui' : 'ditolak'}`)
+        await showError("Error!", `${type === 'leave' ? 'Permohonan izin' : 'Log WFH'} berhasil ${action === 'approve' ? 'disetujui' : 'ditolak'}`)
       } else {
         const json = await res.json()
         throw new Error(json.error || 'Gagal memproses permintaan')
       }
     } catch (e) {
       const msg = e instanceof Error ? e.message : 'Gagal memproses permintaan'
-      alert(msg)
+      await showError("Error!", msg)
     }
   }
 

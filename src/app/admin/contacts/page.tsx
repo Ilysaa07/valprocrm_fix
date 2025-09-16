@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import { showSuccess, showError, showConfirm } from '@/lib/swal';
 import { useSession } from 'next-auth/react'
 import { redirect } from 'next/navigation'
 import AdminLayout from '@/components/layout/AdminLayout'
@@ -142,7 +143,8 @@ export default function AdminContactsPage() {
   }
 
   const handleDelete = async (id: string) => {
-    if (!confirm('Yakin ingin menghapus kontak ini?')) return
+    const result = await showConfirm("Konfirmasi", 'Yakin ingin menghapus kontak ini?', "Ya", "Batal");
+    if (!result.isConfirmed) return
 
     try {
       const res = await fetch(`/api/contacts/${id}`, { method: 'DELETE' })

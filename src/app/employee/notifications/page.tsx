@@ -1,6 +1,7 @@
 "use client"
 
 import React, { useState, useEffect } from 'react'
+import { showSuccess, showError, showConfirm } from '@/lib/swal';
 import { 
   Bell, 
   CheckCircle, 
@@ -84,7 +85,7 @@ export default function EmployeeNotificationsPage() {
   // Request notification permissions
   const requestNotificationPermission = async () => {
     if (!('Notification' in window)) {
-      alert('Browser ini tidak mendukung notifikasi desktop')
+      await showError("Error!", 'Browser ini tidak mendukung notifikasi desktop')
       return
     }
     

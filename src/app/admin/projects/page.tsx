@@ -1,9 +1,10 @@
 'use client'
 
 import React, { useState, useEffect } from 'react'
+import { showSuccess, showError, showConfirm } from '@/lib/swal';
 import { useSession } from 'next-auth/react'
 import { redirect } from 'next/navigation'
-import { useToast } from '@/hooks/useToast'
+import { useToast } from '@/components/providers/ToastProvider'
 import AdminLayout from '@/components/layout/AdminLayout'
 import { 
   Plus, 
@@ -158,7 +159,8 @@ export default function AdminProjectsPage() {
   }
 
   const handleDeleteProject = async (projectId: string) => {
-    if (!confirm('Apakah Anda yakin ingin menghapus proyek ini?')) return
+    const result = await showConfirm("Konfirmasi", 'Apakah Anda yakin ingin menghapus proyek ini?', "Ya", "Batal");
+    if (!result.isConfirmed) return
 
     try {
       const res = await fetch(`/api/projects/${projectId}`, {

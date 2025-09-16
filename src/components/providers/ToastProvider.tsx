@@ -1,7 +1,7 @@
 'use client'
 
 import React, { createContext, useCallback, useContext, useState, useRef, useEffect, ReactNode } from 'react'
-import Toast from '../ui/Toast'
+import NotificationToast from '../ui/NotificationToast'
 
 type ToastType = 'success' | 'error' | 'warning' | 'info' | 'analytics' | 'realtime'
 
@@ -116,11 +116,12 @@ export function ToastProvider({ children }: { children: ReactNode }) {
       {/* Toast container - top right */}
       <div className="fixed top-4 right-4 z-[9999] flex flex-col items-end space-y-2">
         {toasts.map((toast) => (
-          <Toast
+          <NotificationToast
             key={toast.id}
-            title={toast.title}
+            title={toast.title || 'Notifikasi'}
             message={toast.message}
-            type={toast.type}
+            type={toast.type || 'info'}
+            duration={toast.duration}
           />
         ))}
       </div>

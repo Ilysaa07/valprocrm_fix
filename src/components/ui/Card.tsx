@@ -1,68 +1,89 @@
-"use client"
-
 import React from 'react'
+import { cn } from '@/lib/utils'
 
-interface CardProps {
-  children: React.ReactNode
+interface CardProps extends React.HTMLAttributes<HTMLDivElement> {
   className?: string
 }
 
-export function Card({ children, className = '' }: CardProps) {
+interface CardHeaderProps extends React.HTMLAttributes<HTMLDivElement> {
+  className?: string
+}
+
+interface CardTitleProps extends React.HTMLAttributes<HTMLHeadingElement> {
+  className?: string
+}
+
+interface CardDescriptionProps extends React.HTMLAttributes<HTMLParagraphElement> {
+  className?: string
+}
+
+interface CardContentProps extends React.HTMLAttributes<HTMLDivElement> {
+  className?: string
+}
+
+interface CardFooterProps extends React.HTMLAttributes<HTMLDivElement> {
+  className?: string
+}
+
+interface CardBodyProps extends React.HTMLAttributes<HTMLDivElement> {
+  className?: string
+}
+
+export function Card({ className, ...props }: CardProps) {
   return (
-    <div className={`rounded-xl border border-border bg-card shadow-medium ${className}`}>
-      {children}
-    </div>
+    <div
+      className={cn(
+        'rounded-lg border border-gray-200 bg-white shadow-sm',
+        className
+      )}
+      {...props}
+    />
   )
 }
 
-export function CardHeader({ children, className = '' }: { children: React.ReactNode; className?: string }) {
-  return <div className={`p-6 pb-0 ${className}`}>{children}</div>
-}
-
-export function CardContent({ children, className = '' }: { children: React.ReactNode; className?: string }) {
-  return <div className={`p-6 ${className}`}>{children}</div>
-}
-
-export function CardTitle({ children, className = '' }: { children: React.ReactNode; className?: string }) {
-  return <h3 className={`text-lg font-semibold text-text-primary ${className}`}>{children}</h3>
-}
-
-export function CardBody({ children, className = '' }: { children: React.ReactNode; className?: string }) {
-  return <div className={`p-5 ${className}`}>{children}</div>
-}
-
-export function StatCard({
-  title,
-  value,
-  Icon,
-  accent = 'primary',
-}: {
-  title: string
-  value: React.ReactNode
-  Icon: React.ComponentType<{ className?: string }>
-  accent?: 'primary' | 'success' | 'warning' | 'danger'
-}) {
-  const accentMap: Record<string, { icon: string; text: string }> = {
-    primary: { icon: 'bg-accent', text: 'text-accent' },
-    success: { icon: 'bg-success', text: 'text-success-dark' },
-    warning: { icon: 'bg-warning', text: 'text-warning-dark' },
-    danger: { icon: 'bg-error', text: 'text-error-dark' },
-  }
-  const a = accentMap[accent]
+export function CardHeader({ className, ...props }: CardHeaderProps) {
   return (
-    <Card>
-      <CardBody>
-        <div className="flex items-center">
-          <div className={`w-10 h-10 rounded-lg ${a.icon} text-text-inverse flex items-center justify-center mr-4`}>
-            <Icon className="w-5 h-5" />
-          </div>
-          <div>
-            <p className="text-sm font-medium text-text-secondary">{title}</p>
-            <p className={`text-2xl font-bold ${a.text}`}>{value}</p>
-          </div>
-        </div>
-      </CardBody>
-    </Card>
+    <div
+      className={cn('flex flex-col space-y-1.5 p-6', className)}
+      {...props}
+    />
   )
 }
 
+export function CardTitle({ className, ...props }: CardTitleProps) {
+  return (
+    <h3
+      className={cn(
+        'text-2xl font-semibold leading-none tracking-tight',
+        className
+      )}
+      {...props}
+    />
+  )
+}
+
+export function CardDescription({ className, ...props }: CardDescriptionProps) {
+  return (
+    <p
+      className={cn('text-sm text-gray-600', className)}
+      {...props}
+    />
+  )
+}
+
+export function CardContent({ className, ...props }: CardContentProps) {
+  return <div className={cn('p-6 pt-0', className)} {...props} />
+}
+
+export function CardFooter({ className, ...props }: CardFooterProps) {
+  return (
+    <div
+      className={cn('flex items-center p-6 pt-0', className)}
+      {...props}
+    />
+  )
+}
+
+export function CardBody({ className, ...props }: CardBodyProps) {
+  return <div className={cn('p-6', className)} {...props} />
+}

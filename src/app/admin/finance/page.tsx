@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import { useSession } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
 import AdminLayout from '@/components/layout/AdminLayout'
+import { showSuccess, showError, showConfirm } from '@/lib/swal'
 import { 
   Plus, 
   Filter, 
@@ -158,16 +159,23 @@ export default function AdminFinancePage() {
         fetchTransactions()
       } else {
         const data = await response.json()
-        alert(data.error || 'Gagal membuat transaksi')
+        await showError('Gagal!', data.error || 'Gagal membuat transaksi')
       }
     } catch (error) {
       console.error('Error creating transaction:', error)
-      alert('Terjadi kesalahan saat membuat transaksi')
+      await showError('Error!', 'Terjadi kesalahan saat membuat transaksi')
     }
   }
 
   const handleDeleteTransaction = async (id: string) => {
-    if (!confirm('Apakah Anda yakin ingin menghapus transaksi ini?')) {
+    const result = await showConfirm(
+      'Konfirmasi Hapus',
+      'Apakah Anda yakin ingin menghapus transaksi ini?',
+      'Ya, Hapus',
+      'Batal'
+    );
+
+    if (!result.isConfirmed) {
       return
     }
 
@@ -180,11 +188,11 @@ export default function AdminFinancePage() {
         fetchTransactions()
       } else {
         const data = await response.json()
-        alert(data.error || 'Gagal menghapus transaksi')
+        await showError('Gagal!', data.error || 'Gagal menghapus transaksi')
       }
     } catch (error) {
       console.error('Error deleting transaction:', error)
-      alert('Terjadi kesalahan saat menghapus transaksi')
+      await showError('Error!', 'Terjadi kesalahan saat menghapus transaksi')
     }
   }
 
@@ -211,11 +219,11 @@ export default function AdminFinancePage() {
         fetchTransactions()
       } else {
         const data = await response.json()
-        alert(data.error || 'Gagal mengupdate transaksi')
+        await showError('Gagal!', data.error || 'Gagal mengupdate transaksi')
       }
     } catch (error) {
       console.error('Error updating transaction:', error)
-      alert('Terjadi kesalahan saat mengupdate transaksi')
+      await showError('Error!', 'Terjadi kesalahan saat mengupdate transaksi')
     }
   }
 

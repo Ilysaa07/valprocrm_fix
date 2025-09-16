@@ -1,0 +1,5 @@
+-- AlterTable
+ALTER TABLE `invoices` ADD COLUMN `accountHolder` VARCHAR(191) NULL DEFAULT '',
+    ADD COLUMN `accountNumber` VARCHAR(191) NULL DEFAULT '',
+    ADD COLUMN `bankName` VARCHAR(191) NULL DEFAULT 'BCA',
+    ADD COLUMN `invoiceTitle` VARCHAR(191) NOT NULL DEFAULT 'INVOICE';

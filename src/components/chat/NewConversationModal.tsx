@@ -5,9 +5,9 @@ import { useSession } from 'next-auth/react';
 import { X, Search, Users, User, Check, MessageCircle } from 'lucide-react';
 import { Modal } from '@/components/ui/Modal';
 import { Button } from '@/components/ui/Button';
-import { Input } from '@/components/ui/input';
+import { Input } from '@/components/ui/Input';
 // Using simple avatar logic (img or initial) inline to avoid broken Avatar component
-import Badge from '@/components/ui/Badge';
+import { Badge } from '@/components/ui/Badge';
 
 interface User {
   id: string;

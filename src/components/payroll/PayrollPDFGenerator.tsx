@@ -45,7 +45,7 @@ export default function PayrollPDFGenerator({ payroll }: PayrollPDFGeneratorProp
     try {
       const logoImg = new Image()
       logoImg.crossOrigin = 'anonymous'
-      logoImg.src = '/logo_invoice.png'
+      logoImg.src = '/logo.png'
       
       await new Promise((resolve, reject) => {
         logoImg.onload = () => {

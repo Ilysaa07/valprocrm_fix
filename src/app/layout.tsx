@@ -17,7 +17,10 @@ export const metadata: Metadata = {
   title: 'Internal System Web - Valpro Intertech',
   description: 'Comprehensive CRM system for employee management, task tracking, and business analytics',
   icons: {
-    icon: '/logometa.png',
+    icon: [
+      { url: '/logometa.png', sizes: '32x32', type: 'image/png' },
+      { url: '/logometa.png', sizes: '16x16', type: 'image/png' }
+    ],
     shortcut: '/logometa.png',
     apple: '/logometa.png',
   },
@@ -39,9 +42,11 @@ export default function RootLayout({
   return (
     <html lang="id">
       <head>
-        <link rel="icon" href="/logometa.png" />
-        <link rel="shortcut icon" href="/logometa.png" />
+        <link rel="icon" href="/logometa.png" type="image/png" />
+        <link rel="shortcut icon" href="/logometa.png" type="image/png" />
         <link rel="apple-touch-icon" href="/logometa.png" />
+        <link rel="icon" type="image/png" sizes="32x32" href="/logometa.png" />
+        <link rel="icon" type="image/png" sizes="16x16" href="/logometa.png" />
       </head>
       <body className={inter.className}>
         <Providers>

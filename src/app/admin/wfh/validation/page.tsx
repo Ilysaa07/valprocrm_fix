@@ -1,6 +1,7 @@
 "use client"
 
 import { useEffect, useState } from 'react'
+import { showSuccess, showError, showConfirm } from '@/lib/swal';
 import dynamic from 'next/dynamic'
 import AdminLayout from '@/components/layout/AdminLayout'
 import { Button } from '@/components/ui/Button'
@@ -53,7 +54,8 @@ export default function AdminWfhValidationPage() {
   async function validateLog(id: string, status: 'APPROVED' | 'REJECTED') {
     try {
       const confirmMsg = status === 'APPROVED' ? 'Setujui log WFH ini?' : 'Tolak log WFH ini?'
-      if (!window.confirm(confirmMsg)) return
+      const result = await showConfirm("Konfirmasi", confirmMsg, "Ya", "Batal");
+    if (!result.isConfirmed) return
 
       setProcessingId(id)
       const adminNotes = status === 'REJECTED' ? (notes[id]?.trim() || undefined) : (notes[id]?.trim() || undefined)

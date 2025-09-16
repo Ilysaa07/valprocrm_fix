@@ -9,9 +9,7 @@ const LOCK_MINUTES = 15
 
 export const authOptions: NextAuthOptions = {
   // Ensure proper URL configuration for production
-  ...(process.env.NEXTAUTH_URL && { 
-    url: process.env.NEXTAUTH_URL 
-  }),
+  url: process.env.NEXTAUTH_URL || 'https://crm.valprointertech.com',
   providers: [
     CredentialsProvider({
       name: 'credentials',
@@ -157,7 +155,7 @@ export const authOptions: NextAuthOptions = {
   },
   pages: {
     signIn: '/auth/login',
-    signOut: '/auth/login',
+    signOut: 'https://crm.valprointertech.com/auth/login',
     error: '/auth/error',
   },
   secret: process.env.NEXTAUTH_SECRET || 'fallback-secret-key',

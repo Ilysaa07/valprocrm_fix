@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useRef, useEffect } from 'react';
+import { showSuccess, showError, showConfirm } from '@/lib/swal';
 import { useSession } from 'next-auth/react';
 import { Socket } from 'socket.io-client';
 import { Send, Paperclip } from 'lucide-react';
@@ -133,7 +134,7 @@ export default function MessageArea({
     return `${names[0]}, ${names[1]} and ${names.length - 2} others are typing...`;
   };
 
-  const handleSendMessage = () => {
+  const handleSendMessage = async () => {
     if (!message.trim()) return;
 
     try {
@@ -150,7 +151,7 @@ export default function MessageArea({
       }
     } catch {
       // Show error to user
-      alert('Gagal mengirim pesan. Silakan coba lagi.');
+      await showError("Error!", 'Gagal mengirim pesan. Silakan coba lagi.');
     }
   };
 
@@ -175,13 +176,13 @@ export default function MessageArea({
 
 
 
-  const sendMessage = () => {
+  const sendMessage = async () => {
     if (!message.trim()) return;
 
     try {
-      handleSendMessage();
+      await handleSendMessage();
     } catch {
-      alert('Terjadi kesalahan. Silakan coba lagi.');
+      await showError("Error!", 'Terjadi kesalahan. Silakan coba lagi.');
     }
   };
 

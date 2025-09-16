@@ -3,6 +3,7 @@
 import { useEffect, useState, Suspense, useCallback } from 'react'
 import { useSearchParams } from 'next/navigation'
 import AdminLayout from '@/components/layout/AdminLayout'
+import { showSuccess, showError, showConfirm } from '@/lib/swal'
 import { 
   Check, 
   X, 
@@ -126,12 +127,12 @@ function UsersPageInner() {
         // Refresh users list
         fetchUsers()
         setSelectedUser(null)
-        alert(data.message)
+        await showSuccess('Berhasil!', data.message)
       } else {
-        alert(data.error)
+        await showError('Gagal!', data.error)
       }
     } catch {
-      alert('Terjadi kesalahan jaringan')
+      await showError('Error!', 'Terjadi kesalahan jaringan')
     }
   }
 
@@ -182,12 +183,12 @@ function UsersPageInner() {
       if (response.ok) {
         fetchUsers()
         handleCloseEditModal()
-        alert(data.message)
+        await showError("Error!", data.message)
       } else {
-        alert(data.error || 'Gagal mengupdate data karyawan')
+        await showError("Error!", data.error || 'Gagal mengupdate data karyawan')
       }
     } catch {
-      alert('Terjadi kesalahan jaringan')
+      await showError("Error!", 'Terjadi kesalahan jaringan')
     } finally {
       setIsSubmitting(false)
     }
@@ -236,18 +237,18 @@ function UsersPageInner() {
     
     // Validasi password
     if (addUserData.password !== addUserData.confirmPassword) {
-      alert('Password dan konfirmasi password tidak sama')
+      await showError('Validasi Gagal!', 'Password dan konfirmasi password tidak sama')
       return
     }
 
     if (addUserData.password.length < 6) {
-      alert('Password minimal 6 karakter')
+      await showError('Validasi Gagal!', 'Password minimal 6 karakter')
       return
     }
 
     // Validasi nama lengkap
     if (addUserData.fullName.length < 2) {
-      alert('Nama lengkap minimal 2 karakter')
+      await showError('Validasi Gagal!', 'Nama lengkap minimal 2 karakter')
       return
     }
 
@@ -255,43 +256,43 @@ function UsersPageInner() {
     // Validasi format email
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
     if (!emailRegex.test(addUserData.email)) {
-      alert('Format email tidak valid')
+      await showError("Error!", 'Format email tidak valid')
       return
     }
 
     // Validasi alamat
     if (addUserData.address.length < 5) {
-      alert('Alamat minimal 5 karakter')
+      await showError("Error!", 'Alamat minimal 5 karakter')
       return
     }
 
     // Validasi NIK KTP
     if (addUserData.nikKtp.length !== 16) {
-      alert('NIK KTP harus 16 digit')
+      await showError("Error!", 'NIK KTP harus 16 digit')
       return
     }
 
     // Validasi NIK KTP hanya berisi angka
     if (!/^\d+$/.test(addUserData.nikKtp)) {
-      alert('NIK KTP hanya boleh berisi angka')
+      await showError("Error!", 'NIK KTP hanya boleh berisi angka')
       return
     }
 
     // Validasi nomor telepon
     if (addUserData.phoneNumber.length < 10) {
-      alert('Nomor HP minimal 10 digit')
+      await showError("Error!", 'Nomor HP minimal 10 digit')
       return
     }
 
     // Validasi nomor telepon hanya berisi angka
     if (!/^\d+$/.test(addUserData.phoneNumber)) {
-      alert('Nomor HP hanya boleh berisi angka')
+      await showError("Error!", 'Nomor HP hanya boleh berisi angka')
       return
     }
 
     // Validasi informasi pembayaran
     if (!addUserData.bankAccountNumber && !addUserData.ewalletNumber) {
-      alert('Harus mengisi nomor rekening bank atau e-wallet')
+      await showError("Error!", 'Harus mengisi nomor rekening bank atau e-wallet')
       return
     }
 
@@ -310,18 +311,18 @@ function UsersPageInner() {
       if (response.ok) {
         fetchUsers()
         handleCloseAddModal()
-        alert(data.message || 'Karyawan berhasil ditambahkan')
+        await showError("Error!", data.message || 'Karyawan berhasil ditambahkan')
       } else {
         if (data.details && Array.isArray(data.details)) {
           // Menampilkan detail error validasi dari Zod
           const errorMessages = data.details.map((err: { path: string[]; message: string }) => `${err.path.join('.')}: ${err.message}`).join('\n')
-          alert(`Validasi gagal:\n${errorMessages}`)
+          await showError("Error!", `Validasi gagal:\n${errorMessages}`)
         } else {
-          alert(data.error || 'Gagal menambahkan karyawan')
+          await showError("Error!", data.error || 'Gagal menambahkan karyawan')
         }
       }
     } catch {
-      alert('Terjadi kesalahan jaringan')
+      await showError("Error!", 'Terjadi kesalahan jaringan')
     } finally {
       setIsSubmitting(false)
     }
@@ -341,12 +342,12 @@ function UsersPageInner() {
       if (response.ok) {
         fetchUsers()
         handleCloseDeleteModal()
-        alert(data.message)
+        await showError("Error!", data.message)
       } else {
-        alert(data.error || 'Gagal menghapus karyawan')
+        await showError("Error!", data.error || 'Gagal menghapus karyawan')
       }
     } catch {
-      alert('Terjadi kesalahan jaringan')
+      await showError("Error!", 'Terjadi kesalahan jaringan')
     } finally {
       setIsSubmitting(false)
     }

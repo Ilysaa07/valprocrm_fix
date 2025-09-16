@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react'
 import { useSession } from 'next-auth/react'
-import { useToast } from '@/hooks/useToast'
+import { useToast } from '@/components/providers/ToastProvider'
 import { 
   X, 
   Plus, 

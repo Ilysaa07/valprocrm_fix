@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { showSuccess, showError, showConfirm } from '@/lib/swal';
 import { useSession } from 'next-auth/react'
 import { redirect } from 'next/navigation'
 import AdminLayout from '@/components/layout/AdminLayout'
@@ -8,6 +9,7 @@ import {
   Settings, 
   Shield, 
   HelpCircle, 
+  Mail,
   User, 
   Bell, 
   Key, 
@@ -523,8 +525,13 @@ export default function AdminSettingsPage() {
                           onChange={async (e) => {
                             const file = e.target.files?.[0]
                             if (!file) return
-                            const confirmRestore = window.confirm('Semua data lama akan terganti. Lanjutkan restore?')
-                            if (!confirmRestore) return
+                            const result = await showConfirm(
+                              'Konfirmasi Restore',
+                              'Semua data lama akan terganti. Lanjutkan restore?',
+                              'Ya, Restore',
+                              'Batal'
+                            );
+                            if (!result.isConfirmed) return
                             try {
                               const form = new FormData()
                               form.append('file', file)

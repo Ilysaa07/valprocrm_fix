@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
+import { showSuccess, showError, showConfirm } from '@/lib/swal';
 import { useSession } from 'next-auth/react'
 import { redirect } from 'next/navigation'
 import AdminLayout from '@/components/layout/AdminLayout'
@@ -240,7 +241,8 @@ export default function AdminBackupPage() {
   }
 
   const deleteSchedule = async (id: string) => {
-    if (!window.confirm('Apakah Anda yakin ingin menghapus jadwal ini?')) return
+    const result = await showConfirm("Konfirmasi", 'Apakah Anda yakin ingin menghapus jadwal ini?', "Ya", "Batal");
+    if (!result.isConfirmed) return
     
     try {
       const res = await fetch('/api/admin/backup/schedule', {
