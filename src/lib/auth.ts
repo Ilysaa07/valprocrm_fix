@@ -8,8 +8,6 @@ const MAX_ATTEMPTS = 5
 const LOCK_MINUTES = 15
 
 export const authOptions: NextAuthOptions = {
-  // Ensure proper URL configuration for production
-  url: process.env.NEXTAUTH_URL || 'https://crm.valprointertech.com',
   providers: [
     CredentialsProvider({
       name: 'credentials',
@@ -133,7 +131,7 @@ export const authOptions: NextAuthOptions = {
     maxAge: 30 * 24 * 60 * 60, // 30 days
   },
   callbacks: {
-    async jwt({ token, user }) {
+    async jwt({ token, user, trigger, session }) {
       if (user) {
         token.id = user.id
         token.email = user.email
@@ -141,6 +139,17 @@ export const authOptions: NextAuthOptions = {
         token.fullName = (user as { fullName?: string }).fullName as string
         token.picture = user.image
       }
+      
+      // Handle session updates (like profile picture changes)
+      if (trigger === 'update' && session) {
+        if (session.user?.image) {
+          token.picture = session.user.image
+        }
+        if (session.user?.name) {
+          token.fullName = session.user.name
+        }
+      }
+      
       return token
     },
     async session({ session, token }) {

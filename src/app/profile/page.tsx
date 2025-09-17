@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import { useSession } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
+import { useUpdateSession } from '@/hooks/useUpdateSession'
 import EmployeeLayout from '@/components/layout/EmployeeLayout'
 
 interface User {
@@ -25,6 +26,7 @@ interface User {
 export default function ProfilePage() {
   const { data: session, status } = useSession()
   const router = useRouter()
+  const { updateSession } = useUpdateSession()
   const [user, setUser] = useState<User | null>(null)
   const [loading, setLoading] = useState(true)
   const [updating, setUpdating] = useState(false)
@@ -177,7 +179,14 @@ export default function ProfilePage() {
         setUser(data.user)
         setMessage('Foto profil berhasil diupload')
         
-        // Refresh session untuk memperbarui foto profil di sidebar
+        // Update session untuk memperbarui foto profil di sidebar
+        await updateSession({
+          user: {
+            image: data.profilePicture
+          }
+        })
+        
+        // Refresh halaman untuk memperbarui tampilan
         router.refresh()
       } else {
         setError(data.error || 'Gagal mengupload foto profil')

@@ -140,8 +140,8 @@ export default function NewConversationModal({
   if (!isOpen) return null;
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose} title="New Conversation">
-      <div className="space-y-6">
+    <Modal isOpen={isOpen} onClose={onClose} title="New Conversation" className="bg-white dark:bg-gray-800">
+      <div className="space-y-6 bg-white dark:bg-gray-800">
         {error && (
           <div className="p-4 rounded-xl bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-300 text-sm border border-red-200 dark:border-red-800 shadow-sm">
             <div className="flex items-center space-x-2">
@@ -153,7 +153,7 @@ export default function NewConversationModal({
           </div>
         )}
         {/* Conversation Type Selection */}
-        <div className="space-y-4">
+        <div className="space-y-4 bg-white dark:bg-gray-800 p-4 rounded-lg">
           <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Conversation Type</h3>
           <div className="grid grid-cols-2 gap-4">
             <button
@@ -232,7 +232,7 @@ export default function NewConversationModal({
         )}
 
         {/* User Search */}
-        <div className="space-y-4">
+        <div className="space-y-4 bg-white dark:bg-gray-800 p-4 rounded-lg">
           <label className="text-lg font-semibold text-gray-900 dark:text-white">
             {conversationType === 'DIRECT' ? 'Select User' : 'Select Users'}
           </label>
@@ -277,7 +277,7 @@ export default function NewConversationModal({
         )}
 
         {/* User List */}
-        <div className="space-y-2 max-h-60 overflow-y-auto">
+        <div className="space-y-2 max-h-60 overflow-y-auto bg-white dark:bg-gray-800 p-4 rounded-lg">
           {filteredUsers.length === 0 ? (
             <div className="text-center py-8">
               <div className="w-12 h-12 mx-auto mb-3 bg-gradient-to-r from-gray-100 to-gray-200 dark:from-slate-700 dark:to-slate-600 rounded-full flex items-center justify-center">
@@ -349,15 +349,15 @@ export default function NewConversationModal({
             className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white px-6 py-2 rounded-xl shadow-lg hover:shadow-xl transition-all duration-200 transform hover:scale-105 disabled:transform-none disabled:opacity-50"
           >
             {isLoading ? (
-              <>
+              <div className="flex items-center">
                 <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2" />
                 Creating...
-              </>
+              </div>
             ) : (
-              <>
+              <div className="flex items-center">
                 <MessageCircle className="w-4 h-4 mr-2" />
                 Create Conversation
-              </>
+              </div>
             )}
           </Button>
         </div>

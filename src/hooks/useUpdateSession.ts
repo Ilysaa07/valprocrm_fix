@@ -5,7 +5,11 @@ export const useUpdateSession = () => {
 
   const updateSession = async (updates: any) => {
     try {
-      await update(updates)
+      // Use the 'update' trigger to properly update the JWT token
+      await update({
+        ...updates,
+        trigger: 'update'
+      })
     } catch (error) {
       console.error('Error updating session:', error)
     }

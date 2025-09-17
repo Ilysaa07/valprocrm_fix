@@ -1,6 +1,7 @@
 'use client';
 
 import React from 'react';
+import Image from 'next/image';
 import { Phone, Mail, Globe } from 'lucide-react';
 
 export interface InvoiceItem {
@@ -136,14 +137,14 @@ export default function InvoicePreview({
             zIndex: 0,
           }}
         >
-          <img src="/logo_invoice.png" alt="Watermark" crossOrigin="anonymous" style={{ maxWidth: '60%', height: 'auto' }} />
+          <Image src="/logo_invoice.png" alt="Watermark" width={200} height={100} style={{ maxWidth: '60%', height: 'auto' }} />
         </div>
         {/* Header */}
         <div className="relative p-6 print:p-4 border-b border-gray-200 invoice-header section-wide" style={{ zIndex: 1 }}>
           <div className="grid grid-cols-1 md:grid-cols-[1fr_260px] gap-4 items-start">
             {/* Branding */}
             <div className="flex items-start gap-3">
-              <img src="/logo_invoice.png" alt="Logo Perusahaan" crossOrigin="anonymous" className="h-10 w-auto print:h-8 block self-center" />
+              <Image src="/logo_invoice.png" alt="Logo Perusahaan" width={120} height={40} className="h-10 w-auto print:h-8 block self-center" />
               <div>
                 <h1 className="text-2xl font-bold mb-1 print:text-xl tracking-wide" style={{ color: '#042d63' }}>{data.companyName}</h1>
                 <div className="text-xs text-gray-600 space-y-0.5 print:text-xs">
@@ -230,15 +231,17 @@ export default function InvoicePreview({
                       )}
                     </td>
                     <td className="py-2 px-1 text-xs text-gray-900 text-center tabular-nums print:text-xs">{item.quantity}</td>
-                    <td className="py-2 px-1 text-xs text-gray-900 text-center tabular-nums print:text-xs">
-                      <span className="inline-block text-center">
-                        {new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(item.unitPrice)}
-                      </span>
+                    <td className="py-2 px-1 text-xs text-gray-900 tabular-nums print:text-xs">
+                      <div className="grid grid-cols-[auto_1fr] gap-0.5 items-center">
+                        <span className="text-left">Rp</span>
+                        <span className="text-right">{new Intl.NumberFormat('id-ID', { minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(item.unitPrice)}</span>
+                      </div>
                     </td>
-                    <td className="py-2 px-1 text-xs text-gray-900 text-center font-medium tabular-nums print:text-xs">
-                      <span className="inline-block text-center">
-                        {new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(item.total)}
-                      </span>
+                    <td className="py-2 px-1 text-xs text-gray-900 font-medium tabular-nums print:text-xs">
+                      <div className="grid grid-cols-[auto_1fr] gap-0.5 items-center">
+                        <span className="text-left">Rp</span>
+                        <span className="text-right">{new Intl.NumberFormat('id-ID', { minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(item.total)}</span>
+                      </div>
                     </td>
                   </tr>
                 ))}
@@ -341,14 +344,14 @@ export default function InvoicePreview({
               </div>
               <div className="text-xs text-gray-800 space-y-2 print:text-xs">
                 <div className="grid grid-cols-[28px_1fr] items-center gap-2">
-                  <img src="/BRI.png" alt="BRI" crossOrigin="anonymous" className="w-7 h-auto print:w-6 object-contain block" />
+                  <Image src="/BRI.png" alt="BRI" width={28} height={28} className="w-7 h-auto print:w-6 object-contain block" />
                   <div className="flex items-baseline gap-2">
                     <span className="font-medium">BRI</span>
                     <span className="font-medium tabular-nums">2105 0100 0365 563</span>
                   </div>
                 </div>
                 <div className="grid grid-cols-[28px_1fr] items-center gap-2">
-                  <img src="/BCA.png" alt="BCA" crossOrigin="anonymous" className="w-7 h-auto print:w-6 object-contain block" />
+                  <Image src="/BCA.png" alt="BCA" width={28} height={28} className="w-7 h-auto print:w-6 object-contain block" />
                   <div className="flex items-baseline gap-2">
                     <span className="font-medium">BCA</span>
                     <span className="font-medium tabular-nums">4373249575</span>

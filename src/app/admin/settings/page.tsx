@@ -1,9 +1,11 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { showSuccess, showError, showConfirm } from '@/lib/swal';
+import { showConfirm } from '@/lib/swal';
 import { useSession } from 'next-auth/react'
-import { redirect } from 'next/navigation'
+import { redirect, useRouter } from 'next/navigation'
+import Image from 'next/image'
+import { useUpdateSession } from '@/hooks/useUpdateSession'
 import AdminLayout from '@/components/layout/AdminLayout'
 import { 
   Settings, 
@@ -96,8 +98,13 @@ interface SecuritySettings {
 export default function AdminSettingsPage() {
   const { data: session, status } = useSession()
   const { showToast } = useToast()
+  const router = useRouter()
+  const { updateSession } = useUpdateSession()
   const [activeTab, setActiveTab] = useState<'general' | 'security' | 'help' | 'profile'>('general')
   const [loading, setLoading] = useState(false)
+  const [uploadingPhoto, setUploadingPhoto] = useState(false)
+  const [profileMessage, setProfileMessage] = useState('')
+  const [profileError, setProfileError] = useState('')
   const [securityLogs, setSecurityLogs] = useState<SecurityLog[]>([])
   const [systemStatus, setSystemStatus] = useState<SystemStatus>({
     cpu: 0,
@@ -242,6 +249,49 @@ export default function AdminSettingsPage() {
   }
 
   // Backup API integrations removed
+
+  const handlePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+
+    setUploadingPhoto(true)
+    setProfileMessage('')
+    setProfileError('')
+
+    try {
+      const formData = new FormData()
+      formData.append('file', file)
+
+      const response = await fetch('/api/profile/upload-photo', {
+        method: 'POST',
+        body: formData,
+      })
+
+      const data = await response.json()
+
+      if (response.ok) {
+        setProfileMessage('Foto profil berhasil diupload')
+        
+        // Update session untuk memperbarui foto profil di sidebar
+        await updateSession({
+          user: {
+            image: data.profilePicture
+          }
+        })
+        
+        // Refresh halaman untuk memperbarui tampilan
+        router.refresh()
+      } else {
+        setProfileError(data.error || 'Gagal mengupload foto profil')
+      }
+    } catch (error) {
+      setProfileError('Terjadi kesalahan saat mengupload foto profil')
+    } finally {
+      setUploadingPhoto(false)
+      // Reset file input
+      e.target.value = ''
+    }
+  }
 
   const updateSecuritySettings = async (newSettings: Partial<SecuritySettings>) => {
     try {
@@ -560,6 +610,74 @@ export default function AdminSettingsPage() {
 
         {activeTab === 'profile' && (
           <div className="space-y-6">
+            {/* Profile Photo */}
+            <Card className="p-6 bg-white dark:bg-gray-800">
+              <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
+                <User className="w-5 h-5 text-blue-600" />
+                Foto Profil
+              </h3>
+              <div className="flex items-center space-x-6">
+                <div className="flex-shrink-0">
+                  <div className="w-20 h-20 rounded-full overflow-hidden bg-gray-200 dark:bg-gray-700">
+                    {session?.user?.image ? (
+                      <Image
+                        src={session.user.image}
+                        alt="Profile"
+                        width={80}
+                        height={80}
+                        className="w-full h-full object-cover"
+                      />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center text-gray-500 dark:text-gray-400">
+                        <User className="w-8 h-8" />
+                      </div>
+                    )}
+                  </div>
+                </div>
+                <div className="flex-1">
+                  <div className="space-y-2">
+                    <input
+                      type="file"
+                      accept="image/*"
+                      onChange={handlePhotoUpload}
+                      disabled={uploadingPhoto}
+                      className="hidden"
+                      id="profile-photo-upload"
+                    />
+                    <label
+                      htmlFor="profile-photo-upload"
+                      className="inline-flex items-center px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      {uploadingPhoto ? (
+                        <>
+                          <div className="w-4 h-4 border-2 border-gray-300 border-t-blue-600 rounded-full animate-spin mr-2" />
+                          Mengupload...
+                        </>
+                      ) : (
+                        <>
+                          <Edit className="w-4 h-4 mr-2" />
+                          {session?.user?.image ? 'Ubah Foto' : 'Upload Foto'}
+                        </>
+                      )}
+                    </label>
+                    <p className="text-xs text-gray-500 dark:text-gray-400">
+                      Format: JPG, PNG, WEBP. Maksimal 5MB.
+                    </p>
+                    {profileMessage && (
+                      <p className="text-sm text-green-600 dark:text-green-400">
+                        {profileMessage}
+                      </p>
+                    )}
+                    {profileError && (
+                      <p className="text-sm text-red-600 dark:text-red-400">
+                        {profileError}
+                      </p>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </Card>
+
             {/* Profile Information */}
             <Card className="p-6 bg-white dark:bg-gray-800">
               <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
@@ -574,7 +692,7 @@ export default function AdminSettingsPage() {
                     </label>
                     <input
                       type="text"
-                      defaultValue={session?.user?.fullName || ''}
+                      defaultValue={session?.user?.name || ''}
                       className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
                       placeholder="Masukkan nama lengkap"
                     />

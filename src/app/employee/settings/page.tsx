@@ -116,9 +116,7 @@ export default function EmployeeSettings() {
       
       // Update session to reflect new profile picture
       await updateSession({
-        ...session,
         user: {
-          ...session?.user,
           image: j.profilePicture
         }
       })
