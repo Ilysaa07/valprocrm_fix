@@ -17,3 +17,6 @@ export function Input({ className, type, ...props }: InputProps) {
     />
   )
 }
+
+// Default export untuk kompatibilitas
+export default Input
