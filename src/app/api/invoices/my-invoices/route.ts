@@ -3,7 +3,7 @@ import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 
-// GET /api/invoices/my-invoices - Get invoices for current user
+// GET /api/invoices/my-invoices - Get all invoices (same as admin)
 export async function GET(request: NextRequest) {
   try {
     const session = await getServerSession(authOptions);
@@ -12,16 +12,14 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
+    // Allow both ADMIN and EMPLOYEE to see all invoices
     const invoices = await prisma.invoice.findMany({
-      where: {
-        createdById: session.user.id
-      },
       include: {
         items: true,
         createdBy: {
           select: {
             id: true,
-            name: true,
+            fullName: true,
             email: true,
           }
         }
@@ -33,7 +31,7 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json(invoices);
   } catch (error) {
-    console.error('Error fetching user invoices:', error);
+    console.error('Error fetching invoices:', error);
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }

@@ -17,7 +17,7 @@ export async function GET(request: NextRequest) {
     if (!company) {
       company = await prisma.company.create({
         data: {
-          name: "PT. VALPRO INTERTECH",
+          name: "PT. VALPRO INTER TECH",
           slogan: "Business Entity Partner",
           address: "JL. Raya Gading Tutuka No.1758, Soreang Kab.Bandung Jawa Barat Indonesia",
           email: "mail@valprointertech.com",
@@ -87,7 +87,7 @@ export async function PUT(request: NextRequest) {
     } else {
       company = await prisma.company.create({
         data: {
-          name: name || "PT. VALPRO INTERTECH",
+          name: name || "PT. VALPRO INTER TECH",
           slogan: slogan || "Business Entity Partner",
           address: address || "JL. Raya Gading Tutuka No.1758, Soreang Kab.Bandung Jawa Barat Indonesia",
           email: email || "mail@valprointertech.com",

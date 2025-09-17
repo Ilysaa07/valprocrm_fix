@@ -58,6 +58,12 @@ export default function InvoicePreview({
   onDownload, 
   onPrint 
 }: InvoicePreviewProps) {
+  const [currentTime, setCurrentTime] = React.useState<Date>(new Date());
+
+  React.useEffect(() => {
+    const intervalId = setInterval(() => setCurrentTime(new Date()), 1000);
+    return () => clearInterval(intervalId);
+  }, []);
   const discountLabel = data.discountType
     ? (data.discountType === 'FIXED' ? ' (Rp)' : ` (${data.discountValue}%)`)
     : '';
@@ -137,7 +143,13 @@ export default function InvoicePreview({
             zIndex: 0,
           }}
         >
-          <Image src="/logo_invoice.png" alt="Watermark" width={200} height={100} style={{ maxWidth: '60%', height: 'auto' }} />
+          <Image
+            src="/logo_invoice.png"
+            alt="Watermark"
+            width={200}
+            height={100}
+            style={{ width: '70%', maxWidth: '70%', height: 'auto' }}
+          />
         </div>
         {/* Header */}
         <div className="relative p-6 print:p-4 border-b border-gray-200 invoice-header section-wide" style={{ zIndex: 1 }}>
@@ -146,7 +158,7 @@ export default function InvoicePreview({
             <div className="flex items-start gap-3">
               <Image src="/logo_invoice.png" alt="Logo Perusahaan" width={120} height={40} className="h-10 w-auto print:h-8 block self-center" />
               <div>
-                <h1 className="text-2xl font-bold mb-1 print:text-xl tracking-wide" style={{ color: '#042d63' }}>{data.companyName}</h1>
+                <h1 className="text-2xl font-bold mb-1 print:text-xl tracking-wide" style={{ color: '#042d63' }}>{(data.companyName || '').replace('INTERTECH', 'INTER TECH')}</h1>
                 <div className="text-xs text-gray-600 space-y-0.5 print:text-xs">
                   <p className="font-medium" style={{ color: '#042d63' }}>Business Entity Partner</p>
                   <p>{data.companyAddress}</p>
@@ -384,6 +396,19 @@ export default function InvoicePreview({
                 </div>
               </div>
             </div>
+          </div>
+        </div>
+
+        {/* Realtime timestamp footer */}
+        <div className="px-6 pb-6 pt-2 print:px-4 print:pt-2 print:pb-4 section-wide">
+          <div className="text-[10px] text-gray-500 text-center border-t border-gray-200 pt-2">
+            <span>
+              Waktu cetak: {currentTime.toLocaleString('id-ID', { dateStyle: 'full', timeStyle: 'medium' })}
+            </span>
+            <span className="mx-2">•</span>
+            <span>
+              Invoice ini dibuat secara otomatis oleh website ValproCRM.
+            </span>
           </div>
         </div>
       </div>

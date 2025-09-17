@@ -1,6 +1,6 @@
 // Company data configuration
 export const COMPANY_DATA = {
-  name: 'PT. VALPRO INTERTECH',
+  name: 'PT. VALPRO INTER TECH',
   description: 'Business Entity Partner',
   address: 'JL. Raya Gading Tutuka No.1758, Soreang Kab.Bandung Jawa Barat Indonesia',
   phone: '+62 22 1234 5678',

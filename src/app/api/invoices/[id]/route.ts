@@ -34,10 +34,8 @@ export async function GET(
       return NextResponse.json({ error: 'Invoice not found' }, { status: 404 });
     }
 
-    // Check if user has permission to view this invoice
-    if (session.user.role !== 'ADMIN' && invoice.createdById !== session.user.id) {
-      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
-    }
+    // Allow both ADMIN and EMPLOYEE to view all invoices
+    // No additional permission check needed
 
     return NextResponse.json(invoice);
   } catch (error) {
@@ -97,10 +95,8 @@ export async function PUT(
       return NextResponse.json({ error: 'Invoice not found' }, { status: 404 });
     }
 
-    // Allow only admins or the creator to update
-    if (session.user.role !== 'ADMIN' && existingInvoice.createdById !== session.user.id) {
-      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
-    }
+    // Allow both ADMIN and EMPLOYEE to update all invoices
+    // No additional permission check needed
 
     // Check if invoice number already exists (excluding current invoice)
     if (invoiceNumber && invoiceNumber !== existingInvoice.invoiceNumber) {
@@ -273,10 +269,8 @@ export async function DELETE(
       return NextResponse.json({ error: 'Invoice not found' }, { status: 404 });
     }
 
-    // Allow only admins or the creator to delete
-    if (session.user.role !== 'ADMIN' && existingInvoice.createdById !== session.user.id) {
-      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
-    }
+    // Allow both ADMIN and EMPLOYEE to delete all invoices
+    // No additional permission check needed
 
     // Delete invoice (items will be deleted automatically due to cascade)
     await prisma.invoice.delete({
