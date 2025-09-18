@@ -32,12 +32,18 @@ export default function AppLayout({ children, title, description, role }: AppLay
     const handleResize = () => {
       if (window.innerWidth < 1280) {
         setSidebarCollapsed(true)
-        setMobileSidebarOpen(false)
       }
     }
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setMobileSidebarOpen(false)
+    }
     window.addEventListener('resize', handleResize)
+    window.addEventListener('keydown', handleKeyDown)
     handleResize()
-    return () => window.removeEventListener('resize', handleResize)
+    return () => {
+      window.removeEventListener('resize', handleResize)
+      window.removeEventListener('keydown', handleKeyDown)
+    }
   }, [])
 
   useEffect(() => {
@@ -62,7 +68,7 @@ export default function AppLayout({ children, title, description, role }: AppLay
   const userInitial = session.user?.name?.charAt(0) || (role === 'ADMIN' ? 'A' : 'E')
 
   return (
-    <div className="h-screen min-h-screen bg-bg flex">
+    <div className="h-screen min-h-screen bg-bg flex overflow-x-hidden">
       <div className="hidden xl:block">
         <Sidebar
           role={role}
@@ -85,7 +91,7 @@ export default function AppLayout({ children, title, description, role }: AppLay
         />
       )}
 
-      <div className={`fixed left-0 top-0 z-50 xl:hidden w-80 h-screen transition-transform duration-300 ease-in-out ${
+      <div className={`fixed left-0 top-0 z-50 xl:hidden w-80 h-screen transition-transform duration-300 ease-in-out will-change-transform ${
         mobileSidebarOpen ? 'translate-x-0' : '-translate-x-full'
       }`}>
         <Sidebar
@@ -114,7 +120,11 @@ export default function AppLayout({ children, title, description, role }: AppLay
                 aria-label="Open sidebar menu"
                 title="Open sidebar menu"
               >
-                <Menu className="h-5 w-5 text-text-secondary" />
+                {mobileSidebarOpen ? (
+                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="h-5 w-5 text-text-secondary"><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
+                ) : (
+                  <Menu className="h-5 w-5 text-text-secondary" />
+                )}
               </button>
 
               <div className="hidden sm:block">

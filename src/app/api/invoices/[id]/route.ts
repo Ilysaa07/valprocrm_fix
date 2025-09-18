@@ -81,6 +81,7 @@ export async function PUT(
       taxAmount,
       shippingAmount,
       total,
+      amountPaid,
       notes,
       status
     } = body as Record<string, unknown>;
@@ -144,6 +145,15 @@ export async function PUT(
       nextTotal = Math.max(0, sb - da) + Math.max(0, sp) + Math.max(0, ta);
     }
 
+    // Handle amountPaid and balanceDue updates
+    const numericAmountPaid = amountPaid !== undefined ? Math.max(0, Number(amountPaid)) : undefined;
+    let nextBalanceDue: number | undefined = undefined;
+    if (numericAmountPaid !== undefined || nextTotal !== undefined) {
+      const totalBase = nextTotal ?? Number((existingInvoice as unknown as { total?: string | number }).total ?? 0);
+      const paidBase = numericAmountPaid ?? Number((existingInvoice as unknown as { amountPaid?: string | number }).amountPaid ?? 0);
+      nextBalanceDue = Math.max(0, totalBase - paidBase);
+    }
+
     // Update invoice
     const invoice = await prisma.invoice.update({
       where: { id: params.id },
@@ -156,9 +166,9 @@ export async function PUT(
         ...(companyPhone && { companyPhone: String(companyPhone) }),
         ...(companyEmail && { companyEmail: String(companyEmail) }),
         ...(clientName && { clientName: String(clientName) }),
-        ...(clientAddress && { clientAddress: String(clientAddress) }),
-        ...(clientPhone && { clientPhone: String(clientPhone) }),
-        ...(clientEmail && { clientEmail: String(clientEmail) }),
+        ...(clientAddress !== undefined && { clientAddress: String((clientAddress as string) || '') }),
+        ...(clientPhone !== undefined && { clientPhone: String((clientPhone as string) || '') }),
+        ...(clientEmail !== undefined && { clientEmail: String((clientEmail as string) || '') }),
         ...(numericSubtotal !== undefined && { subtotal: numericSubtotal as any }),
         ...(discountType !== undefined && { discountType: String(discountType).toUpperCase() as any }),
         ...(numericDiscountValue !== undefined && { discountValue: numericDiscountValue as any }),
@@ -167,6 +177,8 @@ export async function PUT(
         ...(nextTaxAmount !== undefined && { taxAmount: nextTaxAmount as any }),
         ...(numericShipping !== undefined && { shippingAmount: numericShipping as any }),
         ...(nextTotal !== undefined && { total: nextTotal as any }),
+        ...(numericAmountPaid !== undefined && { amountPaid: numericAmountPaid as any }),
+        ...(nextBalanceDue !== undefined && { balanceDue: nextBalanceDue as any }),
         ...(notes !== undefined && { notes: (notes as string) }),
         ...(status && { status: String(status).toUpperCase() as any }),
         updatedAt: new Date()

@@ -5,6 +5,7 @@ import { useRouter, useParams } from 'next/navigation';
 import { useSession } from 'next-auth/react';
 import { InvoiceData, InvoiceItem } from '@/components/invoices/InvoicePreview';
 import AppLayout from '@/components/layout/AppLayout';
+import InvoiceForm from '@/components/invoices/InvoiceForm';
 import { showSuccess, showError } from '@/lib/swal';
 
 export default function EditInvoicePage() {
@@ -222,7 +223,8 @@ export default function EditInvoicePage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!formData.invoiceNumber || !formData.clientName || !formData.clientEmail) {
+    // clientEmail now optional
+    if (!formData.invoiceNumber || !formData.clientName) {
       setError('Please fill in all required fields');
       return;
     }
@@ -302,6 +304,23 @@ export default function EditInvoicePage() {
       </AppLayout>
     );
   }
+
+  // Unified form: use shared InvoiceForm for edit mode
+  return (
+    <AppLayout title="Ubah Faktur" description="Perbarui data faktur" role="ADMIN">
+      <div className="bg-white dark:bg-black/30 shadow-sm border border-black/10 dark:border-white/10 rounded-lg mb-6">
+        <div className="px-4 sm:px-6 lg:px-8">
+          <div className="flex justify-between items-center py-6">
+            <div>
+              <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100">Ubah Faktur</h1>
+              <p className="text-gray-600 dark:text-gray-300">Perbarui data faktur</p>
+            </div>
+          </div>
+        </div>
+      </div>
+      <InvoiceForm mode="edit" invoiceId={invoiceId} initialData={formData as any} initialItems={items as any} />
+    </AppLayout>
+  );
 
   return (
     <AppLayout title="Edit Faktur" description="Edit faktur" role="ADMIN">
@@ -652,7 +671,7 @@ export default function EditInvoicePage() {
                   Notes
                 </label>
                 <textarea
-                  value={formData.notes}
+                  value={formData.notes ?? ''}
                   onChange={(e) => setFormData(prev => ({ ...prev, notes: e.target.value }))}
                   rows={3}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"

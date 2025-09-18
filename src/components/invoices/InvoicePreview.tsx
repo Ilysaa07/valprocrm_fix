@@ -199,9 +199,9 @@ export default function InvoicePreview({
               <h3 className="text-base font-semibold mb-2 print:text-sm" style={{ color: '#042d63' }}>Ditagihkan Kepada:</h3>
               <div className="text-xs text-gray-600 space-y-0.5 print:text-xs">
                 <p className="font-medium text-gray-900">{data.clientName}</p>
-                <p>{data.clientAddress}</p>
-                <p>Telepon: {data.clientPhone}</p>
-                <p>Email: {data.clientEmail}</p>
+                {data.clientAddress && <p>{data.clientAddress}</p>}
+                {data.clientPhone && <p>Telepon: {data.clientPhone}</p>}
+                {data.clientEmail && <p>Email: {data.clientEmail}</p>}
               </div>
             </div>
           </div>

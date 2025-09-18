@@ -178,6 +178,24 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Resolve creator user to satisfy FK and avoid P2003
+    const creator = await prisma.user.findFirst({
+      where: {
+        OR: [
+          { id: String((session.user as any).id || '') },
+          { email: String((session.user as any).email || '') }
+        ]
+      },
+      select: { id: true }
+    });
+
+    if (!creator) {
+      return NextResponse.json(
+        { error: 'Creator user not found for current session' },
+        { status: 400 }
+      );
+    }
+
     // Create invoice with items (cast data to any until Prisma client is regenerated)
     const invoice = await prisma.invoice.create({
       data: {
@@ -209,7 +227,7 @@ export async function POST(request: NextRequest) {
         balanceDue: Math.max(0, computedTotal - numericAmountPaid) as any,
         notes: (notes as string | undefined) || undefined,
         status: validatedStatus as any,
-        createdById: session.user.id,
+        createdBy: { connect: { id: creator.id } },
         items: {
           create: typedItems.map((item) => ({
             description: item.description,

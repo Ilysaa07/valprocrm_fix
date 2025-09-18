@@ -244,8 +244,10 @@ export default function Sidebar({
     return baseClasses.join(' ')
   }
 
+  const isOpen = _isOpen
+
   return (
-    <div className={`${getSidebarClasses()} layout-sidebar min-h-0`}>
+    <div className={`${getSidebarClasses()} layout-sidebar ${isMobile && isOpen ? 'open' : ''} min-h-0`}>
       {/* Header */}
       <div className="px-4 py-6 border-b border-border bg-gradient-to-r from-bg-secondary to-surface">
         <div className="flex items-center justify-between">
@@ -275,18 +277,29 @@ export default function Sidebar({
               />
             </div>
           )}
-          <button
-            onClick={() => setCollapsed(!collapsed)}
-            className="p-2 rounded-lg hover:bg-card-hover transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-accent/40"
-            title={collapsed ? 'Perluas Sidebar' : 'Ciutkan Sidebar'}
-            aria-label={collapsed ? 'Perluas Sidebar' : 'Ciutkan Sidebar'}
-          >
-            {collapsed ? (
-              <Menu className="h-4 w-4 text-text-secondary" />
-            ) : (
+          {isMobile ? (
+            <button
+              onClick={() => onClose && onClose()}
+              className="p-2 rounded-lg hover:bg-card-hover transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-accent/40"
+              title="Tutup Sidebar"
+              aria-label="Tutup Sidebar"
+            >
               <X className="h-4 w-4 text-text-secondary" />
-            )}
-          </button>
+            </button>
+          ) : (
+            <button
+              onClick={() => setCollapsed(!collapsed)}
+              className="p-2 rounded-lg hover:bg-card-hover transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-accent/40"
+              title={collapsed ? 'Perluas Sidebar' : 'Ciutkan Sidebar'}
+              aria-label={collapsed ? 'Perluas Sidebar' : 'Ciutkan Sidebar'}
+            >
+              {collapsed ? (
+                <Menu className="h-4 w-4 text-text-secondary" />
+              ) : (
+                <X className="h-4 w-4 text-text-secondary" />
+              )}
+            </button>
+          )}
         </div>
       </div>
 

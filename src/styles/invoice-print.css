@@ -40,20 +40,22 @@
   /* Invoice container adjustments for print - exact A4 */
   #invoice-content {
     width: 210mm !important; /* A4 width */
-    min-height: 297mm !important; /* A4 height */
-    max-height: none !important; /* allow growth to avoid clipping */
-    margin: 0 auto !important; /* center if viewer applies margins */
-    padding: 10mm !important; /* inner padding to replace page margin */
+    height: 297mm !important; /* force single page height */
+    margin: 0 auto !important; /* center */
+    padding: 10mm !important; /* inner padding */
     box-shadow: none !important;
     background: white !important;
-    overflow: visible !important; /* avoid content being cut off */
+    overflow: hidden !important; /* prevent spill creating extra page */
     page-break-inside: avoid !important;
-    /* No scaling - keep 100% */
-    transform: none !important;
-    transform-origin: initial !important;
+    transform: scale(1) !important;
+    transform-origin: top left !important;
     -webkit-print-color-adjust: exact !important;
     print-color-adjust: exact !important;
   }
+
+  /* Shrink-to-fit if content would overflow one page */
+  #invoice-content .section-wide { page-break-inside: avoid !important; }
+  #invoice-content * { page-break-inside: avoid !important; }
 
   /* Ensure consistent left/right margins across all sections */
   #invoice-content .section-wide {

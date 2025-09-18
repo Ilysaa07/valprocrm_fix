@@ -67,11 +67,11 @@ export const downloadPDF = async (
     const mergedOptions = { 
       ...defaultPDFOptions, 
       ...options, 
-      pagebreak: { mode: ['avoid-all'] },
+    pagebreak: { mode: ['avoid-all'] },
       html2canvas: {
         ...defaultPDFOptions.html2canvas,
         ...options.html2canvas,
-        scale: 1
+      scale: 1
       },
       jsPDF: { ...(defaultPDFOptions.jsPDF as any), ...(options.jsPDF || {}), format: 'a4' }
     } as PDFOptions;
@@ -80,6 +80,23 @@ export const downloadPDF = async (
     body?.classList.add('pdf-mode');
 
     // Create the PDF
+    // If content taller than A4, temporarily scale down to fit
+    const rect = element.getBoundingClientRect();
+    const targetHeightPx = Math.round((297 / 25.4) * 96); // 297mm @ ~96dpi
+    const targetWidthPx = Math.round((210 / 25.4) * 96);  // 210mm @ ~96dpi
+    let scaleFactor = 1;
+    const heightScale = targetHeightPx / rect.height;
+    const widthScale = targetWidthPx / rect.width;
+    if (rect.height > targetHeightPx || rect.width > targetWidthPx) {
+      scaleFactor = Math.max(0.6, Math.min(heightScale, widthScale));
+      const el = element as HTMLElement;
+      el.style.transformOrigin = 'top left';
+      el.style.transform = `scale(${scaleFactor})`;
+      el.style.height = `${rect.height * scaleFactor}px`;
+      el.style.width = `${rect.width * scaleFactor}px`;
+      el.style.overflow = 'hidden';
+    }
+
     const pdf = await html2pdf()
       .set(mergedOptions)
       .from(element)
@@ -91,7 +108,15 @@ export const downloadPDF = async (
     throw new Error('Failed to generate PDF. Please try again.');
   } finally {
     // Exit PDF rendering mode
-    body?.classList.remove('pdf-mode');
+    if (body) {
+      body.classList.remove('pdf-mode');
+    }
+    const el = typeof document !== 'undefined' ? document.getElementById('invoice-content') as HTMLElement | null : null;
+    if (el) {
+      el.style.transform = '';
+      el.style.height = '';
+      el.style.overflow = '';
+    }
   }
 };
 
@@ -133,6 +158,23 @@ export const printPDF = async (
     body?.classList.add('pdf-mode');
 
     // Generate PDF and open in new window for printing
+    // Scale-to-fit for print as well
+    const rect = element.getBoundingClientRect();
+    const targetHeightPx = Math.round((297 / 25.4) * 96);
+    const targetWidthPx = Math.round((210 / 25.4) * 96);
+    let scaleFactor = 1;
+    const heightScale = targetHeightPx / rect.height;
+    const widthScale = targetWidthPx / rect.width;
+    if (rect.height > targetHeightPx || rect.width > targetWidthPx) {
+      scaleFactor = Math.max(0.6, Math.min(heightScale, widthScale));
+      const el = element as HTMLElement;
+      el.style.transformOrigin = 'top left';
+      el.style.transform = `scale(${scaleFactor})`;
+      el.style.height = `${rect.height * scaleFactor}px`;
+      el.style.width = `${rect.width * scaleFactor}px`;
+      el.style.overflow = 'hidden';
+    }
+
     const pdf = await html2pdf()
       .set(mergedOptions)
       .from(element)
@@ -158,15 +200,35 @@ export const printPDF = async (
     throw new Error('Failed to print PDF. Please try again.');
   } finally {
     // Exit PDF rendering mode
-    body?.classList.remove('pdf-mode');
+    if (body) {
+      body.classList.remove('pdf-mode');
+    }
+    const el = typeof document !== 'undefined' ? document.getElementById('invoice-content') as HTMLElement | null : null;
+    if (el) {
+      el.style.transform = '';
+      el.style.height = '';
+      el.style.overflow = '';
+    }
   }
 };
 
 // Utility function to format filename with timestamp
-export const generateFilename = (prefix: string = 'invoice'): string => {
+const sanitizeFilename = (name: string): string => {
+  return name
+    .replace(/[\\/:*?"<>|]+/g, '-')
+    .replace(/\s+/g, '_')
+    .replace(/_+/g, '_')
+    .replace(/^_+|_+$/g, '')
+    .slice(0, 120);
+};
+
+export const generateFilename = (prefix: string = 'invoice', clientName?: string, invoiceNumber?: string): string => {
   const now = new Date();
   const timestamp = now.toISOString().slice(0, 19).replace(/:/g, '-');
-  return `${prefix}_${timestamp}.pdf`;
+  const clientPart = clientName ? sanitizeFilename(clientName) : undefined;
+  const invPart = invoiceNumber ? sanitizeFilename(invoiceNumber) : undefined;
+  const base = [prefix, clientPart, invPart].filter(Boolean).join('_');
+  return `${base || 'invoice'}_${timestamp}.pdf`;
 };
 
 // Utility function to validate element before PDF generation

@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useSession } from 'next-auth/react';
 import { InvoiceData, InvoiceItem } from '@/components/invoices/InvoicePreview';
 import AppLayout from '@/components/layout/AppLayout';
+import InvoiceForm from '@/components/invoices/InvoiceForm';
 
 export default function CreateInvoicePage() {
   const router = useRouter();
@@ -58,6 +59,13 @@ export default function CreateInvoicePage() {
       total: 0
     }
   ]);
+
+  // Utils: number normalization (strip leading zeros)
+  const normalizeLeadingZeros = (raw: string): string => {
+    if (raw === '') return ''
+    // Preserve sign and decimals; remove redundant leading zeros before first digit
+    return raw.replace(/^(-?)0+(?=\d)/, '$1')
+  }
 
   React.useEffect(() => {
     if (status === 'loading') return;
@@ -184,7 +192,8 @@ export default function CreateInvoicePage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!formData.invoiceNumber || !formData.clientName || !formData.clientEmail) {
+    // clientEmail now optional
+    if (!formData.invoiceNumber || !formData.clientName) {
       setError('Please fill in all required fields');
       return;
     }
@@ -246,6 +255,23 @@ export default function CreateInvoicePage() {
       </div>
     );
   }
+
+  // TEMP: Use shared InvoiceForm for unified UI/logic
+  return (
+    <AppLayout title="Buat Faktur" description="Buat faktur baru untuk klien" role="ADMIN">
+      <div className="bg-white dark:bg-black/30 shadow-sm border border-black/10 dark:border-white/10 rounded-lg mb-6">
+        <div className="px-4 sm:px-6 lg:px-8">
+          <div className="flex justify-between items-center py-6">
+            <div>
+              <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100">Buat Faktur</h1>
+              <p className="text-gray-600 dark:text-gray-300">Buat faktur baru untuk klien</p>
+            </div>
+          </div>
+        </div>
+      </div>
+      <InvoiceForm mode="create" />
+    </AppLayout>
+  );
 
   return (
     <AppLayout title="Buat Faktur" description="Buat faktur baru untuk klien" role="ADMIN">
@@ -377,7 +403,7 @@ export default function CreateInvoicePage() {
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                  Email Klien *
+                  Email Klien (Opsional)
                 </label>
                 <input
                   type="email"
@@ -385,7 +411,6 @@ export default function CreateInvoicePage() {
                   onChange={(e) => setFormData(prev => ({ ...prev, clientEmail: e.target.value }))}
                   className="w-full px-3 py-2 border border-gray-300 dark:border-white/10 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white dark:bg-black/20 text-gray-900 dark:text-gray-200"
                   placeholder="klien@email.com"
-                  required
                 />
               </div>
               <div>
@@ -450,11 +475,11 @@ export default function CreateInvoicePage() {
                     <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                       Jumlah
                     </label>
-                    <input
+                  <input
                       type="number"
                       min="1"
-                      value={item.quantity}
-                      onChange={(e) => updateItem(item.id, 'quantity', parseInt(e.target.value) || 0)}
+                    value={item.quantity === 0 ? '' : item.quantity}
+                    onChange={(e) => updateItem(item.id, 'quantity', parseInt(normalizeLeadingZeros(e.target.value)) || 0)}
                       className="w-full px-3 py-2 border border-gray-300 dark:border-white/10 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white dark:bg-black/20 text-gray-900 dark:text-gray-200"
                     />
                   </div>
@@ -462,12 +487,12 @@ export default function CreateInvoicePage() {
                     <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                       Harga Satuan
                     </label>
-                    <input
+                  <input
                       type="number"
                       min="0"
                       step="0.01"
-                      value={item.unitPrice}
-                      onChange={(e) => updateItem(item.id, 'unitPrice', parseFloat(e.target.value) || 0)}
+                    value={item.unitPrice === 0 ? '' : item.unitPrice}
+                    onChange={(e) => updateItem(item.id, 'unitPrice', parseFloat(normalizeLeadingZeros(e.target.value)) || 0)}
                       className="w-full px-3 py-2 border border-gray-300 dark:border-white/10 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white dark:bg-black/20 text-gray-900 dark:text-gray-200"
                       placeholder="0"
                     />
@@ -542,8 +567,8 @@ export default function CreateInvoicePage() {
                             <input 
                               type="number" 
                               min="1" 
-                              value={si.quantity} 
-                              onChange={(e) => updateSubItem(item.id, siIndex, 'quantity', parseInt(e.target.value) || 0)} 
+                              value={si.quantity === 0 ? '' : si.quantity} 
+                              onChange={(e) => updateSubItem(item.id, siIndex, 'quantity', parseInt(normalizeLeadingZeros(e.target.value)) || 0)} 
                               className="w-full px-3 py-2 border border-gray-300 dark:border-white/10 rounded bg-white dark:bg-black/20 text-gray-900 dark:text-gray-200" 
                             />
                           </div>
@@ -553,8 +578,8 @@ export default function CreateInvoicePage() {
                               type="number" 
                               min="0" 
                               step="0.01" 
-                              value={si.unitPrice} 
-                              onChange={(e) => updateSubItem(item.id, siIndex, 'unitPrice', parseFloat(e.target.value) || 0)} 
+                              value={si.unitPrice === 0 ? '' : si.unitPrice} 
+                              onChange={(e) => updateSubItem(item.id, siIndex, 'unitPrice', parseFloat(normalizeLeadingZeros(e.target.value)) || 0)} 
                               className="w-full px-3 py-2 border border-gray-300 dark:border-white/10 rounded bg-white dark:bg-black/20 text-gray-900 dark:text-gray-200" 
                             />
                           </div>
@@ -602,8 +627,8 @@ export default function CreateInvoicePage() {
                   type="number"
                   min="0"
                   step="0.01"
-                  value={formData.discountValue}
-                  onChange={(e) => setFormData(prev => ({ ...prev, discountValue: parseFloat(e.target.value) || 0 }))}
+                  value={(formData.discountValue || 0) === 0 ? '' : formData.discountValue}
+                  onChange={(e) => setFormData(prev => ({ ...prev, discountValue: parseFloat(normalizeLeadingZeros(e.target.value)) || 0 }))}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                   placeholder="0"
                 />
@@ -614,8 +639,8 @@ export default function CreateInvoicePage() {
                   type="number"
                   min="0"
                   step="0.01"
-                  value={formData.shippingAmount}
-                  onChange={(e) => setFormData(prev => ({ ...prev, shippingAmount: parseFloat(e.target.value) || 0 }))}
+                  value={(formData.shippingAmount || 0) === 0 ? '' : formData.shippingAmount}
+                  onChange={(e) => setFormData(prev => ({ ...prev, shippingAmount: parseFloat(normalizeLeadingZeros(e.target.value)) || 0 }))}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                   placeholder="0"
                 />
@@ -626,8 +651,8 @@ export default function CreateInvoicePage() {
                   type="number"
                   min="0"
                   step="0.01"
-                  value={formData.amountPaid}
-                  onChange={(e) => setFormData(prev => ({ ...prev, amountPaid: parseFloat(e.target.value) || 0 }))}
+                  value={(formData.amountPaid || 0) === 0 ? '' : formData.amountPaid}
+                  onChange={(e) => setFormData(prev => ({ ...prev, amountPaid: parseFloat(normalizeLeadingZeros(e.target.value)) || 0 }))}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                   placeholder="0"
                 />
@@ -644,8 +669,8 @@ export default function CreateInvoicePage() {
                   min="0"
                   max="100"
                   step="0.01"
-                  value={formData.taxRate}
-                  onChange={(e) => setFormData(prev => ({ ...prev, taxRate: parseFloat(e.target.value) || 0 }))}
+                  value={(formData.taxRate || 0) === 0 ? '' : formData.taxRate}
+                  onChange={(e) => setFormData(prev => ({ ...prev, taxRate: parseFloat(normalizeLeadingZeros(e.target.value)) || 0 }))}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                   placeholder="0"
                 />
@@ -808,3 +833,794 @@ export default function CreateInvoicePage() {
     </AppLayout>
   );
 }
+
+
+                  onChange={(e) => setFormData(prev => ({ ...prev, clientAddress: e.target.value }))}
+
+                  rows={3}
+
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-white/10 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white dark:bg-black/20 text-gray-900 dark:text-gray-200"
+
+                  placeholder="Masukkan alamat lengkap klien"
+
+                />
+
+              </div>
+
+            </div>
+
+          </div>
+
+
+
+          {/* Item Barang/Jasa */}
+
+          <div className="bg-white dark:bg-black/30 rounded-lg shadow border border-black/10 dark:border-white/10 p-6">
+
+            <div className="flex justify-between items-center mb-4">
+
+              <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Item Barang/Jasa</h2>
+
+              <button
+
+                type="button"
+
+                onClick={addItem}
+
+                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-2"
+
+              >
+
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+
+                </svg>
+
+                Tambah Item
+
+              </button>
+
+            </div>
+
+            
+
+            <div className="space-y-4">
+
+              {items.map((item) => (
+
+                <div key={item.id} className="grid grid-cols-1 md:grid-cols-6 gap-4 items-end">
+
+                  <div className="md:col-span-2">
+
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+
+                      Deskripsi Barang/Jasa
+
+                    </label>
+
+                    <input
+
+                      type="text"
+
+                      value={item.description}
+
+                      onChange={(e) => updateItem(item.id, 'description', e.target.value)}
+
+                      className="w-full px-3 py-2 border border-gray-300 dark:border-white/10 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white dark:bg-black/20 text-gray-900 dark:text-gray-200"
+
+                      placeholder="Masukkan deskripsi barang/jasa"
+
+                    />
+
+                  </div>
+
+                  <div>
+
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+
+                      Jumlah
+
+                    </label>
+
+                    <input
+
+                      type="number"
+
+                      min="1"
+
+                    value={item.quantity === 0 ? '' : item.quantity}
+                    onChange={(e) => updateItem(item.id, 'quantity', parseInt(normalizeLeadingZeros(e.target.value)) || 0)}
+                      className="w-full px-3 py-2 border border-gray-300 dark:border-white/10 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white dark:bg-black/20 text-gray-900 dark:text-gray-200"
+
+                    />
+
+                  </div>
+
+                  <div>
+
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+
+                      Harga Satuan
+
+                    </label>
+
+                    <input
+
+                      type="number"
+
+                      min="0"
+
+                      step="0.01"
+
+                    value={item.unitPrice === 0 ? '' : item.unitPrice}
+                    onChange={(e) => updateItem(item.id, 'unitPrice', parseFloat(normalizeLeadingZeros(e.target.value)) || 0)}
+                      className="w-full px-3 py-2 border border-gray-300 dark:border-white/10 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white dark:bg-black/20 text-gray-900 dark:text-gray-200"
+
+                      placeholder="0"
+
+                    />
+
+                  </div>
+
+                  <div>
+
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+
+                      Total
+
+                    </label>
+
+                    <div className="w-full px-3 py-2 border border-gray-300 dark:border-white/10 rounded-lg bg-gray-50 dark:bg-black/20 text-gray-900 dark:text-gray-200 flex justify-between items-center">
+
+                      <span>Rp</span>
+
+                      <span>{new Intl.NumberFormat('id-ID', {
+
+                        minimumFractionDigits: 0,
+
+                      }).format(item.total)}</span>
+
+                    </div>
+
+                  </div>
+
+                  <div>
+
+                    {items.length > 1 && (
+
+                      <button
+
+                        type="button"
+
+                        onClick={() => removeItem(item.id)}
+
+                        className="w-full px-3 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors flex items-center justify-center gap-1"
+
+                      >
+
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+
+                        </svg>
+
+                        Hapus
+
+                      </button>
+
+                    )}
+
+                  </div>
+
+                {/* Sub Items (opsional) */}
+
+                <div className="md:col-span-6">
+
+                  <div className="mt-3 p-3 border border-gray-300 dark:border-white/10 rounded-lg bg-gray-50 dark:bg-black/20">
+
+                    <div className="flex items-center justify-between mb-2">
+
+                      <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Sub Item (opsional)</span>
+
+                      <button 
+
+                        type="button" 
+
+                        onClick={() => addSubItem(item.id)} 
+
+                        className="text-sm px-3 py-1 rounded bg-blue-600 text-white hover:bg-blue-700 transition-colors flex items-center gap-1"
+
+                      >
+
+                        <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+
+                        </svg>
+
+                        Tambah Sub Item
+
+                      </button>
+
+                    </div>
+
+                    {(item.subItems || []).length === 0 && (
+
+                      <p className="text-xs text-gray-500 dark:text-gray-400">Belum ada sub item.</p>
+
+                    )}
+
+                    <div className="space-y-3">
+
+                      {(item.subItems || []).map((si, siIndex) => (
+
+                        <div key={siIndex} className="grid grid-cols-1 md:grid-cols-6 gap-3 items-end">
+
+                          <div className="md:col-span-2">
+
+                            <label className="block text-xs text-gray-600 dark:text-gray-400 mb-1">Nama Sub Item</label>
+
+                            <input 
+
+                              type="text" 
+
+                              value={si.name} 
+
+                              onChange={(e) => updateSubItem(item.id, siIndex, 'name', e.target.value)} 
+
+                              className="w-full px-3 py-2 border border-gray-300 dark:border-white/10 rounded bg-white dark:bg-black/20 text-gray-900 dark:text-gray-200" 
+
+                            />
+
+                          </div>
+
+                          <div className="md:col-span-2">
+
+                            <label className="block text-xs text-gray-600 dark:text-gray-400 mb-1">Keterangan</label>
+
+                            <input 
+
+                              type="text" 
+
+                              value={si.description || ''} 
+
+                              onChange={(e) => updateSubItem(item.id, siIndex, 'description', e.target.value)} 
+
+                              className="w-full px-3 py-2 border border-gray-300 dark:border-white/10 rounded bg-white dark:bg-black/20 text-gray-900 dark:text-gray-200" 
+
+                            />
+
+                          </div>
+
+                          <div>
+
+                            <label className="block text-xs text-gray-600 dark:text-gray-400 mb-1">Jumlah</label>
+
+                            <input 
+
+                              type="number" 
+
+                              min="1" 
+
+                              value={si.quantity === 0 ? '' : si.quantity} 
+                              onChange={(e) => updateSubItem(item.id, siIndex, 'quantity', parseInt(normalizeLeadingZeros(e.target.value)) || 0)} 
+                              className="w-full px-3 py-2 border border-gray-300 dark:border-white/10 rounded bg-white dark:bg-black/20 text-gray-900 dark:text-gray-200" 
+
+                            />
+
+                          </div>
+
+                          <div>
+
+                            <label className="block text-xs text-gray-600 dark:text-gray-400 mb-1">Harga Satuan</label>
+
+                            <input 
+
+                              type="number" 
+
+                              min="0" 
+
+                              step="0.01" 
+
+                              value={si.unitPrice === 0 ? '' : si.unitPrice} 
+                              onChange={(e) => updateSubItem(item.id, siIndex, 'unitPrice', parseFloat(normalizeLeadingZeros(e.target.value)) || 0)} 
+                              className="w-full px-3 py-2 border border-gray-300 dark:border-white/10 rounded bg-white dark:bg-black/20 text-gray-900 dark:text-gray-200" 
+
+                            />
+
+                          </div>
+
+                          <div className="md:col-span-6 flex justify-between items-center">
+
+                            <div className="text-xs text-gray-600 dark:text-gray-400 flex justify-between items-center">
+
+                              <span>Total Sub Item: Rp</span>
+
+                              <span>{new Intl.NumberFormat('id-ID', { minimumFractionDigits: 0 }).format(si.total || 0)}</span>
+
+                            </div>
+
+                            <button 
+
+                              type="button" 
+
+                              onClick={() => removeSubItem(item.id, siIndex)} 
+
+                              className="text-xs px-2 py-1 rounded bg-red-600 text-white hover:bg-red-700 transition-colors"
+
+                            >
+
+                              Hapus
+
+                            </button>
+
+                          </div>
+
+                        </div>
+
+                      ))}
+
+                    </div>
+
+                  </div>
+
+                </div>
+
+                </div>
+
+              ))}
+
+            </div>
+
+          </div>
+
+
+
+          {/* Discount, Shipping, Tax and Payment */}
+
+          <div className="bg-white rounded-lg shadow p-6">
+
+            <h2 className="text-lg font-semibold text-gray-900 mb-4">Discount, Biaya Pengiriman, Pajak & Pembayaran</h2>
+
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+
+              <div>
+
+                <label className="block text-sm font-medium text-gray-700 mb-2">Tipe Diskon (Opsional)</label>
+
+                <select
+
+                  value={formData.discountType}
+
+                  onChange={(e) => setFormData(prev => ({ ...prev, discountType: e.target.value as 'FIXED' | 'PERCENTAGE' }))}
+
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+
+                >
+
+                  <option value="PERCENTAGE">Persentase (%)</option>
+
+                  <option value="FIXED">Tetap (Rp)</option>
+
+                </select>
+
+              </div>
+
+              <div>
+
+                <label className="block text-sm font-medium text-gray-700 mb-2">Nilai Diskon (Opsional)</label>
+
+                <input
+
+                  type="number"
+
+                  min="0"
+
+                  step="0.01"
+
+                  value={(formData.discountValue || 0) === 0 ? '' : formData.discountValue}
+                  onChange={(e) => setFormData(prev => ({ ...prev, discountValue: parseFloat(normalizeLeadingZeros(e.target.value)) || 0 }))}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+
+                  placeholder="0"
+
+                />
+
+              </div>
+
+              <div>
+
+                <label className="block text-sm font-medium text-gray-700 mb-2">Biaya Pengiriman (Opsional)</label>
+
+                <input
+
+                  type="number"
+
+                  min="0"
+
+                  step="0.01"
+
+                  value={(formData.shippingAmount || 0) === 0 ? '' : formData.shippingAmount}
+                  onChange={(e) => setFormData(prev => ({ ...prev, shippingAmount: parseFloat(normalizeLeadingZeros(e.target.value)) || 0 }))}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+
+                  placeholder="0"
+
+                />
+
+              </div>
+
+              <div>
+
+                <label className="block text-sm font-medium text-gray-700 mb-2">Dibayar</label>
+
+                <input
+
+                  type="number"
+
+                  min="0"
+
+                  step="0.01"
+
+                  value={(formData.amountPaid || 0) === 0 ? '' : formData.amountPaid}
+                  onChange={(e) => setFormData(prev => ({ ...prev, amountPaid: parseFloat(normalizeLeadingZeros(e.target.value)) || 0 }))}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+
+                  placeholder="0"
+
+                />
+
+              </div>
+
+            </div>
+
+
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
+
+              <div>
+
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+
+                  Pajak (%) - Opsional
+
+                </label>
+
+                <input
+
+                  type="number"
+
+                  min="0"
+
+                  max="100"
+
+                  step="0.01"
+
+                  value={(formData.taxRate || 0) === 0 ? '' : formData.taxRate}
+                  onChange={(e) => setFormData(prev => ({ ...prev, taxRate: parseFloat(normalizeLeadingZeros(e.target.value)) || 0 }))}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+
+                  placeholder="0"
+
+                />
+
+              </div>
+
+              <div>
+
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+
+                  Catatan
+
+                </label>
+
+                <textarea
+
+                  value={formData.notes}
+
+                  onChange={(e) => setFormData(prev => ({ ...prev, notes: e.target.value }))}
+
+                  rows={3}
+
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+
+                  placeholder="Catatan tambahan atau syarat..."
+
+                />
+
+              </div>
+
+            </div>
+
+            
+
+            <div className="mt-6 flex justify-end">
+
+              <div className="w-64 space-y-2">
+
+                <div className="flex justify-between text-sm">
+
+                  <span className="text-gray-600">Subtotal:</span>
+
+                  <div className="flex justify-between items-center w-24">
+
+                    <span className="text-gray-900 font-medium">Rp</span>
+
+                    <span className="text-gray-900 font-medium">
+
+                      {new Intl.NumberFormat('id-ID', {
+
+                        minimumFractionDigits: 0,
+
+                      }).format(formData.subtotal || 0)}
+
+                    </span>
+
+                  </div>
+
+                </div>
+
+                {(formData.discountAmount !== undefined && formData.discountAmount > 0) && (
+
+                  <div className="flex justify-between text-sm">
+
+                    <span className="text-gray-600">Diskon:</span>
+
+                    <div className="flex justify-between items-center w-24">
+
+                      <span className="text-gray-900 font-medium">Rp</span>
+
+                      <span className="text-gray-900 font-medium">
+
+                        {new Intl.NumberFormat('id-ID', {
+
+                          minimumFractionDigits: 0,
+
+                        }).format(formData.discountAmount || 0)}
+
+                      </span>
+
+                    </div>
+
+                  </div>
+
+                )}
+
+                {(formData.shippingAmount !== undefined && formData.shippingAmount > 0) && (
+
+                  <div className="flex justify-between text-sm">
+
+                    <span className="text-gray-600">Biaya Pengiriman:</span>
+
+                    <div className="flex justify-between items-center w-24">
+
+                      <span className="text-gray-900 font-medium">Rp</span>
+
+                      <span className="text-gray-900 font-medium">
+
+                        {new Intl.NumberFormat('id-ID', {
+
+                          minimumFractionDigits: 0,
+
+                        }).format(formData.shippingAmount || 0)}
+
+                      </span>
+
+                    </div>
+
+                  </div>
+
+                )}
+
+                <div className="flex justify-between text-sm">
+
+                  <span className="text-gray-600">Pajak ({formData.taxRate}%):</span>
+
+                  <div className="flex justify-between items-center w-24">
+
+                    <span className="text-gray-900 font-medium">Rp</span>
+
+                    <span className="text-gray-900 font-medium">
+
+                      {new Intl.NumberFormat('id-ID', {
+
+                        minimumFractionDigits: 0,
+
+                      }).format(formData.taxAmount || 0)}
+
+                    </span>
+
+                  </div>
+
+                </div>
+
+                <div className="border-t border-gray-200 pt-2">
+
+                  <div className="flex justify-between text-lg font-bold">
+
+                    <span className="text-gray-900">Total:</span>
+
+                    <div className="flex justify-between items-center w-24">
+
+                      <span className="text-gray-900">Rp</span>
+
+                      <span className="text-gray-900">
+
+                        {new Intl.NumberFormat('id-ID', {
+
+                          minimumFractionDigits: 0,
+
+                        }).format(formData.total || 0)}
+
+                      </span>
+
+                    </div>
+
+                  </div>
+
+                </div>
+
+                {(formData.amountPaid !== undefined && formData.amountPaid > 0) && (
+
+                  <div className="flex justify-between text-sm">
+
+                    <span className="text-gray-600">Dibayar:</span>
+
+                    <div className="flex justify-between items-center w-24">
+
+                      <span className="text-gray-900 font-medium">Rp</span>
+
+                      <span className="text-gray-900 font-medium">
+
+                        {new Intl.NumberFormat('id-ID', {
+
+                          minimumFractionDigits: 0,
+
+                        }).format(formData.amountPaid || 0)}
+
+                      </span>
+
+                    </div>
+
+                  </div>
+
+                )}
+
+                {(formData.status !== 'PAID' && formData.balanceDue !== undefined && formData.balanceDue !== null && (formData.balanceDue || 0) > 0) && (
+
+                  <div className="flex justify-between text-sm font-bold">
+
+                    <span className="text-gray-900">Sisa/Balance Due:</span>
+
+                    <div className="flex justify-between items-center w-24">
+
+                      <span className="text-gray-900">Rp</span>
+
+                      <span className="text-gray-900">
+
+                        {new Intl.NumberFormat('id-ID', {
+
+                          minimumFractionDigits: 0,
+
+                        }).format(formData.balanceDue || 0)}
+
+                      </span>
+
+                    </div>
+
+                  </div>
+
+                )}
+
+                <div className="flex justify-between text-sm">
+
+                  <span className="text-gray-600">Status:</span>
+
+                  <span className={`font-medium ${
+
+                    formData.status === 'PAID' ? 'text-green-600' :
+
+                    formData.status === 'PARTIAL' ? 'text-yellow-600' :
+
+                    formData.status === 'OVERDUE' ? 'text-red-600' :
+
+                    'text-gray-600'
+
+                  }`}>
+
+                    {formData.status === 'PAID' ? 'Lunas' :
+
+                     formData.status === 'PARTIAL' ? 'Sebagian' :
+
+                     formData.status === 'OVERDUE' ? 'Terlambat' :
+
+                     'Draft'}
+
+                  </span>
+
+                </div>
+
+              </div>
+
+            </div>
+
+          </div>
+
+
+
+          {/* Tombol Submit */}
+
+          <div className="flex justify-end space-x-4">
+
+            <button
+
+              type="button"
+
+              onClick={() => router.back()}
+
+              className="px-6 py-2 border border-gray-300 dark:border-white/10 text-gray-700 dark:text-gray-200 rounded-lg hover:bg-gray-50 dark:hover:bg-white/10 transition-colors"
+
+            >
+
+              Batal
+
+            </button>
+
+            <button
+
+              type="submit"
+
+              disabled={loading}
+
+              className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+
+            >
+
+              {loading ? (
+
+                <>
+
+                  <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+
+                  </svg>
+
+                  Membuat...
+
+                </>
+
+              ) : (
+
+                <>
+
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+
+                  </svg>
+
+                  Buat Faktur
+
+                </>
+
+              )}
+
+            </button>
+
+          </div>
+
+        </form>
+
+      </div>
+
+    </AppLayout>
+
+  );
+
+}
+
+
