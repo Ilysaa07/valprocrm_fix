@@ -68,7 +68,7 @@ export default function AppLayout({ children, title, description, role }: AppLay
   const userInitial = session.user?.name?.charAt(0) || (role === 'ADMIN' ? 'A' : 'E')
 
   return (
-    <div className="h-screen min-h-screen bg-bg flex overflow-x-hidden">
+    <div className="min-h-[100dvh] bg-bg flex overflow-x-hidden">
       <div className="hidden xl:block">
         <Sidebar
           role={role}
@@ -91,7 +91,7 @@ export default function AppLayout({ children, title, description, role }: AppLay
         />
       )}
 
-      <div className={`fixed left-0 top-0 z-50 xl:hidden w-80 h-screen transition-transform duration-300 ease-in-out will-change-transform ${
+      <div className={`fixed left-0 top-0 z-50 xl:hidden w-[18rem] sm:w-80 h-screen transition-transform duration-300 ease-in-out will-change-transform ${
         mobileSidebarOpen ? 'translate-x-0' : '-translate-x-full'
       }`}>
         <Sidebar
@@ -110,10 +110,10 @@ export default function AppLayout({ children, title, description, role }: AppLay
         />
       </div>
 
-      <div className="flex-1 flex flex-col min-h-screen">
+      <div className="flex-1 flex flex-col min-h-0">
         <header className="bg-card border-b border-border shadow-soft backdrop-blur-sm sticky top-0 z-30">
           <div className="flex items-center justify-between px-4 py-3 lg:px-6 lg:py-4">
-            <div className="flex items-center space-x-3">
+            <div className="flex items-center gap-3 min-w-0">
               <button
                 onClick={() => setMobileSidebarOpen(!mobileSidebarOpen)}
                 className="xl:hidden p-2 rounded-lg hover:bg-card-hover transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-accent/40 bg-card border border-border shadow-sm flex items-center justify-center"
@@ -127,23 +127,23 @@ export default function AppLayout({ children, title, description, role }: AppLay
                 )}
               </button>
 
-              <div className="hidden sm:block">
-                <h1 className="text-lg font-semibold text-text-primary">
+              <div className="hidden sm:block truncate">
+                <h1 className="text-lg font-semibold text-text-primary truncate">
                   {title || defaultTitle}
                 </h1>
                 {description && (
-                  <p className="text-sm text-text-secondary">
+                  <p className="text-sm text-text-secondary truncate">
                     {description}
                   </p>
                 )}
               </div>
             </div>
 
-            <div className="flex items-center space-x-4">
+            <div className="flex items-center gap-3 sm:gap-4">
               <NotificationDropdown />
 
-              <div className="flex items-center space-x-3 bg-gradient-to-r from-card to-accent/5 rounded-xl px-4 py-2 border border-border shadow-soft hover:shadow-medium transition-all duration-200 group">
-                <div className="hidden sm:block text-right">
+              <div className="flex items-center gap-3 bg-gradient-to-r from-card to-accent/5 rounded-xl px-3 sm:px-4 py-2 border border-border shadow-soft hover:shadow-medium transition-all duration-200 group">
+                <div className="hidden sm:block text-right min-w-0">
                   <p className="text-sm font-semibold text-text-primary group-hover:text-accent transition-colors duration-200">
                     {userName}
                   </p>
@@ -169,7 +169,7 @@ export default function AppLayout({ children, title, description, role }: AppLay
           </div>
         </header>
 
-        <main className="flex-1 px-4 py-4 lg:px-6 lg:py-6 overflow-x-hidden">
+        <main className="flex-1 px-4 py-4 lg:px-6 lg:py-6 overflow-x-hidden overflow-y-auto min-h-0">
           <div className="max-w-7xl mx-auto space-y-6 content-wrapper">
             {children}
           </div>

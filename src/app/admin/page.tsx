@@ -194,6 +194,7 @@ export default function AdminDashboard() {
 
         {/* Key Metrics Overview */}
         <DashboardSection title="Ringkasan Utama">
+          <div className="w-full max-w-screen-sm mx-auto sm:max-w-none sm:mx-0 px-3 sm:px-0">
           <DashboardGrid cols={4} gap="md">
             <DashboardStatCard
               title="Total Pengguna"
@@ -240,11 +241,13 @@ export default function AdminDashboard() {
               }}
             />
           </DashboardGrid>
+          </div>
         </DashboardSection>
 
         {/* Main Dashboard Content */}
         <div className="space-y-4 lg:space-y-6">
           {/* Row 1: Quick Stats */}
+          <div className="w-full max-w-screen-sm mx-auto sm:max-w-none sm:mx-0 px-3 sm:px-0">
           <DashboardGrid cols={1} gap="md">
             {/* Quick Stats - Takes full width */}
             <div>
@@ -256,8 +259,10 @@ export default function AdminDashboard() {
               </DashboardCard>
             </div>
           </DashboardGrid>
+          </div>
 
           {/* Row 2: Charts & Quick Actions */}
+          <div className="w-full max-w-screen-sm mx-auto sm:max-w-none sm:mx-0 px-3 sm:px-0">
           <DashboardGrid cols={3} gap="md">
             {/* Charts Section - Takes 2 columns */}
             <div className="lg:col-span-2">
@@ -292,10 +297,12 @@ export default function AdminDashboard() {
               </DashboardCard>
             </div>
           </DashboardGrid>
+          </div>
         </div>
 
         {/* Additional Metrics */}
         <DashboardSection title="Metrik Detail">
+          <div className="w-full max-w-screen-sm mx-auto sm:max-w-none sm:mx-0 px-3 sm:px-0">
           <DashboardGrid cols={3} gap="md">
             <DashboardMetricCard
               title="Tugas Selesai"
@@ -319,6 +326,7 @@ export default function AdminDashboard() {
               color="purple"
             />
           </DashboardGrid>
+          </div>
         </DashboardSection>
 
         {/* Activity Feed */}

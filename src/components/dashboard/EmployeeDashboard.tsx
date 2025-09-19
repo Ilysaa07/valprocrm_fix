@@ -24,8 +24,7 @@ import {
   RefreshCw,
   Target,
   Award,
-  Lightbulb,
-  Calendar as CalendarIcon
+  Lightbulb
 } from 'lucide-react'
 import Link from 'next/link'
 
@@ -171,15 +170,15 @@ export default function EmployeeDashboard({
   const taskCompletionRate = stats.totalTasks > 0 ? (stats.completedTasks / stats.totalTasks) * 100 : 0
 
   return (
-      <div className="space-y-6" role="main" aria-label="Employee Dashboard">
+      <div className="space-y-6 min-w-0 overflow-x-hidden" role="main" aria-label="Employee Dashboard">
         {/* Welcome Header */}
-        <div className="bg-gradient-to-r from-accent/10 to-accent/5 rounded-2xl p-6 border border-accent/20" role="banner">
-          <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-2xl font-bold text-text-primary" id="welcome-title">
+        <div className="bg-gradient-to-r from-accent/10 to-accent/5 rounded-2xl p-4 sm:p-6 border border-accent/20" role="banner">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+            <div className="min-w-0">
+              <h1 className="text-xl sm:text-2xl font-bold text-text-primary truncate" id="welcome-title">
                 Selamat datang, {session?.user?.name || 'Karyawan'}! 👋
               </h1>
-            <p className="text-text-secondary mt-1">
+            <p className="text-text-secondary mt-1 text-sm sm:text-base">
               {currentTime.toLocaleDateString('id-ID', { 
                 weekday: 'long', 
                 year: 'numeric', 
@@ -187,7 +186,7 @@ export default function EmployeeDashboard({
                 day: 'numeric' 
               })}
             </p>
-            <p className="text-text-muted text-sm">
+            <p className="text-text-muted text-xs sm:text-sm">
               {currentTime.toLocaleTimeString('id-ID', { 
                 hour: '2-digit', 
                 minute: '2-digit',
@@ -195,15 +194,15 @@ export default function EmployeeDashboard({
               })}
             </p>
           </div>
-          <div className="text-right">
-            <div className="text-3xl font-bold text-accent">
+          <div className="sm:text-right">
+            <div className="text-2xl sm:text-3xl font-bold text-accent">
               {stats.todayPresent ? '✅' : '⏰'}
             </div>
-            <p className="text-sm text-text-secondary">
+            <p className="text-xs sm:text-sm text-text-secondary">
               {stats.todayPresent ? 'Sudah hadir' : 'Belum hadir'}
             </p>
             {stats.checkInTime && (
-              <p className="text-xs text-text-muted">
+              <p className="text-[11px] sm:text-xs text-text-muted">
                 Check-in: {formatTime(stats.checkInTime)}
               </p>
             )}
@@ -212,7 +211,7 @@ export default function EmployeeDashboard({
       </div>
 
       {/* Key Metrics Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4" role="region" aria-label="Key Metrics">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 w-full max-w-screen-sm mx-auto sm:max-w-none sm:mx-0 px-3 sm:px-0 min-w-0" role="region" aria-label="Key Metrics">
         {/* Total Tasks */}
         <Card className="hover:shadow-lg transition-shadow duration-200">
           <CardBody className="p-6">
@@ -281,7 +280,7 @@ export default function EmployeeDashboard({
       </div>
 
         {/* Main Content Grid */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6" role="region" aria-label="Main Content">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 w-full max-w-screen-sm mx-auto sm:max-w-none sm:mx-0 px-3 sm:px-0 min-w-0" role="region" aria-label="Main Content">
         {/* Recent Tasks - Takes 2 columns */}
         <div className="lg:col-span-2">
           <Card>
@@ -448,7 +447,7 @@ export default function EmployeeDashboard({
                 </span>
               </div>
               <ProgressBar 
-                value={taskCompletionRate} 
+                progress={taskCompletionRate} 
                 className="h-2"
                 variant="success"
               />
@@ -476,7 +475,7 @@ export default function EmployeeDashboard({
       </Card>
 
       {/* Additional Information Grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 w-full max-w-screen-sm mx-auto sm:max-w-none sm:mx-0 px-3 sm:px-0 min-w-0">
         {/* Leave & WFH Status */}
         <Card>
           <div className="p-6 pb-4">
@@ -617,7 +616,7 @@ export default function EmployeeDashboard({
       </Card>
 
       {/* Additional Widgets Row */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 min-w-0">
 
         {/* Productivity Tips */}
         <Card>

@@ -159,17 +159,16 @@ export default function AdminInvoicesPage() {
   return (
     <AppLayout title="Faktur" description="Kelola semua faktur dalam sistem" role="ADMIN">
           {/* Header */}
-          <div className="bg-white shadow-sm border rounded-lg">
+          <div className="bg-card shadow-soft border border-border rounded-lg">
             <div className="px-4 sm:px-6 lg:px-8">
-              <div className="flex justify-between items-center py-6">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 py-4 sm:py-6">
                 <div>
-                  <h1 className="text-3xl font-bold" style={{ color: '#042d63' }}>Faktur</h1>
-                  <p className="text-gray-600">Kelola semua faktur dalam sistem</p>
+                  <h1 className="text-2xl sm:text-3xl font-bold text-text-primary">Faktur</h1>
+                  <p className="text-text-secondary">Kelola semua faktur dalam sistem</p>
                 </div>
                 <Link
                   href="/admin/invoices/create"
-                  className="px-4 py-2 text-white rounded-lg transition-colors flex items-center gap-2"
-                  style={{ backgroundColor: '#042d63' }}
+                  className="px-4 py-2 rounded-lg transition-colors flex items-center gap-2 bg-accent text-text-inverse hover:opacity-90"
                 >
                   <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
@@ -181,25 +180,25 @@ export default function AdminInvoicesPage() {
           </div>
 
           {/* Filters */}
-          <div className="py-6">
-            <div className="bg-white rounded-lg shadow p-6">
+          <div className="py-4 sm:py-6">
+            <div className="bg-card rounded-lg shadow-soft border border-border p-4 sm:p-6">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Pencarian</label>
+                  <label className="block text-sm font-medium text-text-secondary mb-2">Pencarian</label>
                   <input
                     type="text"
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
                     placeholder="Cari nomor faktur, klien, atau perusahaan..."
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    className="w-full px-3 py-2 rounded-lg bg-bg border border-border text-text-primary placeholder:text-text-tertiary focus:outline-none focus:ring-2 focus:ring-accent/40"
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Status</label>
+                  <label className="block text-sm font-medium text-text-secondary mb-2">Status</label>
                   <select
                     value={statusFilter}
                     onChange={(e) => setStatusFilter(e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    className="w-full px-3 py-2 rounded-lg bg-bg border border-border text-text-primary focus:outline-none focus:ring-2 focus:ring-accent/40"
                   >
                     <option value="all">Semua Status</option>
                     <option value="DRAFT">Draft</option>
@@ -215,12 +214,12 @@ export default function AdminInvoicesPage() {
 
           {/* Invoices List */}
           <div className="pb-8">
-            <div className="bg-white rounded-lg shadow overflow-hidden">
+            <div className="bg-card rounded-lg shadow-soft border border-border overflow-hidden">
               {filteredInvoices.length === 0 ? (
-                <div className="text-center py-12">
-                  <div className="text-gray-500 text-6xl mb-4">📄</div>
-                  <h3 className="text-lg font-medium text-gray-900 mb-2">Tidak ada faktur</h3>
-                  <p className="text-gray-600 mb-4">
+                <div className="text-center py-10 sm:py-12">
+                  <div className="text-text-tertiary text-5xl sm:text-6xl mb-4">📄</div>
+                  <h3 className="text-lg font-medium text-text-primary mb-2">Tidak ada faktur</h3>
+                  <p className="text-text-secondary mb-4">
                     {searchTerm || statusFilter !== 'all' 
                       ? 'Coba ubah kata kunci atau filter.'
                       : 'Mulai dengan membuat faktur baru.'
@@ -229,55 +228,92 @@ export default function AdminInvoicesPage() {
                   {(!searchTerm && statusFilter === 'all') && (
                     <Link
                       href="/admin/invoices/create"
-                      className="px-4 py-2 text-white rounded-lg transition-colors"
-                      style={{ backgroundColor: '#042d63' }}
+                      className="px-4 py-2 rounded-lg bg-accent text-text-inverse transition-opacity hover:opacity-90"
                     >
                       Buat Faktur
                     </Link>
                   )}
                 </div>
               ) : (
-                <div className="overflow-x-auto">
-                  <table className="min-w-full divide-y divide-gray-200">
-                    <thead className="bg-gray-50">
+                <>
+                  {/* Mobile: Card list */}
+                  <div className="md:hidden divide-y divide-border">
+                    {filteredInvoices.map((invoice) => (
+                      <div key={invoice.id} className="p-4 space-y-3">
+                        <div className="flex items-center justify-between">
+                          <div className="font-semibold text-text-primary">#{invoice.invoiceNumber}</div>
+                          {getStatusBadge(invoice.status)}
+                        </div>
+                        <div className="text-sm text-text-secondary">
+                          <div className="text-text-primary">{invoice.clientName}</div>
+                          <div className="truncate">{invoice.clientEmail}</div>
+                        </div>
+                        <div className="text-sm text-text-secondary">
+                          <div className="text-text-primary">{new Date(invoice.date).toLocaleDateString('id-ID')}</div>
+                          <div>Jatuh Tempo: {new Date(invoice.dueDate).toLocaleDateString('id-ID')}</div>
+                        </div>
+                        <div className="text-right tabular-nums text-text-primary">
+                          <span className="mr-1">Rp</span>
+                          {new Intl.NumberFormat('id-ID', { minimumFractionDigits: 0 }).format(invoice.total)}
+                        </div>
+                        <div className="flex flex-wrap gap-2 pt-1">
+                          <Link href={`/invoices/${invoice.id}`} className="px-3 py-1.5 rounded-md bg-accent text-text-inverse">Lihat</Link>
+                          <Link href={`/admin/invoices/${invoice.id}/edit`} className="px-3 py-1.5 rounded-md bg-indigo-500 text-white">Ubah</Link>
+                          <button
+                            onClick={() => handleDeleteInvoice(invoice.id, invoice.invoiceNumber)}
+                            disabled={deletingInvoice === invoice.id}
+                            className="px-3 py-1.5 rounded-md bg-red-500 text-white disabled:opacity-50"
+                            title="Hapus faktur"
+                          >
+                            {deletingInvoice === invoice.id ? 'Menghapus...' : 'Hapus'}
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* Desktop: Table */}
+                  <div className="hidden md:block overflow-x-auto">
+                  <table className="min-w-full divide-y divide-border">
+                    <thead className="bg-card">
                       <tr>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Faktur</th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Klien</th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Tanggal</th>
-                        <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Jumlah</th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Aksi</th>
+                        <th className="px-4 sm:px-6 py-3 text-left text-xs font-medium text-text-secondary uppercase tracking-wider">Faktur</th>
+                        <th className="px-4 sm:px-6 py-3 text-left text-xs font-medium text-text-secondary uppercase tracking-wider">Klien</th>
+                        <th className="px-4 sm:px-6 py-3 text-left text-xs font-medium text-text-secondary uppercase tracking-wider">Tanggal</th>
+                        <th className="px-4 sm:px-6 py-3 text-right text-xs font-medium text-text-secondary uppercase tracking-wider">Jumlah</th>
+                        <th className="px-4 sm:px-6 py-3 text-left text-xs font-medium text-text-secondary uppercase tracking-wider">Status</th>
+                        <th className="px-4 sm:px-6 py-3 text-left text-xs font-medium text-text-secondary uppercase tracking-wider">Aksi</th>
                       </tr>
                     </thead>
-                    <tbody className="bg-white divide-y divide-gray-200">
+                    <tbody className="bg-card divide-y divide-border">
                       {filteredInvoices.map((invoice) => (
-                        <tr key={invoice.id} className="hover:bg-gray-50">
-                          <td className="px-6 py-4 whitespace-nowrap">
-                            <div className="text-sm font-medium text-gray-900">#{invoice.invoiceNumber}</div>
+                        <tr key={invoice.id} className="hover:bg-card-hover">
+                          <td className="px-4 sm:px-6 py-4 whitespace-nowrap">
+                            <div className="text-sm font-medium text-text-primary">#{invoice.invoiceNumber}</div>
                           </td>
-                          <td className="px-6 py-4 whitespace-nowrap">
-                            <div className="text-sm text-gray-900">{invoice.clientName}</div>
-                            <div className="text-sm text-gray-500">{invoice.clientEmail}</div>
+                          <td className="px-4 sm:px-6 py-4 whitespace-nowrap">
+                            <div className="text-sm text-text-primary">{invoice.clientName}</div>
+                            <div className="text-sm text-text-secondary">{invoice.clientEmail}</div>
                           </td>
-                          <td className="px-6 py-4 whitespace-nowrap">
-                            <div className="text-sm text-gray-900">{new Date(invoice.date).toLocaleDateString('id-ID')}</div>
-                            <div className="text-sm text-gray-500">Jatuh Tempo: {new Date(invoice.dueDate).toLocaleDateString('id-ID')}</div>
+                          <td className="px-4 sm:px-6 py-4 whitespace-nowrap">
+                            <div className="text-sm text-text-primary">{new Date(invoice.date).toLocaleDateString('id-ID')}</div>
+                            <div className="text-sm text-text-secondary">Jatuh Tempo: {new Date(invoice.dueDate).toLocaleDateString('id-ID')}</div>
                           </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-right tabular-nums">
+                          <td className="px-4 sm:px-6 py-4 whitespace-nowrap text-right tabular-nums">
                             <div className="inline-grid grid-cols-[24px_1fr] items-baseline justify-items-end">
-                              <span className="text-sm font-medium text-gray-900">Rp</span>
-                              <span className="text-sm font-medium text-gray-900 text-right">{new Intl.NumberFormat('id-ID', { minimumFractionDigits: 0 }).format(invoice.total)}</span>
+                              <span className="text-sm font-medium text-text-primary">Rp</span>
+                              <span className="text-sm font-medium text-text-primary text-right">{new Intl.NumberFormat('id-ID', { minimumFractionDigits: 0 }).format(invoice.total)}</span>
                             </div>
                           </td>
-                          <td className="px-6 py-4 whitespace-nowrap">{getStatusBadge(invoice.status)}</td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                            <div className="flex gap-2">
-                              <Link href={`/invoices/${invoice.id}`} className="text-blue-600 hover:text-blue-900">Lihat</Link>
-                              <Link href={`/admin/invoices/${invoice.id}/edit`} className="text-indigo-600 hover:text-indigo-900">Ubah</Link>
+                          <td className="px-4 sm:px-6 py-4 whitespace-nowrap">{getStatusBadge(invoice.status)}</td>
+                          <td className="px-4 sm:px-6 py-4 whitespace-nowrap text-sm font-medium">
+                            <div className="flex gap-3">
+                              <Link href={`/invoices/${invoice.id}`} className="text-accent hover:opacity-90">Lihat</Link>
+                              <Link href={`/admin/invoices/${invoice.id}/edit`} className="text-indigo-500 hover:text-indigo-600">Ubah</Link>
                               <button
                                 onClick={() => handleDeleteInvoice(invoice.id, invoice.invoiceNumber)}
                                 disabled={deletingInvoice === invoice.id}
-                                className="text-red-600 hover:text-red-900 disabled:opacity-50 disabled:cursor-not-allowed"
+                                className="text-red-500 hover:text-red-600 disabled:opacity-50 disabled:cursor-not-allowed"
                                 title="Hapus faktur"
                               >
                                 {deletingInvoice === invoice.id ? 'Menghapus...' : 'Hapus'}
@@ -288,7 +324,8 @@ export default function AdminInvoicesPage() {
                       ))}
                     </tbody>
                   </table>
-                </div>
+                  </div>
+                </>
               )}
             </div>
           </div>

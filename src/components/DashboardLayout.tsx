@@ -92,7 +92,7 @@ export function DashboardGrid({
 
   return (
     <div className={cn(
-      'grid',
+      'grid w-full max-w-screen-sm mx-auto sm:max-w-none',
       gridCols[cols],
       gridGaps[gap],
       className

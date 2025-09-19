@@ -214,20 +214,19 @@ export default function Sidebar({
 
   if (!mounted) return null
 
-  // Enhanced responsive width calculation
+  // Responsive width calculation
   const getSidebarWidth = () => {
     if (isMobile) return 'w-80' // Mobile: fixed width (320px)
     if (collapsed) return 'w-16' // Collapsed: minimal width (64px)
     return 'w-64' // Expanded: standard width (256px)
   }
 
-  // Enhanced responsive behavior with proper background
+  // Sidebar container classes
   const getSidebarClasses = () => {
     const baseClasses = [
       'flex flex-col h-screen transition-all duration-300 ease-out',
-      'bg-surface',
-      'border-r border-border',
-      'shadow-lg'
+      'bg-card',
+      'border-r border-border'
     ]
 
     // Width classes
@@ -238,7 +237,7 @@ export default function Sidebar({
       // For mobile, we don't need positioning since parent handles it
       baseClasses.push('relative')
     } else {
-      baseClasses.push('relative') // Desktop sidebar
+      baseClasses.push('relative')
     }
 
     return baseClasses.join(' ')
@@ -249,38 +248,24 @@ export default function Sidebar({
   return (
     <div className={`${getSidebarClasses()} layout-sidebar ${isMobile && isOpen ? 'open' : ''} min-h-0`}>
       {/* Header */}
-      <div className="px-4 py-6 border-b border-border bg-gradient-to-r from-bg-secondary to-surface">
+      <div className="px-4 py-4 border-b border-border bg-card">
         <div className="flex items-center justify-between">
           {!collapsed && (
             <div className="flex items-center space-x-3">
-              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center shadow-lg">
-                <img 
-                  src="/logometa.png" 
-                  alt="Valpro Logo" 
-                  className="w-6 h-6 object-contain"
-                />
-              </div>
+              <img src="/logometa.png" alt="Valpro Logo" className="w-8 h-8 object-contain" />
               <div>
-                <h1 className="text-lg font-bold text-text-primary">ValproCRM</h1>
-                <p className="text-xs text-text-secondary font-medium">
-                  {role === 'ADMIN' ? 'Portal Admin' : 'Portal Karyawan'}
-                </p>
+                <h1 className="text-base font-semibold text-text-primary">ValproEMS</h1>
+                <p className="text-xs text-text-secondary">{role === 'ADMIN' ? 'Portal Admin' : 'Portal Karyawan'}</p>
               </div>
             </div>
           )}
           {collapsed && (
-            <div className="w-10 h-10 mx-auto rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center shadow-lg">
-              <img 
-                src="/logometa.png" 
-                alt="Valpro Logo" 
-                className="w-5 h-5 object-contain"
-              />
-            </div>
+            <img src="/logometa.png" alt="Valpro Logo" className="w-6 h-6 object-contain mx-auto" />
           )}
           {isMobile ? (
             <button
               onClick={() => onClose && onClose()}
-              className="p-2 rounded-lg hover:bg-card-hover transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-accent/40"
+              className="p-2 rounded-md hover:bg-card-hover transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-accent/40"
               title="Tutup Sidebar"
               aria-label="Tutup Sidebar"
             >
@@ -289,7 +274,7 @@ export default function Sidebar({
           ) : (
             <button
               onClick={() => setCollapsed(!collapsed)}
-              className="p-2 rounded-lg hover:bg-card-hover transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-accent/40"
+              className="p-2 rounded-md hover:bg-card-hover transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-accent/40"
               title={collapsed ? 'Perluas Sidebar' : 'Ciutkan Sidebar'}
               aria-label={collapsed ? 'Perluas Sidebar' : 'Ciutkan Sidebar'}
             >
@@ -315,12 +300,12 @@ export default function Sidebar({
             placeholder="Cari menu..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full pl-10 pr-4 py-2.5 text-sm rounded-lg border border-border bg-card text-text-primary placeholder-text-muted focus:outline-none focus:ring-2 focus:ring-accent/50 focus:border-accent transition-all duration-200"
+            className="w-full pl-10 pr-3 py-2 text-sm rounded-md border border-border bg-card text-text-primary placeholder-text-muted focus:outline-none focus:ring-2 focus:ring-accent/40 focus:border-accent"
           />
           {searchQuery && (
             <button
               onClick={() => setSearchQuery('')}
-              className="absolute right-3 top-1/2 transform -translate-y-1/2 p-1 rounded-md hover:bg-card-hover transition-colors duration-200"
+              className="absolute right-2 top-1/2 transform -translate-y-1/2 p-1 rounded hover:bg-card-hover"
               title="Hapus pencarian"
             >
               <X className="w-3 h-3 text-text-muted" />
@@ -329,8 +314,8 @@ export default function Sidebar({
         </div>
       </div>
 
-      {/* Navigation - viewport-bound scroll with fixed max height */}
-      <div className="flex-1 min-h-0 overflow-y-auto py-4 scrollbar-thin scrollbar-thumb-slate-300 dark:scrollbar-thumb-slate-600 scrollbar-track-transparent" style={{ maxHeight: 'calc(100vh - 225px)' }}>
+      {/* Navigation - scrollable area */}
+      <div className="flex-1 min-h-0 overflow-y-auto py-3 scrollbar-thin scrollbar-thumb-slate-300 dark:scrollbar-thumb-slate-600 scrollbar-track-transparent">
         {filteredSections.map((section, sectionIndex) => {
           const toggleSection = () => {
             setExpandedSections(prev => ({
@@ -342,19 +327,16 @@ export default function Sidebar({
           const isSectionExpanded = expandedSections[section.title] !== false;
           
           return (
-            <div key={sectionIndex} className="mb-6 px-4">
+            <div key={sectionIndex} className="mb-4 px-4">
               {!collapsed ? (
                 <div 
-                  className="flex items-center justify-between mb-3 cursor-pointer group"
+                  className="flex items-center justify-between mb-2 cursor-pointer"
                   onClick={toggleSection}
                 >
-                  <h3 className="text-xs font-semibold uppercase tracking-wider text-text-muted group-hover:text-text-secondary transition-colors duration-200">
+                  <h3 className="text-[11px] font-semibold uppercase tracking-wider text-text-muted">
                     {section.title}
                   </h3>
-                  <ChevronDown className={cn(
-                    "h-3 w-3 text-text-muted transition-transform duration-200",
-                    isSectionExpanded ? "transform rotate-180" : ""
-                  )} />
+                  <ChevronDown className={cn("h-3 w-3 text-text-muted transition-transform", isSectionExpanded ? "rotate-180" : "")} />
                 </div>
               ) : (
                 <div className="h-px my-4 bg-border"></div>
@@ -375,49 +357,26 @@ export default function Sidebar({
                             }
                           }}
                           className={cn(
-                            'group flex items-center px-3 py-2.5 text-sm font-medium rounded-lg transition-all duration-200',
-                            'hover:scale-[1.02] active:scale-[0.98] relative',
-                            active
-                              ? 'bg-gradient-to-r from-accent to-accent-hover text-text-inverse shadow-lg shadow-accent/25' 
-                              : 'text-text-primary hover:bg-accent/10',
+                            'group flex items-center px-3 py-2 text-sm rounded-md transition-colors',
+                            active ? 'bg-accent/15 text-accent border border-accent/20' : 'text-text-primary hover:bg-card-hover',
                             collapsed && 'justify-center'
                           )}
                         >
-                          {/* New Feature Badge */}
-                          {item.isNew && !collapsed && (
-                            <div className="absolute -top-1 -right-1 w-2 h-2 bg-warning rounded-full animate-pulse"></div>
-                          )}
-
                           <div className="relative">
                             <item.icon className={cn(
-                              'flex-shrink-0 transition-colors duration-200',
+                              'flex-shrink-0',
                               collapsed ? 'h-5 w-5' : 'h-4 w-4 mr-3',
-                              active 
-                                ? 'text-text-inverse' 
-                                : 'text-text-muted group-hover:text-text-secondary'
+                              active ? 'text-accent' : 'text-text-muted group-hover:text-text-secondary'
                             )} />
                           </div>
                           
                           {!collapsed && (
                             <>
                               <div className="flex-1 min-w-0">
-                                <div className="flex items-center justify-between">
-                                  <span className="truncate flex items-center">
-                                    {item.name}
-                                    {item.isNew && (
-                                      <span className="ml-2 px-2 py-0.5 text-xs bg-warning/20 text-warning-dark border border-warning/30 rounded-full font-medium">
-                                        Baru
-                                      </span>
-                                    )}
-                                  </span>
-                                </div>
-                                {item.description && (
-                                  <p className="text-xs text-text-muted group-hover:text-text-secondary truncate mt-0.5">
-                                    {item.description}
-                                  </p>
-                                )}
+                                <span className="truncate">
+                                  {item.name}
+                                </span>
                               </div>
-                              <ChevronRight className="ml-2 h-4 w-4 text-text-muted group-hover:text-text-secondary transition-all duration-200 group-hover:translate-x-1" />
                             </>
                           )}
                         </Link>
@@ -431,12 +390,12 @@ export default function Sidebar({
         })}
       </div>
 
-      {/* Footer */}
-      <div className="px-4 py-4 border-t border-border bg-gradient-to-r from-accent/5 to-accent/10">
+      {/* Footer actions - sticky on mobile */}
+      <div className="px-4 py-3 border-t border-border bg-card sticky bottom-0">
         <div className="flex items-center justify-between">
           <button
             onClick={toggleTheme}
-            className="p-2.5 rounded-lg hover:bg-card-hover transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-accent/40"
+            className="p-2 rounded-md hover:bg-card-hover transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-accent/40"
             title={theme === 'light' ? 'Ganti ke Mode Gelap' : 'Ganti ke Mode Terang'}
           >
             {theme === 'light' ? (
@@ -447,9 +406,7 @@ export default function Sidebar({
           </button>
           
           {!collapsed && (
-            <span className="text-xs text-text-muted font-medium">
-              v1.0.0 DEMO
-            </span>
+            <span className="text-xs text-text-muted">v1.0.0</span>
           )}
           
           <button
@@ -458,7 +415,7 @@ export default function Sidebar({
                 ? `${window.location.origin}/auth/login`
                 : 'https://crm.valprointertech.com/auth/login'
             })}
-            className="flex items-center space-x-2 px-3 py-2 rounded-lg hover:bg-error/10 text-error border border-error/30 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-error/40"
+            className="flex items-center space-x-2 px-3 py-2 rounded-md hover:bg-error/10 text-error border border-error/30 transition-colors focus:outline-none focus:ring-2 focus:ring-error/30"
           >
             <LogOut className="h-4 w-4" />
             {!collapsed && <span className="text-sm font-medium">Keluar</span>}

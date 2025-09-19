@@ -407,7 +407,7 @@ export default function InvoicePreview({
             </span>
             <span className="mx-2">•</span>
             <span>
-              Invoice ini dibuat secara otomatis oleh website ValproCRM.
+              Invoice ini dibuat secara otomatis oleh website ValproEMS.
             </span>
           </div>
         </div>

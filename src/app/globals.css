@@ -398,31 +398,30 @@ html, body {
 
 /* Ensure main layout takes full viewport */
 .layout-container {
-  min-height: 100vh;
-  height: 100vh;
-  overflow: hidden;
+  min-height: 100dvh;
+  height: auto;
+  overflow: visible;
 }
 
 /* Main content takes remaining space */
 .layout-main {
   flex: 1;
   min-height: 0;
-  height: 100vh;
+  height: auto;
   overflow-y: auto;
   overflow-x: hidden;
 }
 
 /* Content area fills available space */
 .content-wrapper {
-  /* Ensure inner content fills viewport under sticky header */
-  min-height: calc(100vh - 64px);
+  /* Ensure inner content flows and scrolls on mobile */
+  min-height: auto;
   height: auto;
   padding-bottom: 4rem;
 }
 
 /* Fix for main content scrolling */
 main {
-  height: 100%;
   overflow-y: auto;
   overflow-x: hidden;
 }

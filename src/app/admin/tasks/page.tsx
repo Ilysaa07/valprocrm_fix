@@ -39,12 +39,23 @@ export default function AdminTasksPage() {
   const [users, setUsers] = useState<User[]>([])
   const [selectedTask, setSelectedTask] = useState<Task | null>(null)
   const [showCreate, setShowCreate] = useState(false)
+  const [showEdit, setShowEdit] = useState(false)
+  const [editForm, setEditForm] = useState({
+    id: '',
+    title: '',
+    description: '',
+    dueDate: '',
+    priority: 'MEDIUM' as Task['priority'],
+    assignment: 'ALL_EMPLOYEES' as Task['assignment'],
+    assigneeId: ''
+  })
   const [filters, setFilters] = useState({ status: '', priority: '', assignee: '', search: '' })
   const [loading, setLoading] = useState(true)
   const [createForm, setCreateForm] = useState({
     title: '', description: '', dueDate: '', priority: 'MEDIUM' as Task['priority'], assignment: 'ALL_EMPLOYEES' as Task['assignment'], assigneeId: ''
   })
   const [createFiles, setCreateFiles] = useState<File[]>([])
+  const [editFiles, setEditFiles] = useState<File[]>([])
 
   useEffect(() => {
     if (status === 'loading') return
@@ -236,6 +247,18 @@ export default function AdminTasksPage() {
                       <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                         <div className="flex items-center space-x-2">
                           <Button onClick={() => setSelectedTask(task)} variant="outline" size="sm" className="text-accent hover:text-accent-hover"><Eye className="w-4 h-4 mr-1" />Detail</Button>
+                          <Button onClick={() => {
+                            setEditForm({
+                              id: task.id,
+                              title: task.title,
+                              description: task.description,
+                              dueDate: task.dueDate ? new Date(task.dueDate).toISOString().slice(0,10) : '',
+                              priority: task.priority,
+                              assignment: task.assignment,
+                              assigneeId: task.assigneeId || ''
+                            });
+                            setShowEdit(true);
+                          }} variant="outline" size="sm">Edit</Button>
                           <Button onClick={() => handleDeleteTask(task.id)} variant="outline" size="sm" className="text-error hover:text-error-hover">Hapus</Button>
                         </div>
                       </td>
@@ -346,6 +369,99 @@ export default function AdminTasksPage() {
                     )}
                   </div>
                 </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {showEdit && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+            <div className="w-full max-w-2xl bg-card rounded-lg shadow-soft p-4">
+              <div className="flex items-center justify-between mb-3">
+                <h2 className="text-lg font-semibold text-text-primary">Edit Tugas</h2>
+                <Button variant="outline" onClick={() => setShowEdit(false)}>Tutup</Button>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm text-text-secondary mb-1">Judul</label>
+                  <input className="w-full border border-border rounded px-3 py-2 bg-surface text-text-primary" value={editForm.title} onChange={(e) => setEditForm(p => ({ ...p, title: e.target.value }))} />
+                </div>
+                <div>
+                  <label className="block text-sm text-text-secondary mb-1">Deadline</label>
+                  <input type="date" className="w-full border border-border rounded px-3 py-2 bg-surface text-text-primary" value={editForm.dueDate} onChange={(e) => setEditForm(p => ({ ...p, dueDate: e.target.value }))} />
+                </div>
+                <div className="md:col-span-2">
+                  <label className="block text-sm text-text-secondary mb-1">Deskripsi</label>
+                  <textarea className="w-full border border-border rounded px-3 py-2 bg-surface text-text-primary" rows={3} value={editForm.description} onChange={(e) => setEditForm(p => ({ ...p, description: e.target.value }))} />
+                </div>
+                <div className="md:col-span-2">
+                  <label className="block text-sm text-text-secondary mb-1">Lampiran (opsional)</label>
+                  <input type="file" multiple onChange={(e) => setEditFiles(Array.from(e.target.files || []))} className="w-full border border-border rounded px-3 py-2 bg-surface text-text-primary" />
+                  {editFiles.length > 0 && (
+                    <div className="mt-2 text-xs text-text-secondary">{editFiles.length} file dipilih</div>
+                  )}
+                </div>
+                <div>
+                  <label className="block text-sm text-text-secondary mb-1">Prioritas</label>
+                  <select className="w-full border border-border rounded px-3 py-2 bg-surface text-text-primary" value={editForm.priority} onChange={(e) => setEditForm(p => ({ ...p, priority: e.target.value as any }))}>
+                    <option value="LOW">Rendah</option>
+                    <option value="MEDIUM">Sedang</option>
+                    <option value="HIGH">Tinggi</option>
+                    <option value="URGENT">Urgent</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm text-text-secondary mb-1">Penugasan</label>
+                  <select className="w-full border border-border rounded px-3 py-2 bg-surface text-text-primary" value={editForm.assignment} onChange={(e) => setEditForm(p => ({ ...p, assignment: e.target.value as any }))}>
+                    <option value="ALL_EMPLOYEES">Semua Karyawan</option>
+                    <option value="SPECIFIC">User Tertentu</option>
+                  </select>
+                </div>
+                {editForm.assignment === 'SPECIFIC' && (
+                  <div>
+                    <label className="block text-sm text-text-secondary mb-1">Pilih Karyawan</label>
+                    <select className="w-full border border-border rounded px-3 py-2 bg-card text-text-primary" value={editForm.assigneeId} onChange={(e) => setEditForm(p => ({ ...p, assigneeId: e.target.value }))}>
+                      <option value="">-- pilih --</option>
+                      {users.map(u => (<option key={u.id} value={u.id}>{u.fullName}</option>))}
+                    </select>
+                  </div>
+                )}
+              </div>
+              <div className="mt-4 flex gap-2">
+                <Button onClick={async () => {
+                  try {
+                    const res = await fetch(`/api/tasks/${editForm.id}`, {
+                      method: 'PATCH',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({
+                        title: editForm.title,
+                        description: editForm.description,
+                        dueDate: editForm.dueDate || undefined,
+                        priority: editForm.priority,
+                        assignment: editForm.assignment,
+                        assigneeId: editForm.assignment === 'SPECIFIC' ? editForm.assigneeId : undefined,
+                      })
+                    });
+                    if (!res.ok) throw new Error('failed');
+                    // Upload files if any
+                    if (editForm.id && editFiles.length > 0) {
+                      for (const f of editFiles) {
+                        const fd = new FormData()
+                        fd.append('taskId', editForm.id)
+                        fd.append('file', f)
+                        await fetch('/api/tasks/upload-document', { method: 'POST', body: fd })
+                      }
+                    }
+                    setShowEdit(false);
+                    setSelectedTask(null);
+                    fetchTasks();
+                    setEditFiles([])
+                    showSuccess('Berhasil', 'Tugas berhasil diperbarui');
+                  } catch {
+                    showError('Gagal', 'Gagal memperbarui tugas');
+                  }
+                }} className="bg-accent hover:bg-accent-hover">Simpan</Button>
+                <Button variant="outline" onClick={() => setShowEdit(false)}>Batal</Button>
               </div>
             </div>
           </div>

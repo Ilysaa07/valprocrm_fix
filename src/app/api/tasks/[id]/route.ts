@@ -210,10 +210,54 @@ export async function PATCH(
       )
     }
 
+    // Build prisma update payload with proper type conversions
+    const {
+      status: nextStatus,
+      priority: nextPriority,
+      title: nextTitle,
+      description: nextDescription,
+      dueDate: nextDueDate,
+      assignment: nextAssignment,
+      assigneeId: nextAssigneeId,
+      tags: nextTags,
+      validationMessage: nextValidationMessage,
+    } = validatedData
+
+    const updateData: any = {}
+
+    if (typeof nextStatus !== 'undefined') updateData.status = nextStatus
+    if (typeof nextPriority !== 'undefined') updateData.priority = nextPriority
+    if (typeof nextTitle !== 'undefined') updateData.title = nextTitle
+    if (typeof nextDescription !== 'undefined') updateData.description = nextDescription
+    if (typeof nextValidationMessage !== 'undefined') updateData.validationMessage = nextValidationMessage
+
+    if (typeof nextDueDate !== 'undefined') {
+      updateData.dueDate = nextDueDate ? new Date(nextDueDate) : null
+    }
+
+    if (typeof nextTags !== 'undefined') {
+      updateData.tags = JSON.stringify(nextTags)
+    }
+
+    // Handle assignment and assignee rules
+    if (typeof nextAssignment !== 'undefined') {
+      updateData.assignment = nextAssignment
+      if (nextAssignment === 'SPECIFIC') {
+        if (typeof nextAssigneeId !== 'undefined') {
+          updateData.assigneeId = nextAssigneeId
+        }
+      } else {
+        updateData.assigneeId = null
+      }
+    } else if (typeof nextAssigneeId !== 'undefined') {
+      // Allow updating assignee when assignment not explicitly changed
+      updateData.assigneeId = nextAssigneeId
+    }
+
     // Update task
     const updatedTask = await prisma.task.update({
       where: { id: params.id },
-      data: validatedData,
+      data: updateData,
       include: {
         assignee: {
           select: { id: true, fullName: true, email: true }

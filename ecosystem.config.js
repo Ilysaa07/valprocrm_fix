@@ -1,6 +1,6 @@
 module.exports = {
   apps: [{
-    name: 'valprocrm',
+    name: 'valproems',
     script: 'npm',
     args: 'start',
     cwd: '/path/to/your/project', // Update this path

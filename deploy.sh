@@ -41,7 +41,7 @@ if ! command -v certbot &> /dev/null; then
 fi
 
 # Create project directory
-PROJECT_DIR="/var/www/valprocrm"
+PROJECT_DIR="/var/www/valproems"
 echo "📁 Creating project directory: $PROJECT_DIR"
 sudo mkdir -p $PROJECT_DIR
 sudo chown -R $USER:$USER $PROJECT_DIR
@@ -70,7 +70,7 @@ if [ ! -f "$PROJECT_DIR/.env" ]; then
     echo "⚙️ Creating environment file..."
     cat > $PROJECT_DIR/.env << EOF
 # Database Configuration
-DATABASE_URL="mysql://username:password@localhost:3306/valprocrm"
+DATABASE_URL="mysql://username:password@localhost:3306/valproems"
 
 # NextAuth Configuration
 NEXTAUTH_URL="https://crm.valprointertech.com"
@@ -112,8 +112,8 @@ sed -i "s|/path/to/your/project|$PROJECT_DIR|g" $PROJECT_DIR/ecosystem.config.js
 
 # Setup Nginx
 echo "🌐 Setting up Nginx..."
-sudo cp $PROJECT_DIR/nginx.conf /etc/nginx/sites-available/valprocrm
-sudo ln -sf /etc/nginx/sites-available/valprocrm /etc/nginx/sites-enabled/
+sudo cp $PROJECT_DIR/nginx.conf /etc/nginx/sites-available/valproems
+sudo ln -sf /etc/nginx/sites-available/valproems /etc/nginx/sites-enabled/
 sudo rm -f /etc/nginx/sites-enabled/default
 
 # Test Nginx configuration
@@ -140,5 +140,5 @@ sudo certbot --nginx -d crm.valprointertech.com --non-interactive --agree-tos --
 echo "✅ Deployment completed!"
 echo "🌐 Your application should be available at: https://crm.valprointertech.com"
 echo "📊 PM2 Status: pm2 status"
-echo "📝 PM2 Logs: pm2 logs valprocrm"
-echo "🔄 Restart: pm2 restart valprocrm"
+echo "📝 PM2 Logs: pm2 logs valproems"
+echo "🔄 Restart: pm2 restart valproems"
