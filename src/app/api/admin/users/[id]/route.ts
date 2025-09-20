@@ -41,6 +41,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
         phoneNumber: true,
         bankAccountNumber: true,
         ewalletNumber: true,
+        profilePicture: true,
         role: true,
         status: true,
         createdAt: true,

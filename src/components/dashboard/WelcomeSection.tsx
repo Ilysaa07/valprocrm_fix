@@ -152,7 +152,7 @@ export function WelcomeSection({
         <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between mb-8">
           <div className="flex-1">
             <div className="flex items-center space-x-4 mb-4">
-              <div className="w-12 h-12 rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center shadow-lg overflow-hidden">
+              <div className="hidden md:block w-12 h-12 rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center shadow-lg overflow-hidden">
                 {user?.image ? (
                   <img src={user.image} alt="Profile" className="w-full h-full object-cover" />
                 ) : (

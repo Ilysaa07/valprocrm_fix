@@ -2,6 +2,10 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Design Tokens */
+@import '../styles/design-tokens.css';
+@import '../styles/user-management-design-tokens.css';
+
 /* Invoice Print Styles */
 @import '../styles/invoice-print.css';
 
@@ -48,6 +52,170 @@
   }
 }
 
+/* Mobile Tab Bar Animations */
+@keyframes slide-in-from-bottom {
+  from {
+    transform: translateY(100%) scale(0.95);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0) scale(1);
+    opacity: 1;
+  }
+}
+
+@keyframes slide-out-to-bottom {
+  from {
+    transform: translateY(0) scale(1);
+    opacity: 1;
+  }
+  to {
+    transform: translateY(100%) scale(0.95);
+    opacity: 0;
+  }
+}
+
+@keyframes bounce-in {
+  0% {
+    transform: scale(0.3) rotate(-5deg);
+    opacity: 0;
+  }
+  30% {
+    transform: scale(0.8) rotate(2deg);
+    opacity: 0.7;
+  }
+  60% {
+    transform: scale(1.05) rotate(-1deg);
+    opacity: 0.9;
+  }
+  80% {
+    transform: scale(0.98) rotate(0.5deg);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(1) rotate(0deg);
+    opacity: 1;
+  }
+}
+
+@keyframes tab-pulse {
+  0%, 100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.05);
+  }
+}
+
+@keyframes tab-shake {
+  0%, 100% {
+    transform: translateX(0);
+  }
+  10%, 30%, 50%, 70%, 90% {
+    transform: translateX(-2px);
+  }
+  20%, 40%, 60%, 80% {
+    transform: translateX(2px);
+  }
+}
+
+@keyframes glow-effect {
+  0% {
+    box-shadow: 0 0 5px rgba(59, 130, 246, 0.3);
+  }
+  50% {
+    box-shadow: 0 0 20px rgba(59, 130, 246, 0.6), 0 0 30px rgba(59, 130, 246, 0.4);
+  }
+  100% {
+    box-shadow: 0 0 5px rgba(59, 130, 246, 0.3);
+  }
+}
+
+@keyframes ripple-effect {
+  0% {
+    transform: scale(0);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(4);
+    opacity: 0;
+  }
+}
+
+@keyframes float-up {
+  0% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-3px);
+  }
+  100% {
+    transform: translateY(0);
+  }
+}
+
+@keyframes fade-in-up {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes slide-in-right {
+  from {
+    opacity: 0;
+    transform: translateX(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+.animate-slide-in-from-bottom {
+  animation: slide-in-from-bottom 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+}
+
+.animate-slide-out-to-bottom {
+  animation: slide-out-to-bottom 0.3s cubic-bezier(0.55, 0.06, 0.68, 0.19);
+}
+
+.animate-bounce-in {
+  animation: bounce-in 0.6s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+}
+
+.animate-tab-pulse {
+  animation: tab-pulse 2s ease-in-out infinite;
+}
+
+.animate-tab-shake {
+  animation: tab-shake 0.5s ease-in-out;
+}
+
+.animate-glow-effect {
+  animation: glow-effect 2s ease-in-out infinite;
+}
+
+.animate-ripple-effect {
+  animation: ripple-effect 0.6s ease-out;
+}
+
+.animate-float-up {
+  animation: float-up 3s ease-in-out infinite;
+}
+
+.animate-fade-in-up {
+  animation: fade-in-up 0.5s ease-out;
+}
+
+.animate-slide-in-right {
+  animation: slide-in-right 0.4s ease-out;
+}
+
 @keyframes slide-out-to-right {
   from {
     transform: translateX(0);
@@ -71,102 +239,126 @@
 @import '../styles/design-tokens.css';
 
 /* ========================================
-   CORE LAYOUT FIXES
+   CORE RESET & BASE STYLES
    ======================================== */
 
-/* Main layout container - ensures no white spaces */
-.layout-container {
-  display: flex;
-  min-height: 100vh;
-  background: var(--color-bg-secondary);
+/* Ensure consistent box-sizing */
+*, *::before, *::after {
+  box-sizing: border-box;
+}
+
+/* Reset margins and paddings */
+* {
+  margin: 0;
+  padding: 0;
+}
+
+/* Improve text rendering */
+html {
+  -webkit-text-size-adjust: 100%;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+}
+
+/* Full height layout */
+html, body {
+  height: 100%;
   overflow-x: hidden;
 }
 
+body {
+  line-height: 1.5;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+}
+
+/* Remove default button styles */
+button {
+  background: none;
+  border: none;
+  padding: 0;
+  font: inherit;
+  cursor: pointer;
+  outline: inherit;
+}
+
+/* Remove default input styles */
+input, textarea, select {
+  font: inherit;
+}
+
+/* Improve media defaults */
+img, picture, video, canvas, svg {
+  display: block;
+  max-width: 100%;
+}
+
+/* Remove built-in form typography styles */
+input, button, textarea, select {
+  font: inherit;
+}
+
+/* Avoid text overflows */
+p, h1, h2, h3, h4, h5, h6 {
+  overflow-wrap: break-word;
+}
+
+/* ========================================
+   RESPONSIVE LAYOUT SYSTEM
+   ======================================== */
+
+/* Main layout container */
+.layout-container {
+  display: flex;
+  min-height: 100vh;
+  min-height: 100dvh; /* Use dynamic viewport height */
+  background: var(--color-bg-secondary);
+  overflow-x: hidden;
+  position: relative;
+}
+
+/* Sidebar layout */
 .layout-sidebar {
   flex-shrink: 0;
   position: relative;
   z-index: 40;
-  /* Fix height issues - use viewport height instead of min-height */
-  height: 100vh !important;
-  max-height: 100vh !important;
-  /* IMPORTANT: Remove overflow hidden to allow scrolling */
+  height: 100vh;
+  height: 100dvh;
+  max-height: 100vh;
+  max-height: 100dvh;
   overflow: visible;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  background: var(--color-surface);
+  border-right: 1px solid var(--color-border);
+  box-shadow: var(--shadow-md);
 }
 
+/* Main content area */
 .layout-main {
   flex: 1;
   min-width: 0;
   background: transparent;
   overflow-x: hidden;
+  overflow-y: auto;
+  height: 100vh;
+  height: 100dvh;
 }
 
 /* ========================================
-   NEW SIDEBAR STYLING
+   RESPONSIVE BREAKPOINTS & BEHAVIOR
    ======================================== */
 
-/* Clean sidebar design with fixed height */
-.layout-sidebar {
-  /* Smooth transitions */
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  /* Ensure proper background coverage */
-  background-clip: border-box;
-  /* Enhanced shadows */
-  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
-  /* Fix height issues */
-  height: 100vh !important;
-  max-height: 100vh !important;
-  /* IMPORTANT: Allow scrolling */
-  overflow: visible;
-}
-
-.layout-sidebar {
-  background: var(--color-surface);
-  box-shadow: var(--shadow-md);
-}
-
-/* Sidebar content transitions */
-.layout-sidebar * {
-  transition: opacity 0.2s ease-in-out, transform 0.2s ease-in-out;
-}
-
-/* Enhanced scrollbar for sidebar - NO ROUNDED STYLING */
-.layout-sidebar .scrollbar-thin {
-  scrollbar-width: thin;
-  scrollbar-color: #cbd5e1 transparent;
-}
-
-.dark .layout-sidebar .scrollbar-thin {
-  scrollbar-color: #4a5568 transparent;
-}
-
-.layout-sidebar .scrollbar-thumb-gray-300 {
-  background-color: #cbd5e1;
-  /* Remove rounded styling */
-  border-radius: 0;
-}
-
-.dark .layout-sidebar .scrollbar-thumb-gray-600 {
-  background-color: #4a5568;
-  /* Remove rounded styling */
-  border-radius: 0;
-}
-
-/* ========================================
-   RESPONSIVE SIDEBAR BEHAVIOR
-   ======================================== */
-
-/* Mobile & Tablet (≤ 1279px) */
-@media (max-width: 1279px) {
+/* Mobile First Approach */
+/* Extra Small devices (phones, 320px and up) */
+@media (min-width: 320px) {
   .layout-sidebar {
-    position: fixed !important;
-    z-index: 9999;
+    width: 280px;
+    position: fixed;
+    left: 0;
+    top: 0;
     transform: translateX(-100%);
+    z-index: 9999;
     transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1);
-    /* Fix height issues on mobile */
-    height: 100vh !important;
-    max-height: 100vh !important;
-    /* Allow scrolling on mobile */
-    overflow: visible;
   }
   
   .layout-sidebar.open {
@@ -174,22 +366,43 @@
   }
   
   .layout-main {
-    margin-left: 0 !important;
-    width: 100% !important;
+    margin-left: 0;
+    width: 100%;
   }
 }
 
-/* Desktop (≥ 1280px) */
-@media (min-width: 1280px) {
+/* Small devices (landscape phones, 576px and up) */
+@media (min-width: 576px) {
   .layout-sidebar {
-    position: relative !important;
-    transform: none !important;
+    width: 300px;
+  }
+}
+
+/* Medium devices (tablets, 768px and up) */
+@media (min-width: 768px) {
+  .layout-sidebar {
+    width: 320px;
+  }
+}
+
+/* Large devices (desktops, 992px and up) */
+@media (min-width: 992px) {
+  .layout-sidebar {
+    width: 280px;
+  }
+}
+
+/* Extra large devices (large desktops, 1200px and up) */
+@media (min-width: 1200px) {
+  .layout-sidebar {
+    position: relative;
+    transform: none;
     transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-    /* Fix height issues on desktop */
-    height: 100vh !important;
-    max-height: 100vh !important;
-    /* Allow scrolling on desktop */
-    overflow: visible;
+    width: 280px;
+  }
+  
+  .layout-sidebar.collapsed {
+    width: 80px;
   }
   
   .layout-main {
@@ -197,8 +410,19 @@
   }
 }
 
+/* Ultra wide screens (1400px and up) */
+@media (min-width: 1400px) {
+  .layout-sidebar {
+    width: 320px;
+  }
+  
+  .layout-sidebar.collapsed {
+    width: 80px;
+  }
+}
+
 /* ========================================
-   MOBILE OVERLAY
+   MOBILE SIDEBAR OVERLAY
    ======================================== */
 
 .mobile-sidebar-overlay {
@@ -207,79 +431,225 @@
   left: 0;
   right: 0;
   bottom: 0;
-  background: rgba(0, 0, 0, 0.5);
+  background: rgba(0, 0, 0, 0.6);
   backdrop-filter: blur(8px);
-  z-index: 40;
-  transition: opacity 0.3s ease-in-out;
+  z-index: 9998;
+  opacity: 0;
+  visibility: hidden;
+  transition: all 0.3s ease-in-out;
+}
+
+.mobile-sidebar-overlay.show {
+  opacity: 1;
+  visibility: visible;
 }
 
 /* ========================================
-   DASHBOARD LAYOUT - COMPLETELY REMOVED WHITE STYLING
+   SIDEBAR INTERNAL LAYOUT
    ======================================== */
 
-.dashboard-layout {
+/* Sidebar header */
+.sidebar-header {
+  padding: 1rem;
+  border-bottom: 1px solid var(--color-border);
+  background: var(--color-surface);
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+
+/* Sidebar content - scrollable area */
+.sidebar-content {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: 0.75rem 0;
+}
+
+/* Custom scrollbar for sidebar */
+.sidebar-content::-webkit-scrollbar {
+  width: 6px;
+}
+
+.sidebar-content::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.sidebar-content::-webkit-scrollbar-thumb {
+  background: var(--color-border);
+  border-radius: 3px;
+}
+
+.sidebar-content::-webkit-scrollbar-thumb:hover {
+  background: var(--color-border-hover);
+}
+
+/* Sidebar footer */
+.sidebar-footer {
+  padding: 1rem;
+  border-top: 1px solid var(--color-border);
+  background: var(--color-surface);
+  position: sticky;
+  bottom: 0;
+  z-index: 10;
+}
+
+/* ========================================
+   DASHBOARD CONTENT LAYOUT
+   ======================================== */
+
+/* Dashboard wrapper */
+.dashboard-wrapper {
   min-height: 100vh;
+  min-height: 100dvh;
   background: var(--color-bg-secondary);
   position: relative;
 }
 
-/* Completely removed all white styling */
-.dashboard-layout::before,
-.dashboard-layout::after {
-  display: none !important;
-}
-
-/* ========================================
-   HEADER & TOP BAR - NO WHITE BACKGROUNDS
-   ======================================== */
-
+/* Dashboard header */
 .dashboard-header {
   background: var(--color-surface);
   backdrop-filter: blur(12px);
   border-bottom: 1px solid var(--color-border);
-  padding: 1rem 2rem;
+  padding: 1rem 1.5rem;
   position: sticky;
   top: 0;
   z-index: 30;
 }
 
-/* ========================================
-   CONTENT SECTIONS
-   ======================================== */
-
-.dashboard-section {
-  margin-bottom: 2rem;
-  background: transparent;
-}
-
-.dashboard-section:last-child {
-  margin-bottom: 0;
-}
-
+/* Dashboard content */
 .dashboard-content {
   padding: 1.5rem;
   background: transparent;
+  min-height: calc(100vh - 80px);
+  min-height: calc(100dvh - 80px);
+}
+
+/* Responsive dashboard content padding */
+@media (min-width: 768px) {
+  .dashboard-content {
+    padding: 2rem;
+  }
+}
+
+@media (min-width: 1200px) {
+  .dashboard-content {
+    padding: 2.5rem;
+  }
 }
 
 /* ========================================
-   STAT CARDS - NO WHITE BACKGROUNDS
+   RESPONSIVE GRID SYSTEM
+   ======================================== */
+
+.dashboard-grid {
+  display: grid;
+  gap: 1rem;
+  width: 100%;
+}
+
+/* Mobile grid (1 column) */
+.dashboard-grid-1 {
+  grid-template-columns: 1fr;
+}
+
+.dashboard-grid-2 {
+  grid-template-columns: 1fr;
+}
+
+.dashboard-grid-3 {
+  grid-template-columns: 1fr;
+}
+
+.dashboard-grid-4 {
+  grid-template-columns: 1fr;
+}
+
+/* Tablet grid (2 columns) */
+@media (min-width: 768px) {
+  .dashboard-grid {
+    gap: 1.5rem;
+  }
+  
+  .dashboard-grid-2 {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  
+  .dashboard-grid-3 {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  
+  .dashboard-grid-4 {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+/* Desktop grid (3-4 columns) */
+@media (min-width: 1024px) {
+  .dashboard-grid {
+    gap: 2rem;
+  }
+  
+  .dashboard-grid-3 {
+    grid-template-columns: repeat(3, 1fr);
+  }
+  
+  .dashboard-grid-4 {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+/* Large desktop grid (4+ columns) */
+@media (min-width: 1280px) {
+  .dashboard-grid-4 {
+    grid-template-columns: repeat(4, 1fr);
+  }
+}
+
+/* ========================================
+   CARD COMPONENTS
+   ======================================== */
+
+.dashboard-card {
+  background: var(--color-card);
+  backdrop-filter: blur(12px);
+  border: 1px solid var(--color-border);
+  border-radius: 12px;
+  padding: 1.5rem;
+  position: relative;
+  overflow: hidden;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: var(--shadow-sm);
+}
+
+.dashboard-card:hover {
+  background: var(--color-card-hover);
+  box-shadow: var(--shadow-md);
+  transform: translateY(-2px);
+}
+
+/* Responsive card padding */
+@media (min-width: 768px) {
+  .dashboard-card {
+    padding: 2rem;
+  }
+}
+
+/* ========================================
+   STAT CARDS
    ======================================== */
 
 .stat-card {
   background: var(--color-card);
   backdrop-filter: blur(12px);
   border: 1px solid var(--color-border);
-  border-radius: var(--radius-lg);
-  padding: 2rem;
+  border-radius: 12px;
+  padding: 1.5rem;
   position: relative;
   overflow: hidden;
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  box-shadow: var(--shadow-soft);
-}
-
-.stat-card:hover {
-  background: var(--color-card-hover);
-  box-shadow: var(--shadow-medium);
+  box-shadow: var(--shadow-sm);
 }
 
 .stat-card::before {
@@ -289,147 +659,147 @@
   left: 0;
   right: 0;
   height: 3px;
-  background: linear-gradient(90deg, #3b82f6, #1d4ed8);
+  background: linear-gradient(90deg, var(--color-accent), var(--color-accent-hover));
 }
 
 .stat-card:hover {
+  background: var(--color-card-hover);
+  box-shadow: var(--shadow-md);
   transform: translateY(-4px);
-  border-color: rgba(59, 130, 246, 0.4);
+  border-color: var(--color-accent);
 }
 
 /* ========================================
-   GRID LAYOUTS
+   RESPONSIVE TYPOGRAPHY
    ======================================== */
 
-.dashboard-grid {
-  display: grid;
-  gap: 1.5rem;
-  padding: 1.5rem;
-  background: transparent;
-}
+/* Base typography */
+.text-xs { font-size: 0.75rem; line-height: 1rem; }
+.text-sm { font-size: 0.875rem; line-height: 1.25rem; }
+.text-base { font-size: 1rem; line-height: 1.5rem; }
+.text-lg { font-size: 1.125rem; line-height: 1.75rem; }
+.text-xl { font-size: 1.25rem; line-height: 1.75rem; }
+.text-2xl { font-size: 1.5rem; line-height: 2rem; }
+.text-3xl { font-size: 1.875rem; line-height: 2.25rem; }
 
-.dashboard-grid-2 {
-  grid-template-columns: repeat(1, minmax(0, 1fr));
-}
-
-.dashboard-grid-3 {
-  grid-template-columns: repeat(1, minmax(0, 1fr));
-}
-
-.dashboard-grid-4 {
-  grid-template-columns: repeat(1, minmax(0, 1fr));
-}
-
+/* Responsive typography scaling */
 @media (min-width: 768px) {
-  .dashboard-grid {
-    gap: 2rem;
-    padding: 2rem;
-  }
-  
-  .dashboard-grid-2 {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-  
-  .dashboard-grid-3 {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-  
-  .dashboard-grid-4 {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
+  .text-lg { font-size: 1.25rem; line-height: 1.75rem; }
+  .text-xl { font-size: 1.5rem; line-height: 2rem; }
+  .text-2xl { font-size: 1.875rem; line-height: 2.25rem; }
+  .text-3xl { font-size: 2.25rem; line-height: 2.5rem; }
 }
 
 @media (min-width: 1024px) {
-  .dashboard-grid-3 {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-  }
-  
-  .dashboard-grid-4 {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-  }
+  .text-2xl { font-size: 2rem; line-height: 2.25rem; }
+  .text-3xl { font-size: 2.5rem; line-height: 2.75rem; }
 }
 
-@media (min-width: 1280px) {
-  .dashboard-grid-4 {
-    grid-template-columns: repeat(4, minmax(0, 1fr));
+/* ========================================
+   RESPONSIVE SPACING
+   ======================================== */
+
+/* Base spacing */
+.space-y-1 > * + * { margin-top: 0.25rem; }
+.space-y-2 > * + * { margin-top: 0.5rem; }
+.space-y-3 > * + * { margin-top: 0.75rem; }
+.space-y-4 > * + * { margin-top: 1rem; }
+.space-y-6 > * + * { margin-top: 1.5rem; }
+.space-y-8 > * + * { margin-top: 2rem; }
+
+/* Responsive spacing adjustments */
+@media (min-width: 768px) {
+  .md\:space-y-6 > * + * { margin-top: 1.5rem; }
+  .md\:space-y-8 > * + * { margin-top: 2rem; }
+}
+
+@media (min-width: 1024px) {
+  .lg\:space-y-8 > * + * { margin-top: 2rem; }
+  .lg\:space-y-12 > * + * { margin-top: 3rem; }
+}
+
+/* ========================================
+   FORM ELEMENTS
+   ======================================== */
+
+.form-input {
+  width: 100%;
+  padding: 0.75rem 1rem;
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  background: var(--color-surface);
+  color: var(--color-text-primary);
+  font-size: 0.875rem;
+  transition: all 0.2s ease-in-out;
+}
+
+.form-input:focus {
+  outline: none;
+  border-color: var(--color-accent);
+  box-shadow: 0 0 0 3px var(--color-accent-light);
+}
+
+.form-input::placeholder {
+  color: var(--color-text-muted);
+}
+
+/* Responsive form inputs */
+@media (min-width: 768px) {
+  .form-input {
+    padding: 0.875rem 1.25rem;
+    font-size: 1rem;
   }
 }
 
 /* ========================================
-   RESPONSIVE PAGE SCROLLING FIXES
+   BUTTON COMPONENTS
    ======================================== */
 
-/* Fix full page scrolling */
-html, body {
-  height: 100%;
-  overflow-x: hidden;
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.75rem 1.5rem;
+  border-radius: 8px;
+  font-size: 0.875rem;
+  font-weight: 500;
+  line-height: 1;
+  text-decoration: none;
+  transition: all 0.2s ease-in-out;
+  cursor: pointer;
+  border: 1px solid transparent;
 }
 
-/* Main content area - ensure full height and proper scrolling */
-  .layout-main {
-  min-height: 100vh;
-  height: auto;
-  overflow-x: hidden;
-  overflow-y: auto;
+.btn-primary {
+  background: var(--color-accent);
+  color: white;
+  border-color: var(--color-accent);
 }
 
-/* Content wrapper - ensure proper spacing and scrolling */
-.content-wrapper {
-  min-height: 100vh;
-  padding-bottom: 2rem;
+.btn-primary:hover {
+  background: var(--color-accent-hover);
+  border-color: var(--color-accent-hover);
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-md);
 }
 
-/* Fix for pages that need full scrolling */
-.full-scroll-page {
-  min-height: 100vh;
-  height: auto;
-  overflow-x: hidden;
+.btn-secondary {
+  background: var(--color-surface);
+  color: var(--color-text-primary);
+  border-color: var(--color-border);
 }
 
-/* Dashboard content - ensure proper scrolling */
-.dashboard-content {
-  min-height: calc(100vh - 80px); /* Adjust based on header height */
-  padding-bottom: 2rem;
+.btn-secondary:hover {
+  background: var(--color-card-hover);
+  border-color: var(--color-border-hover);
 }
 
-/* ========================================
-   FULL VIEWPORT SCROLLING FIXES
-   ======================================== */
-
-/* Ensure main layout takes full viewport */
-.layout-container {
-  min-height: 100dvh;
-  height: auto;
-  overflow: visible;
-}
-
-/* Main content takes remaining space */
-.layout-main {
-  flex: 1;
-  min-height: 0;
-  height: auto;
-  overflow-y: auto;
-  overflow-x: hidden;
-}
-
-/* Content area fills available space */
-.content-wrapper {
-  /* Ensure inner content flows and scrolls on mobile */
-  min-height: auto;
-  height: auto;
-  padding-bottom: 4rem;
-}
-
-/* Fix for main content scrolling */
-main {
-  overflow-y: auto;
-  overflow-x: hidden;
-}
-
-/* Ensure proper height calculation */
-.flex-1 {
-  flex: 1 1 0%;
-  min-height: 0;
+/* Responsive button sizing */
+@media (min-width: 768px) {
+  .btn {
+    padding: 0.875rem 2rem;
+    font-size: 1rem;
+  }
 }
 
 /* ========================================
@@ -443,15 +813,100 @@ main {
 
 /* Focus states */
 .focus-ring {
-  @apply focus:outline-none focus:ring-2 focus:ring-blue-500/40 focus:ring-offset-2;
+  outline: none;
+}
+
+.focus-ring:focus {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
 }
 
 /* Hover effects */
-.hover-lift {
-  @apply hover:transform hover:scale-105 hover:shadow-lg;
+.hover-lift:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-lg);
 }
 
 /* Active states */
-.active-scale {
-  @apply active:transform active:scale-95;
+.active-scale:active {
+  transform: scale(0.98);
 }
+
+/* Truncate text */
+.truncate {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Screen reader only */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* ========================================
+   ACCESSIBILITY IMPROVEMENTS
+   ======================================== */
+
+/* Focus visible for keyboard navigation */
+.focus-visible:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
+}
+
+/* Reduce motion for users who prefer it */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* High contrast mode support */
+@media (prefers-contrast: high) {
+  .layout-sidebar {
+    border-right-width: 2px;
+  }
+  
+  .dashboard-card {
+    border-width: 2px;
+  }
+  
+  .form-input {
+    border-width: 2px;
+  }
+}
+
+/* ========================================
+   PRINT STYLES
+   ======================================== */
+
+@media print {
+  .layout-sidebar {
+    display: none;
+  }
+  
+  .layout-main {
+    margin-left: 0;
+    width: 100%;
+  }
+  
+  .dashboard-header {
+    position: static;
+  }
+  
+  .btn {
+    display: none;
+  }
+}
+

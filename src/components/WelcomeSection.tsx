@@ -84,7 +84,7 @@ export function WelcomeSection({
           </div>
           
           {showUserInfo && (
-            <div className="flex items-center space-x-3 bg-white/50 dark:bg-gray-800/50 rounded-lg p-3 border border-blue-200 dark:border-blue-700">
+            <div className="hidden md:flex items-center space-x-3 bg-white/50 dark:bg-gray-800/50 rounded-lg p-3 border border-blue-200 dark:border-blue-700">
               <div className="w-10 h-10 bg-blue-100 dark:bg-blue-900 rounded-full flex items-center justify-center">
                 <User className="h-5 w-5 text-blue-600 dark:text-blue-400" />
               </div>

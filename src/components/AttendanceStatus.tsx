@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { Card, CardBody } from '@/components/ui/Card'
+import { AttendanceStatusBadge } from '@/components/ui/AttendanceStatusBadge'
 import { MapPin, Clock, CheckCircle, XCircle, Home, Calendar, AlertTriangle } from 'lucide-react'
 
 interface TodayStatus {
@@ -52,20 +53,20 @@ export function AttendanceStatus({
   const getStatusInfo = () => {
     if (loading) {
       return {
-        icon: <Clock className="h-8 w-8 text-gray-400 animate-pulse" />,
+        icon: <Clock className="h-8 w-8 text-gray-400 dark:text-gray-500 animate-pulse" />,
         status: 'Memuat...',
-        color: 'bg-gray-50 border-gray-200',
-        textColor: 'text-gray-600',
+        color: 'bg-gray-50 dark:bg-gray-800 border-gray-200 dark:border-gray-700',
+        textColor: 'text-gray-600 dark:text-gray-300',
         message: 'Memeriksa status absensi hari ini...'
       }
     }
 
     if (!todayStatus) {
       return {
-        icon: <Clock className="h-8 w-8 text-gray-400" />,
+        icon: <Clock className="h-8 w-8 text-gray-400 dark:text-gray-500" />,
         status: 'Belum Absen',
-        color: 'bg-gray-50 border-gray-200',
-        textColor: 'text-gray-600',
+        color: 'bg-gray-50 dark:bg-gray-800 border-gray-200 dark:border-gray-700',
+        textColor: 'text-gray-600 dark:text-gray-300',
         message: 'Anda belum melakukan absensi hari ini'
       }
     }
@@ -74,31 +75,31 @@ export function AttendanceStatus({
       const status = todayStatus.attendance?.status || 'PRESENT'
       const statusConfig = {
         PRESENT: {
-          icon: <CheckCircle className="h-8 w-8 text-green-500" />,
+          icon: <CheckCircle className="h-8 w-8 text-green-500 dark:text-green-400" />,
           status: 'Hadir',
-          color: 'bg-green-50 border-green-200',
-          textColor: 'text-green-700',
+          color: 'bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800',
+          textColor: 'text-green-700 dark:text-green-300',
           message: 'Anda sudah melakukan absensi hari ini'
         },
         LATE: {
-          icon: <AlertTriangle className="h-8 w-8 text-yellow-500" />,
+          icon: <AlertTriangle className="h-8 w-8 text-yellow-500 dark:text-yellow-400" />,
           status: 'Terlambat',
-          color: 'bg-yellow-50 border-yellow-200',
-          textColor: 'text-yellow-700',
+          color: 'bg-yellow-50 dark:bg-yellow-900/20 border-yellow-200 dark:border-yellow-800',
+          textColor: 'text-yellow-700 dark:text-yellow-300',
           message: 'Anda terlambat hari ini'
         },
         WFH: {
-          icon: <Home className="h-8 w-8 text-purple-500" />,
+          icon: <Home className="h-8 w-8 text-purple-500 dark:text-purple-400" />,
           status: 'Work From Home',
-          color: 'bg-purple-50 border-purple-200',
-          textColor: 'text-purple-700',
+          color: 'bg-purple-50 dark:bg-purple-900/20 border-purple-200 dark:border-purple-800',
+          textColor: 'text-purple-700 dark:text-purple-300',
           message: 'Anda sedang WFH hari ini'
         },
         LEAVE: {
-          icon: <Calendar className="h-8 w-8 text-blue-500" />,
+          icon: <Calendar className="h-8 w-8 text-blue-500 dark:text-blue-400" />,
           status: 'Izin',
-          color: 'bg-blue-50 border-blue-200',
-          textColor: 'text-blue-700',
+          color: 'bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800',
+          textColor: 'text-blue-700 dark:text-blue-300',
           message: 'Anda sedang izin hari ini'
         }
       }
@@ -109,19 +110,19 @@ export function AttendanceStatus({
       const statusText = todayStatus.wfhStatus === 'PENDING' ? 'Menunggu Validasi' : 
                         todayStatus.wfhStatus === 'APPROVED' ? 'Disetujui' : 'Ditolak'
       return {
-        icon: <AlertTriangle className="h-8 w-8 text-yellow-500" />,
+        icon: <AlertTriangle className="h-8 w-8 text-yellow-500 dark:text-yellow-400" />,
         status: `WFH ${statusText}`,
-        color: 'bg-yellow-50 border-yellow-200',
-        textColor: 'text-yellow-700',
+        color: 'bg-yellow-50 dark:bg-yellow-900/20 border-yellow-200 dark:border-yellow-800',
+        textColor: 'text-yellow-700 dark:text-yellow-300',
         message: `Anda sudah mengajukan WFH hari ini (${statusText})`
       }
     }
 
     return {
-      icon: <Clock className="h-8 w-8 text-gray-400" />,
+      icon: <Clock className="h-8 w-8 text-gray-400 dark:text-gray-500" />,
       status: 'Belum Absen',
-      color: 'bg-gray-50 border-gray-200',
-      textColor: 'text-gray-600',
+      color: 'bg-gray-50 dark:bg-gray-800 border-gray-200 dark:border-gray-700',
+      textColor: 'text-gray-600 dark:text-gray-300',
       message: 'Anda belum melakukan absensi hari ini'
     }
   }

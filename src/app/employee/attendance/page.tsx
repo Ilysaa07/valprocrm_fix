@@ -239,7 +239,7 @@ export default function EmployeeAttendancePage() {
             <button 
               onClick={getLocation} 
               disabled={getting}
-              className="flex items-center justify-center space-x-2 px-6 py-3 rounded-xl bg-neutral-100 dark:bg-neutral-800 text-neutral-700 dark:text-neutral-300 hover:bg-neutral-200 dark:hover:bg-neutral-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              className="flex items-center justify-center space-x-2 px-6 py-3 rounded-xl bg-neutral-100 dark:bg-neutral-800 text-neutral-700 dark:text-neutral-300 hover:bg-neutral-200 dark:hover:bg-neutral-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed border border-neutral-200 dark:border-neutral-700"
             >
               <div className={`w-4 h-4 rounded-full ${getting ? 'bg-yellow-500 animate-pulse' : 'bg-blue-500'}`}></div>
               <span className="font-medium">{getting ? 'Mengambil...' : 'Ambil Lokasi'}</span>
@@ -250,8 +250,8 @@ export default function EmployeeAttendancePage() {
               disabled={!coords || todayStatus?.hasAttendance || todayStatus?.hasWFH}
               className={`flex items-center justify-center space-x-2 px-6 py-3 rounded-xl transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${
                 currentTime.isLate 
-                  ? 'bg-yellow-600 text-white hover:bg-yellow-700' 
-                  : 'bg-green-600 text-white hover:bg-green-700'
+                  ? 'bg-yellow-600 text-white hover:bg-yellow-700 border border-yellow-600' 
+                  : 'bg-green-600 text-white hover:bg-green-700 border border-green-600'
               }`}
             >
               <div className="w-4 h-4 rounded-full bg-white"></div>
@@ -263,7 +263,7 @@ export default function EmployeeAttendancePage() {
             <button 
               onClick={checkOut}
               disabled={!todayStatus?.hasAttendance}
-              className="flex items-center justify-center space-x-2 px-6 py-3 rounded-xl bg-red-600 text-white hover:bg-red-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              className="flex items-center justify-center space-x-2 px-6 py-3 rounded-xl bg-red-600 text-white hover:bg-red-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed border border-red-600"
             >
               <div className="w-4 h-4 rounded-full bg-white"></div>
               <span className="font-medium">Clock Out</span>

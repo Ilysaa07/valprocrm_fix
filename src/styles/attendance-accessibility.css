@@ -1,0 +1,461 @@
+/* Attendance Accessibility Enhancements */
+/* Enhanced contrast and readability for attendance features */
+
+/* ========================================
+   HIGH CONTRAST MODE SUPPORT
+   ======================================== */
+
+@media (prefers-contrast: high) {
+  /* Enhanced contrast for attendance status badges */
+  .attendance-status-present {
+    background-color: #065f46 !important;
+    color: #ffffff !important;
+    border: 2px solid #10b981 !important;
+  }
+  
+  .attendance-status-late {
+    background-color: #92400e !important;
+    color: #ffffff !important;
+    border: 2px solid #f59e0b !important;
+  }
+  
+  .attendance-status-absent {
+    background-color: #991b1b !important;
+    color: #ffffff !important;
+    border: 2px solid #ef4444 !important;
+  }
+  
+  .attendance-status-wfh {
+    background-color: #581c87 !important;
+    color: #ffffff !important;
+    border: 2px solid #8b5cf6 !important;
+  }
+  
+  .attendance-status-leave {
+    background-color: #1e40af !important;
+    color: #ffffff !important;
+    border: 2px solid #3b82f6 !important;
+  }
+  
+  /* Enhanced contrast for dark mode */
+  .dark .attendance-status-present {
+    background-color: #064e3b !important;
+    color: #6ee7b7 !important;
+    border: 2px solid #10b981 !important;
+  }
+  
+  .dark .attendance-status-late {
+    background-color: #451a03 !important;
+    color: #fbbf24 !important;
+    border: 2px solid #f59e0b !important;
+  }
+  
+  .dark .attendance-status-absent {
+    background-color: #450a0a !important;
+    color: #fca5a5 !important;
+    border: 2px solid #ef4444 !important;
+  }
+  
+  .dark .attendance-status-wfh {
+    background-color: #2e1065 !important;
+    color: #c4b5fd !important;
+    border: 2px solid #8b5cf6 !important;
+  }
+  
+  .dark .attendance-status-leave {
+    background-color: #1e3a8a !important;
+    color: #93c5fd !important;
+    border: 2px solid #3b82f6 !important;
+  }
+}
+
+/* ========================================
+   ENHANCED TEXT READABILITY
+   ======================================== */
+
+/* Improved text contrast for attendance components */
+.attendance-text-primary {
+  color: #111827;
+}
+
+.dark .attendance-text-primary {
+  color: #f9fafb;
+}
+
+.attendance-text-secondary {
+  color: #374151;
+}
+
+.dark .attendance-text-secondary {
+  color: #d1d5db;
+}
+
+.attendance-text-muted {
+  color: #6b7280;
+}
+
+.dark .attendance-text-muted {
+  color: #9ca3af;
+}
+
+/* Enhanced button contrast */
+.attendance-button-primary {
+  background-color: #2563eb;
+  color: #ffffff;
+  border: 1px solid #2563eb;
+}
+
+.attendance-button-primary:hover {
+  background-color: #1d4ed8;
+  border-color: #1d4ed8;
+}
+
+.attendance-button-success {
+  background-color: #059669;
+  color: #ffffff;
+  border: 1px solid #059669;
+}
+
+.attendance-button-success:hover {
+  background-color: #047857;
+  border-color: #047857;
+}
+
+.attendance-button-warning {
+  background-color: #d97706;
+  color: #ffffff;
+  border: 1px solid #d97706;
+}
+
+.attendance-button-warning:hover {
+  background-color: #b45309;
+  border-color: #b45309;
+}
+
+.attendance-button-danger {
+  background-color: #dc2626;
+  color: #ffffff;
+  border: 1px solid #dc2626;
+}
+
+.attendance-button-danger:hover {
+  background-color: #b91c1c;
+  border-color: #b91c1c;
+}
+
+/* ========================================
+   ENHANCED FORM ELEMENTS
+   ======================================== */
+
+.attendance-input {
+  background-color: #ffffff;
+  border: 2px solid #d1d5db;
+  color: #111827;
+  transition: all 0.2s ease-in-out;
+}
+
+.attendance-input:focus {
+  border-color: #2563eb;
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+  outline: none;
+}
+
+.attendance-input::placeholder {
+  color: #9ca3af;
+}
+
+.dark .attendance-input {
+  background-color: #1f2937;
+  border-color: #4b5563;
+  color: #f9fafb;
+}
+
+.dark .attendance-input:focus {
+  border-color: #60a5fa;
+  box-shadow: 0 0 0 3px rgba(96, 165, 250, 0.1);
+}
+
+.dark .attendance-input::placeholder {
+  color: #6b7280;
+}
+
+/* ========================================
+   ENHANCED CARD STYLING
+   ======================================== */
+
+.attendance-card {
+  background-color: #ffffff;
+  border: 1px solid #e5e7eb;
+  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1);
+  transition: all 0.2s ease-in-out;
+}
+
+.attendance-card:hover {
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+}
+
+.dark .attendance-card {
+  background-color: #1f2937;
+  border-color: #374151;
+  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.3);
+}
+
+.dark .attendance-card:hover {
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.4);
+}
+
+/* ========================================
+   ENHANCED TABLE STYLING
+   ======================================== */
+
+.attendance-table {
+  background-color: #ffffff;
+  border-collapse: collapse;
+}
+
+.attendance-table th {
+  background-color: #f9fafb;
+  border-bottom: 2px solid #e5e7eb;
+  color: #374151;
+  font-weight: 600;
+}
+
+.attendance-table td {
+  border-bottom: 1px solid #e5e7eb;
+  color: #111827;
+}
+
+.attendance-table tbody tr:hover {
+  background-color: #f9fafb;
+}
+
+.dark .attendance-table {
+  background-color: #1f2937;
+}
+
+.dark .attendance-table th {
+  background-color: #374151;
+  border-bottom-color: #4b5563;
+  color: #d1d5db;
+}
+
+.dark .attendance-table td {
+  border-bottom-color: #4b5563;
+  color: #f9fafb;
+}
+
+.dark .attendance-table tbody tr:hover {
+  background-color: #374151;
+}
+
+/* ========================================
+   ENHANCED STATUS INDICATORS
+   ======================================== */
+
+.attendance-status-indicator {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.25rem 0.75rem;
+  border-radius: 9999px;
+  font-size: 0.875rem;
+  font-weight: 500;
+  border: 1px solid transparent;
+}
+
+.attendance-status-indicator.present {
+  background-color: #dcfce7;
+  color: #166534;
+  border-color: #22c55e;
+}
+
+.attendance-status-indicator.late {
+  background-color: #fef3c7;
+  color: #92400e;
+  border-color: #f59e0b;
+}
+
+.attendance-status-indicator.absent {
+  background-color: #fee2e2;
+  color: #991b1b;
+  border-color: #ef4444;
+}
+
+.attendance-status-indicator.wfh {
+  background-color: #f3e8ff;
+  color: #6b21a8;
+  border-color: #8b5cf6;
+}
+
+.attendance-status-indicator.leave {
+  background-color: #dbeafe;
+  color: #1e40af;
+  border-color: #3b82f6;
+}
+
+.dark .attendance-status-indicator.present {
+  background-color: #064e3b;
+  color: #6ee7b7;
+  border-color: #10b981;
+}
+
+.dark .attendance-status-indicator.late {
+  background-color: #451a03;
+  color: #fbbf24;
+  border-color: #f59e0b;
+}
+
+.dark .attendance-status-indicator.absent {
+  background-color: #450a0a;
+  color: #fca5a5;
+  border-color: #ef4444;
+}
+
+.dark .attendance-status-indicator.wfh {
+  background-color: #2e1065;
+  color: #c4b5fd;
+  border-color: #8b5cf6;
+}
+
+.dark .attendance-status-indicator.leave {
+  background-color: #1e3a8a;
+  color: #93c5fd;
+  border-color: #3b82f6;
+}
+
+/* ========================================
+   ENHANCED LOADING STATES
+   ======================================== */
+
+.attendance-loading {
+  background: linear-gradient(90deg, #f3f4f6 25%, #e5e7eb 50%, #f3f4f6 75%);
+  background-size: 200% 100%;
+  animation: loading 1.5s infinite;
+}
+
+.dark .attendance-loading {
+  background: linear-gradient(90deg, #374151 25%, #4b5563 50%, #374151 75%);
+  background-size: 200% 100%;
+}
+
+@keyframes loading {
+  0% {
+    background-position: 200% 0;
+  }
+  100% {
+    background-position: -200% 0;
+  }
+}
+
+/* ========================================
+   ENHANCED FOCUS INDICATORS
+   ======================================== */
+
+.attendance-focus-visible:focus-visible {
+  outline: 2px solid #2563eb;
+  outline-offset: 2px;
+}
+
+.dark .attendance-focus-visible:focus-visible {
+  outline-color: #60a5fa;
+}
+
+/* ========================================
+   ENHANCED RESPONSIVE DESIGN
+   ======================================== */
+
+@media (max-width: 768px) {
+  .attendance-card {
+    margin: 0.5rem;
+    border-radius: 0.75rem;
+  }
+  
+  .attendance-button-primary,
+  .attendance-button-success,
+  .attendance-button-warning,
+  .attendance-button-danger {
+    padding: 0.75rem 1rem;
+    font-size: 1rem;
+    min-height: 44px; /* Touch target size */
+  }
+  
+  .attendance-input {
+    padding: 0.75rem;
+    font-size: 1rem;
+    min-height: 44px; /* Touch target size */
+  }
+}
+
+/* ========================================
+   ENHANCED ACCESSIBILITY FEATURES
+   ======================================== */
+
+/* Screen reader only text */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* Enhanced skip links */
+.skip-link {
+  position: absolute;
+  top: -40px;
+  left: 6px;
+  background: #000;
+  color: #fff;
+  padding: 8px;
+  text-decoration: none;
+  z-index: 1000;
+}
+
+.skip-link:focus {
+  top: 6px;
+}
+
+/* Enhanced error states */
+.attendance-error {
+  border-color: #ef4444 !important;
+  background-color: #fef2f2;
+}
+
+.dark .attendance-error {
+  border-color: #f87171 !important;
+  background-color: #450a0a;
+}
+
+.attendance-error-message {
+  color: #dc2626;
+  font-size: 0.875rem;
+  margin-top: 0.25rem;
+}
+
+.dark .attendance-error-message {
+  color: #fca5a5;
+}
+
+/* Enhanced success states */
+.attendance-success {
+  border-color: #22c55e !important;
+  background-color: #f0fdf4;
+}
+
+.dark .attendance-success {
+  border-color: #4ade80 !important;
+  background-color: #064e3b;
+}
+
+.attendance-success-message {
+  color: #16a34a;
+  font-size: 0.875rem;
+  margin-top: 0.25rem;
+}
+
+.dark .attendance-success-message {
+  color: #6ee7b7;
+}

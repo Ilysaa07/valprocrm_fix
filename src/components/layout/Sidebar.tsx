@@ -10,7 +10,6 @@ import {
   Home, 
   Users, 
   Settings, 
-  Contact, 
   CheckSquare, 
   MessageCircle, 
   Bell, 
@@ -71,7 +70,7 @@ export default function Sidebar({
   pendingTasks = 0,
   pendingApprovals = 0,
   isMobile = false,
-  isOpen: _isOpen = false,
+  isOpen = false,
   onClose
 }: SidebarProps) {
   const { theme, toggle: toggleTheme } = useTheme()
@@ -90,7 +89,7 @@ export default function Sidebar({
   // Handle responsive behavior
   useEffect(() => {
     const handleResize = () => {
-      if (window.innerWidth < 1280 && !collapsed && !isMobile) {
+      if (window.innerWidth < 1200 && !collapsed && !isMobile) {
         setCollapsed(true)
       }
     }
@@ -120,7 +119,6 @@ export default function Sidebar({
       title: 'Manajemen',
       items: [
         { name: 'Pengguna', href: '/admin/users', icon: Users, description: 'Manajemen pengguna', badge: pendingApprovals, isNew: false },
-        { name: 'Kontak', href: '/admin/contacts', icon: Contact, description: 'Database kontak', isNew: false },
         { name: 'Kehadiran', href: '/admin/attendance', icon: UserCheck, description: 'Manajemen kehadiran', isNew: false }
       ]
     },
@@ -143,8 +141,7 @@ export default function Sidebar({
       title: 'Kerja',
       items: [
         { name: 'Tugas', href: '/admin/tasks', icon: CheckSquare, description: 'Manajemen tugas', badge: pendingTasks, isNew: false },
-        { name: 'Dokumen', href: '/admin/documents', icon: FileText, description: 'Manajemen file', isNew: false },
-        { name: 'WFH Validasi', href: '/admin/wfh/validation', icon: MapPin, description: 'Validasi work from home', isNew: false }
+        { name: 'Dokumen', href: '/admin/documents', icon: FileText, description: 'Manajemen file', isNew: false }
       ]
     },
     {
@@ -188,8 +185,7 @@ export default function Sidebar({
       title: 'Komunikasi',
       items: [
         { name: 'Chat', href: '/employee/chat', icon: MessageCircle, description: 'Chat tim', badge: unreadMessages, isNew: false },
-        { name: 'Notifikasi', href: '/employee/notifications', icon: Bell, description: 'Peringatan saya', badge: unreadNotifications, isNew: false },
-        { name: 'Kontak', href: '/employee/contacts', icon: Contact, description: 'Kontak tim', isNew: false }
+        { name: 'Notifikasi', href: '/employee/notifications', icon: Bell, description: 'Peringatan saya', badge: unreadNotifications, isNew: false }
       ]
     },
     {
@@ -214,54 +210,65 @@ export default function Sidebar({
 
   if (!mounted) return null
 
-  // Responsive width calculation
-  const getSidebarWidth = () => {
-    if (isMobile) return 'w-80' // Mobile: fixed width (320px)
-    if (collapsed) return 'w-16' // Collapsed: minimal width (64px)
-    return 'w-64' // Expanded: standard width (256px)
-  }
-
-  // Sidebar container classes
+  // Get sidebar classes based on state
   const getSidebarClasses = () => {
     const baseClasses = [
-      'flex flex-col h-screen transition-all duration-300 ease-out',
-      'bg-card',
-      'border-r border-border'
+      'layout-sidebar',
+      'flex flex-col',
+      'bg-surface border-r border-border',
+      'transition-all duration-300 ease-out',
+      'h-screen max-h-screen',
+      'overflow-visible'
     ]
 
-    // Width classes
-    baseClasses.push(getSidebarWidth())
-
-    // Mobile-specific classes
     if (isMobile) {
-      // For mobile, we don't need positioning since parent handles it
-      baseClasses.push('relative')
+      baseClasses.push('fixed left-0 top-0 z-[9999] w-80')
+      if (isOpen) {
+        baseClasses.push('open')
+      }
     } else {
       baseClasses.push('relative')
+      if (collapsed) {
+        baseClasses.push('collapsed w-20')
+      } else {
+        baseClasses.push('w-80')
+      }
     }
 
     return baseClasses.join(' ')
   }
 
-  const isOpen = _isOpen
-
   return (
-    <div className={`${getSidebarClasses()} layout-sidebar ${isMobile && isOpen ? 'open' : ''} min-h-0`}>
+    <aside className={getSidebarClasses()}>
       {/* Header */}
-      <div className="px-4 py-4 border-b border-border bg-card">
-        <div className="flex items-center justify-between">
-          {!collapsed && (
-            <div className="flex items-center space-x-3">
-              <img src="/logometa.png" alt="Valpro Logo" className="w-8 h-8 object-contain" />
-              <div>
-                <h1 className="text-base font-semibold text-text-primary">ValproEMS</h1>
-                <p className="text-xs text-text-secondary">{role === 'ADMIN' ? 'Portal Admin' : 'Portal Karyawan'}</p>
-              </div>
+      <div className="sidebar-header flex items-center justify-between px-4 py-4 border-b border-border bg-surface">
+        {(!collapsed || isMobile) && (
+          <div className="flex items-center space-x-3 min-w-0">
+            <img 
+              src="/logometa.png" 
+              alt="Valpro Logo" 
+              className="w-8 h-8 object-contain flex-shrink-0" 
+            />
+            <div className="min-w-0">
+              <h1 className="text-base font-semibold text-text-primary truncate">
+                ValproEMS
+              </h1>
+              <p className="text-xs text-text-secondary truncate">
+                {role === 'ADMIN' ? 'Portal Admin' : 'Portal Karyawan'}
+              </p>
             </div>
-          )}
-          {collapsed && (
-            <img src="/logometa.png" alt="Valpro Logo" className="w-6 h-6 object-contain mx-auto" />
-          )}
+          </div>
+        )}
+        
+        {collapsed && !isMobile && (
+          <img 
+            src="/logometa.png" 
+            alt="Valpro Logo" 
+            className="w-6 h-6 object-contain mx-auto" 
+          />
+        )}
+        
+        <div className="flex items-center space-x-2 flex-shrink-0">
           {isMobile ? (
             <button
               onClick={() => onClose && onClose()}
@@ -281,62 +288,68 @@ export default function Sidebar({
               {collapsed ? (
                 <Menu className="h-4 w-4 text-text-secondary" />
               ) : (
-                <X className="h-4 w-4 text-text-secondary" />
+                <ChevronRight className="h-4 w-4 text-text-secondary" />
               )}
             </button>
           )}
         </div>
       </div>
 
-      {/* User Profile Section - REMOVED (moved to navbar) */}
-      {/* Removed user profile section as requested - moved to navbar */}
-
       {/* Search */}
-      <div className="px-4 py-3 border-b border-border">
-        <div className="relative">
-          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-text-muted" />
-          <input
-            type="text"
-            placeholder="Cari menu..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full pl-10 pr-3 py-2 text-sm rounded-md border border-border bg-card text-text-primary placeholder-text-muted focus:outline-none focus:ring-2 focus:ring-accent/40 focus:border-accent"
-          />
-          {searchQuery && (
-            <button
-              onClick={() => setSearchQuery('')}
-              className="absolute right-2 top-1/2 transform -translate-y-1/2 p-1 rounded hover:bg-card-hover"
-              title="Hapus pencarian"
-            >
-              <X className="w-3 h-3 text-text-muted" />
-            </button>
-          )}
+      {(!collapsed || isMobile) && (
+        <div className="px-4 py-3 border-b border-border">
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-text-muted" />
+            <input
+              type="text"
+              placeholder="Cari menu..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full pl-10 pr-3 py-2 text-sm rounded-md border border-border bg-surface text-text-primary placeholder-text-muted focus:outline-none focus:ring-2 focus:ring-accent/40 focus:border-accent"
+            />
+            {searchQuery && (
+              <button
+                onClick={() => setSearchQuery('')}
+                className="absolute right-2 top-1/2 transform -translate-y-1/2 p-1 rounded hover:bg-card-hover"
+                title="Hapus pencarian"
+              >
+                <X className="w-3 h-3 text-text-muted" />
+              </button>
+            )}
+          </div>
         </div>
-      </div>
+      )}
 
       {/* Navigation - scrollable area */}
-      <div className="flex-1 min-h-0 overflow-y-auto py-3 scrollbar-thin scrollbar-thumb-slate-300 dark:scrollbar-thumb-slate-600 scrollbar-track-transparent">
+      <div className="sidebar-content flex-1 min-h-0 overflow-y-auto py-3">
         {filteredSections.map((section, sectionIndex) => {
           const toggleSection = () => {
-            setExpandedSections(prev => ({
-              ...prev,
-              [section.title]: !(prev[section.title])
-            }));
+            if (!collapsed) {
+              setExpandedSections(prev => ({
+                ...prev,
+                [section.title]: !(prev[section.title])
+              }));
+            }
           };
           
           const isSectionExpanded = expandedSections[section.title] !== false;
           
           return (
             <div key={sectionIndex} className="mb-4 px-4">
-              {!collapsed ? (
+              {(!collapsed || isMobile) ? (
                 <div 
-                  className="flex items-center justify-between mb-2 cursor-pointer"
+                  className="flex items-center justify-between mb-2 cursor-pointer group"
                   onClick={toggleSection}
                 >
-                  <h3 className="text-[11px] font-semibold uppercase tracking-wider text-text-muted">
+                  <h3 className="text-[11px] font-semibold uppercase tracking-wider text-text-muted group-hover:text-text-secondary transition-colors">
                     {section.title}
                   </h3>
-                  <ChevronDown className={cn("h-3 w-3 text-text-muted transition-transform", isSectionExpanded ? "rotate-180" : "")} />
+                  <ChevronDown 
+                    className={cn(
+                      "h-3 w-3 text-text-muted group-hover:text-text-secondary transition-all duration-200", 
+                      isSectionExpanded ? "rotate-180" : ""
+                    )} 
+                  />
                 </div>
               ) : (
                 <div className="h-px my-4 bg-border"></div>
@@ -357,27 +370,42 @@ export default function Sidebar({
                             }
                           }}
                           className={cn(
-                            'group flex items-center px-3 py-2 text-sm rounded-md transition-colors',
-                            active ? 'bg-accent/15 text-accent border border-accent/20' : 'text-text-primary hover:bg-card-hover',
-                            collapsed && 'justify-center'
+                            'group flex items-center px-3 py-2.5 text-sm rounded-lg transition-all duration-200',
+                            'hover:bg-card-hover focus:outline-none focus:ring-2 focus:ring-accent/40',
+                            active 
+                              ? 'bg-accent/15 text-accent border border-accent/20 shadow-sm' 
+                              : 'text-text-primary hover:text-text-secondary',
+                            collapsed && !isMobile && 'justify-center px-2'
                           )}
+                          title={collapsed && !isMobile ? item.name : undefined}
                         >
-                          <div className="relative">
+                          <div className="relative flex-shrink-0">
                             <item.icon className={cn(
-                              'flex-shrink-0',
-                              collapsed ? 'h-5 w-5' : 'h-4 w-4 mr-3',
+                              'transition-colors duration-200',
+                              collapsed && !isMobile ? 'h-5 w-5' : 'h-4 w-4 mr-3',
                               active ? 'text-accent' : 'text-text-muted group-hover:text-text-secondary'
                             )} />
+                            {item.badge && item.badge > 0 && (
+                              <span className={cn(
+                                'absolute -top-1 -right-1 bg-error text-white text-xs rounded-full min-w-[16px] h-4 flex items-center justify-center px-1',
+                                collapsed && !isMobile ? 'text-[10px]' : 'text-xs'
+                              )}>
+                                {item.badge > 99 ? '99+' : item.badge}
+                              </span>
+                            )}
                           </div>
                           
-                          {!collapsed && (
-                            <>
-                              <div className="flex-1 min-w-0">
-                                <span className="truncate">
-                                  {item.name}
+                          {(!collapsed || isMobile) && (
+                            <div className="flex-1 min-w-0 flex items-center justify-between">
+                              <span className="truncate font-medium">
+                                {item.name}
+                              </span>
+                              {item.isNew && (
+                                <span className="ml-2 bg-success text-white text-xs px-2 py-0.5 rounded-full font-medium flex-shrink-0">
+                                  Baru
                                 </span>
-                              </div>
-                            </>
+                              )}
+                            </div>
                           )}
                         </Link>
                       </li>
@@ -390,38 +418,64 @@ export default function Sidebar({
         })}
       </div>
 
-      {/* Footer actions - sticky on mobile */}
-      <div className="px-4 py-3 border-t border-border bg-card sticky bottom-0">
-        <div className="flex items-center justify-between">
+      {/* Footer actions - always visible and properly spaced */}
+      <div className="sidebar-footer px-4 py-4 border-t border-border bg-surface">
+        <div className={cn(
+          "flex items-center",
+          collapsed && !isMobile ? "justify-center" : "justify-between"
+        )}>
+          {/* Theme toggle */}
           <button
             onClick={toggleTheme}
-            className="p-2 rounded-md hover:bg-card-hover transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-accent/40"
+            className={cn(
+              "p-2.5 rounded-lg hover:bg-card-hover transition-colors duration-200",
+              "focus:outline-none focus:ring-2 focus:ring-accent/40",
+              "flex items-center justify-center"
+            )}
             title={theme === 'light' ? 'Ganti ke Mode Gelap' : 'Ganti ke Mode Terang'}
+            aria-label={theme === 'light' ? 'Ganti ke Mode Gelap' : 'Ganti ke Mode Terang'}
           >
             {theme === 'light' ? (
               <Moon className="h-4 w-4 text-text-secondary" />
             ) : (
               <Sun className="h-4 w-4 text-text-secondary" />
             )}
+            {(!collapsed || isMobile) && (
+              <span className="ml-2 text-sm text-text-secondary">
+                {theme === 'light' ? 'Mode Gelap' : 'Mode Terang'}
+              </span>
+            )}
           </button>
           
-          {!collapsed && (
-            <span className="text-xs text-text-muted">v1.0.0</span>
+          {/* Version info - only show when expanded */}
+          {(!collapsed || isMobile) && (
+            <span className="text-xs text-text-muted font-mono">v1.0.0</span>
           )}
           
+          {/* Logout button */}
           <button
             onClick={() => signOut({ 
               callbackUrl: typeof window !== 'undefined' 
                 ? `${window.location.origin}/auth/login`
                 : 'https://crm.valprointertech.com/auth/login'
             })}
-            className="flex items-center space-x-2 px-3 py-2 rounded-md hover:bg-error/10 text-error border border-error/30 transition-colors focus:outline-none focus:ring-2 focus:ring-error/30"
+            className={cn(
+              "flex items-center justify-center px-3 py-2.5 rounded-lg",
+              "hover:bg-error/10 text-error border border-error/30",
+              "transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-error/30",
+              collapsed && !isMobile && "px-2.5"
+            )}
+            title="Keluar dari Sistem"
+            aria-label="Keluar dari Sistem"
           >
             <LogOut className="h-4 w-4" />
-            {!collapsed && <span className="text-sm font-medium">Keluar</span>}
+            {(!collapsed || isMobile) && (
+              <span className="ml-2 text-sm font-medium">Keluar</span>
+            )}
           </button>
         </div>
       </div>
-    </div>
+    </aside>
   )
 }
+

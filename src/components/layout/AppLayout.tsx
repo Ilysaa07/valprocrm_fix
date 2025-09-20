@@ -3,10 +3,12 @@
 import React, { useEffect, useState } from 'react'
 import { useSession } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
-import { Menu } from 'lucide-react'
 import { useTheme } from './ThemeProvider'
 import Sidebar from './Sidebar'
+import MobileTabBar from './MobileTabBar'
 import NotificationDropdown from '../NotificationDropdown'
+import SkipLink from '../ui/SkipLink'
+import { cn } from '@/lib/utils'
 
 interface AppLayoutProps {
   children: React.ReactNode
@@ -19,7 +21,7 @@ export default function AppLayout({ children, title, description, role }: AppLay
   const { data: session, status } = useSession()
   const router = useRouter()
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
-  const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false)
+  const [isMobile, setIsMobile] = useState(false)
   const { theme, toggle: toggleTheme } = useTheme()
 
   useEffect(() => {
@@ -30,26 +32,28 @@ export default function AppLayout({ children, title, description, role }: AppLay
 
   useEffect(() => {
     const handleResize = () => {
-      if (window.innerWidth < 1280) {
+      const mobile = window.innerWidth < 1200
+      setIsMobile(mobile)
+      
+      if (mobile) {
         setSidebarCollapsed(true)
       }
     }
+    
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') setMobileSidebarOpen(false)
+      // Handle escape key for any future mobile interactions
     }
+    
     window.addEventListener('resize', handleResize)
     window.addEventListener('keydown', handleKeyDown)
     handleResize()
+    
     return () => {
       window.removeEventListener('resize', handleResize)
       window.removeEventListener('keydown', handleKeyDown)
     }
   }, [])
 
-  useEffect(() => {
-    document.body.style.overflow = mobileSidebarOpen ? 'hidden' : 'unset'
-    return () => { document.body.style.overflow = 'unset' }
-  }, [mobileSidebarOpen])
 
   if (status === 'loading') {
     return (
@@ -68,67 +72,55 @@ export default function AppLayout({ children, title, description, role }: AppLay
   const userInitial = session.user?.name?.charAt(0) || (role === 'ADMIN' ? 'A' : 'E')
 
   return (
-    <div className="min-h-[100dvh] bg-bg flex overflow-x-hidden">
-      <div className="hidden xl:block">
-        <Sidebar
-          role={role}
-          collapsed={sidebarCollapsed}
-          setCollapsed={setSidebarCollapsed}
-          theme={theme}
-          toggleTheme={toggleTheme}
-          unreadNotifications={role === 'ADMIN' ? 5 : 3}
-          unreadMessages={role === 'ADMIN' ? 3 : 2}
-          pendingTasks={role === 'ADMIN' ? 8 : 5}
-          pendingApprovals={role === 'ADMIN' ? 2 : 1}
-          isMobile={false}
-        />
-      </div>
+    <div className="layout-container">
+      {/* Skip Links for Accessibility */}
+      <SkipLink href="#main-content">
+        Skip to main content
+      </SkipLink>
+      <SkipLink href="#navigation">
+        Skip to navigation
+      </SkipLink>
 
-      {mobileSidebarOpen && (
-        <div 
-          className="fixed inset-0 bg-black/50 z-40 xl:hidden backdrop-blur-sm"
-          onClick={() => setMobileSidebarOpen(false)}
-        />
-      )}
 
-      <div className={`fixed left-0 top-0 z-50 xl:hidden w-[18rem] sm:w-80 h-screen transition-transform duration-300 ease-in-out will-change-transform ${
-        mobileSidebarOpen ? 'translate-x-0' : '-translate-x-full'
-      }`}>
-        <Sidebar
-          role={role}
-          collapsed={false}
-          setCollapsed={setSidebarCollapsed}
-          theme={theme}
-          toggleTheme={toggleTheme}
-          unreadNotifications={role === 'ADMIN' ? 5 : 3}
-          unreadMessages={role === 'ADMIN' ? 3 : 2}
-          pendingTasks={role === 'ADMIN' ? 8 : 5}
-          pendingApprovals={role === 'ADMIN' ? 2 : 1}
-          isMobile={true}
-          isOpen={mobileSidebarOpen}
-          onClose={() => setMobileSidebarOpen(false)}
-        />
-      </div>
+      {/* Navigation Landmark */}
+      <nav id="navigation" aria-label="Main navigation">
+        {/* Desktop Sidebar */}
+        {!isMobile && (
+          <Sidebar
+            role={role}
+            collapsed={sidebarCollapsed}
+            setCollapsed={setSidebarCollapsed}
+            theme={theme}
+            toggleTheme={toggleTheme}
+            unreadNotifications={role === 'ADMIN' ? 5 : 3}
+            unreadMessages={role === 'ADMIN' ? 3 : 2}
+            pendingTasks={role === 'ADMIN' ? 8 : 5}
+            pendingApprovals={role === 'ADMIN' ? 2 : 1}
+            isMobile={false}
+          />
+        )}
 
-      <div className="flex-1 flex flex-col min-h-0">
-        <header className="bg-card border-b border-border shadow-soft backdrop-blur-sm sticky top-0 z-30">
-          <div className="flex items-center justify-between px-4 py-3 lg:px-6 lg:py-4">
+        {/* Mobile Tab Bar */}
+        {isMobile && (
+          <MobileTabBar
+            role={role}
+            unreadNotifications={role === 'ADMIN' ? 5 : 3}
+            unreadMessages={role === 'ADMIN' ? 3 : 2}
+            pendingTasks={role === 'ADMIN' ? 8 : 5}
+            pendingApprovals={role === 'ADMIN' ? 2 : 1}
+          />
+        )}
+      </nav>
+
+      {/* Main Content Area */}
+      <main id="main-content" className="layout-main" role="main" aria-label="Main content">
+        {/* Header */}
+        <header className="dashboard-header" role="banner">
+          <div className="flex items-center justify-between">
             <div className="flex items-center gap-3 min-w-0">
-              <button
-                onClick={() => setMobileSidebarOpen(!mobileSidebarOpen)}
-                className="xl:hidden p-2 rounded-lg hover:bg-card-hover transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-accent/40 bg-card border border-border shadow-sm flex items-center justify-center"
-                aria-label="Open sidebar menu"
-                title="Open sidebar menu"
-              >
-                {mobileSidebarOpen ? (
-                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="h-5 w-5 text-text-secondary"><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
-                ) : (
-                  <Menu className="h-5 w-5 text-text-secondary" />
-                )}
-              </button>
-
-              <div className="hidden sm:block truncate">
-                <h1 className="text-lg font-semibold text-text-primary truncate">
+              {/* Page Title */}
+              <div className="min-w-0">
+                <h1 className="text-lg lg:text-xl font-semibold text-text-primary truncate">
                   {title || defaultTitle}
                 </h1>
                 {description && (
@@ -139,10 +131,17 @@ export default function AppLayout({ children, title, description, role }: AppLay
               </div>
             </div>
 
-            <div className="flex items-center gap-3 sm:gap-4">
+            {/* Header Actions */}
+            <div className="flex items-center gap-3 sm:gap-4" role="toolbar" aria-label="Header actions">
               <NotificationDropdown />
 
-              <div className="flex items-center gap-3 bg-gradient-to-r from-card to-accent/5 rounded-xl px-3 sm:px-4 py-2 border border-border shadow-soft hover:shadow-medium transition-all duration-200 group">
+              {/* User Profile */}
+              <div 
+                className="flex items-center gap-3 bg-gradient-to-r from-card to-accent/5 rounded-xl px-3 sm:px-4 py-2 border border-border shadow-soft hover:shadow-medium transition-all duration-200 group"
+                role="button"
+                tabIndex={0}
+                aria-label={`User profile: ${userName}, ${role === 'ADMIN' ? 'Administrator' : 'Employee'}`}
+              >
                 <div className="hidden sm:block text-right min-w-0">
                   <p className="text-sm font-semibold text-text-primary group-hover:text-accent transition-colors duration-200">
                     {userName}
@@ -157,11 +156,11 @@ export default function AppLayout({ children, title, description, role }: AppLay
                   {session.user?.image ? (
                     <img 
                       src={session.user.image} 
-                      alt={userName}
+                      alt={`${userName} profile picture`}
                       className="w-full h-full object-cover"
                     />
                   ) : (
-                    userInitial
+                    <span aria-hidden="true">{userInitial}</span>
                   )}
                 </div>
               </div>
@@ -169,12 +168,13 @@ export default function AppLayout({ children, title, description, role }: AppLay
           </div>
         </header>
 
-        <main className="flex-1 px-4 py-4 lg:px-6 lg:py-6 overflow-x-hidden overflow-y-auto min-h-0">
+        {/* Page Content */}
+        <div className="dashboard-content" role="region" aria-label="Page content">
           <div className="max-w-7xl mx-auto space-y-6 content-wrapper">
             {children}
           </div>
-        </main>
-      </div>
+        </div>
+      </main>
     </div>
   )
 }

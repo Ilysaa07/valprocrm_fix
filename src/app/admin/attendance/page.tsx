@@ -1,15 +1,27 @@
 "use client"
 
-import { useEffect, useState } from 'react'
-import { showSuccess, showError, showConfirm } from '@/lib/swal';
+import { useEffect, useState, useCallback } from 'react'
+import { showError, showConfirm } from '@/lib/swal';
 import dynamic from 'next/dynamic'
+import Image from 'next/image'
 import AdminLayout from '@/components/layout/AdminLayout'
+import { Button } from '@/components/ui/Button'
+import { useToast } from '@/components/providers/ToastProvider'
+import Badge from '@/components/ui/Badge'
+import { AttendanceStatusBadge } from '@/components/ui/AttendanceStatusBadge'
+import { CheckCircle2, XCircle, RefreshCw, User, Calendar, Image as ImageIcon, MapPin } from 'lucide-react'
 
-// Dynamically import SimpleDynamicLocationMap to avoid SSR issues
-  const LocationMap = dynamic(() => import('@/components/map/SimpleDynamicLocationMap'), {
-    ssr: false,
-    loading: () => <div className="h-[420px] bg-gray-100 rounded animate-pulse" />
-  })
+// Dynamically import LocationMap for WFH validation
+const LocationMap = dynamic(() => import('@/components/map/LocationMap'), {
+  ssr: false,
+  loading: () => <div className="h-[220px] bg-gray-100 dark:bg-gray-800 rounded animate-pulse" />
+})
+
+// Dynamically import SimpleDynamicLocationMap for office location settings
+const SimpleLocationMap = dynamic(() => import('@/components/map/SimpleDynamicLocationMap'), {
+  ssr: false,
+  loading: () => <div className="h-[420px] bg-gray-100 dark:bg-gray-800 rounded animate-pulse" />
+})
 
 interface OfficeLocation {
   id: string
@@ -64,6 +76,10 @@ interface WfhLog {
   logTime: string
   status: string
   createdAt: string
+  screenshotUrl: string
+  latitude: number
+  longitude: number
+  adminNotes?: string
   user: {
     id: string
     fullName: string
@@ -111,6 +127,9 @@ export default function AdminAttendancePage() {
   const [calendarData, setCalendarData] = useState<CalendarData[]>([])
   const [calendarMonth, setCalendarMonth] = useState(new Date().getMonth() + 1)
   const [calendarYear, setCalendarYear] = useState(new Date().getFullYear())
+  const [processingId, setProcessingId] = useState<string | null>(null)
+  const [wfhNotes, setWfhNotes] = useState<Record<string, string>>({})
+  const { showToast } = useToast()
 
   const days = ['Min', 'Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab']
 
@@ -173,7 +192,21 @@ export default function AdminAttendancePage() {
       if (requestsRes.ok) {
         const requestsJson = await requestsRes.json()
         setLeaveRequests(requestsJson.leaveRequests || [])
-        setWfhLogs(requestsJson.wfhLogs || [])
+        // Don't set WFH logs here to avoid duplication
+      }
+
+      // Load enhanced WFH logs for validation
+      const wfhRes = await fetch('/api/wfh-logs/pending')
+      if (wfhRes.ok) {
+        const wfhJson = await wfhRes.json()
+        const wfhData = wfhJson.data || []
+        
+        // Remove duplicates based on ID
+        const uniqueWfhLogs = wfhData.filter((log: WfhLog, index: number, self: WfhLog[]) => 
+          index === self.findIndex((l: WfhLog) => l.id === log.id)
+        )
+        
+        setWfhLogs(uniqueWfhLogs)
       }
     } catch (e) {
       const msg = e instanceof Error ? e.message : 'Gagal memuat data'
@@ -183,7 +216,7 @@ export default function AdminAttendancePage() {
     }
   }
 
-  async function loadCalendar() {
+  const loadCalendar = useCallback(async () => {
     try {
       const res = await fetch(`/api/admin/attendance/calendar?month=${calendarMonth}&year=${calendarYear}`)
       if (res.ok) {
@@ -193,7 +226,7 @@ export default function AdminAttendancePage() {
     } catch (e) {
       console.error('Failed to load calendar:', e)
     }
-  }
+  }, [calendarMonth, calendarYear])
 
   // Auto-refresh attendance data every 30 seconds
   useEffect(() => { 
@@ -205,7 +238,7 @@ export default function AdminAttendancePage() {
   // Load calendar when month/year changes
   useEffect(() => {
     loadCalendar()
-  }, [calendarMonth, calendarYear])
+  }, [loadCalendar])
 
   async function save() {
     try {
@@ -246,6 +279,35 @@ export default function AdminAttendancePage() {
     }
   }
 
+  async function validateWfhLog(id: string, status: 'APPROVED' | 'REJECTED') {
+    try {
+      const confirmMsg = status === 'APPROVED' ? 'Setujui log WFH ini?' : 'Tolak log WFH ini?'
+      const result = await showConfirm("Konfirmasi", confirmMsg, "Ya", "Batal");
+      if (!result.isConfirmed) return
+
+      setProcessingId(id)
+      const adminNotes = wfhNotes[id]?.trim() || undefined
+      const res = await fetch(`/api/wfh-logs/${id}/validate`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status, adminNotes })
+      })
+      const json = await res.json()
+      if (!res.ok) {
+        showToast(json.error || 'Gagal memproses validasi', { title: 'Error', type: 'error' })
+        return
+      }
+      showToast(json.message || 'Validasi berhasil', { title: 'Sukses', type: 'success' })
+      setWfhNotes(prev => ({ ...prev, [id]: '' }))
+      await load() // Reload data
+    } catch {
+      showToast('Terjadi kesalahan saat memproses', { title: 'Error', type: 'error' })
+    } finally {
+      setProcessingId(null)
+    }
+  }
+
+
   function changeMonth(delta: number) {
     let m = calendarMonth + delta
     let y = calendarYear
@@ -259,7 +321,7 @@ export default function AdminAttendancePage() {
     <AdminLayout>
       <div className="p-6 space-y-6">
         <div className="flex items-center justify-between">
-          <h1 className="text-2xl font-semibold">Manajemen Absensi Terpadu</h1>
+          <h1 className="text-2xl font-semibold text-gray-900 dark:text-white">Manajemen Absensi Terpadu</h1>
         </div>
 
         {/* Tab Navigation */}
@@ -303,7 +365,7 @@ export default function AdminAttendancePage() {
                   : 'border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 hover:border-gray-300 dark:hover:border-gray-600'
               }`}
             >
-              Permintaan ({leaveRequests.length + wfhLogs.length})
+              Validasi & Permintaan ({leaveRequests.length + wfhLogs.length})
             </button>
             <button
               onClick={() => setActiveTab('location')}
@@ -387,7 +449,7 @@ export default function AdminAttendancePage() {
               <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Ringkasan Kehadiran Hari Ini</h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
-                  <p className="text-sm text-gray-600 dark:text-gray-300 mb-2">Total Karyawan: <span className="font-semibold">{attendanceStats.totalEmployees}</span></p>
+                  <p className="text-sm text-gray-600 dark:text-gray-300 mb-2">Total Karyawan: <span className="font-semibold text-gray-900 dark:text-white">{attendanceStats.totalEmployees}</span></p>
                   <p className="text-sm text-gray-600 dark:text-gray-300 mb-2">Tingkat Kehadiran: <span className="font-semibold text-green-600 dark:text-green-400">
                     {attendanceStats.totalEmployees > 0 
                       ? Math.round(((attendanceStats.todayPresent + attendanceStats.todayWFH) / attendanceStats.totalEmployees) * 100)
@@ -420,13 +482,13 @@ export default function AdminAttendancePage() {
                     </tr>
                   </thead>
                   <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
-                    {employeeAttendance.map((employee) => (
-                      <tr key={employee.userId} className="hover:bg-gray-50 dark:hover:bg-gray-700">
+                    {employeeAttendance.map((employee, index) => (
+                      <tr key={`employee-${employee.userId}-${index}`} className="hover:bg-gray-50 dark:hover:bg-gray-700">
                         <td className="px-6 py-4 whitespace-nowrap">
                           <div className="flex items-center">
                             <div className="flex-shrink-0 h-10 w-10">
                               {employee.userAvatar ? (
-                                <img className="h-10 w-10 rounded-full" src={employee.userAvatar} alt={employee.userName} />
+                                <Image className="h-10 w-10 rounded-full" src={employee.userAvatar} alt={employee.userName} width={40} height={40} />
                               ) : (
                                 <div className="h-10 w-10 rounded-full bg-gray-300 dark:bg-gray-600 flex items-center justify-center">
                                   <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
@@ -442,17 +504,11 @@ export default function AdminAttendancePage() {
                           </div>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
-                          <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
-                            employee.status === 'PRESENT' ? 'bg-green-100 text-green-800' :
-                            employee.status === 'WFH' ? 'bg-purple-100 text-purple-800' :
-                            employee.status === 'LEAVE' ? 'bg-blue-100 text-blue-800' :
-                            'bg-red-100 text-red-800'
-                          }`}>
-                            {employee.status === 'PRESENT' ? 'Hadir' :
-                             employee.status === 'WFH' ? 'WFH' :
-                             employee.status === 'LEAVE' ? 'Izin' :
-                             'Tidak Hadir'}
-                          </span>
+                          <AttendanceStatusBadge 
+                            status={employee.status as 'PRESENT' | 'LATE' | 'ABSENT' | 'SICK' | 'LEAVE' | 'WFH'} 
+                            size="sm"
+                            showIcon={true}
+                          />
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-300">
                           {employee.checkInTime ? new Date(employee.checkInTime).toLocaleTimeString('id-ID') : '-'}
@@ -473,50 +529,50 @@ export default function AdminAttendancePage() {
         ) : activeTab === 'calendar' ? (
           <div className="space-y-6">
             <div className="flex items-center justify-between">
-              <h3 className="text-lg font-semibold text-gray-900">Kalender Kehadiran Karyawan</h3>
+              <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Kalender Kehadiran Karyawan</h3>
               <div className="flex items-center gap-2">
-                <button onClick={() => changeMonth(-1)} className="px-3 py-1 border rounded hover:bg-gray-50">Prev</button>
-                <div className="min-w-[160px] text-center font-medium">
+                <button onClick={() => changeMonth(-1)} className="px-3 py-1 border border-gray-300 dark:border-gray-600 rounded hover:bg-gray-50 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 transition-colors">Prev</button>
+                <div className="min-w-[160px] text-center font-medium text-gray-900 dark:text-white">
                   {new Date(calendarYear, calendarMonth - 1).toLocaleString('id-ID', { month: 'long', year: 'numeric' })}
                 </div>
-                <button onClick={() => changeMonth(1)} className="px-3 py-1 border rounded hover:bg-gray-50">Next</button>
+                <button onClick={() => changeMonth(1)} className="px-3 py-1 border border-gray-300 dark:border-gray-600 rounded hover:bg-gray-50 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 transition-colors">Next</button>
               </div>
             </div>
             
-            <div className="bg-white rounded-lg shadow-sm p-6">
+            <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-6">
               <div className="space-y-4">
-                {calendarData.map((employee) => (
-                  <div key={employee.employeeId} className="border rounded-lg p-4">
+                {calendarData.map((employee, index) => (
+                  <div key={`calendar-employee-${employee.employeeId}-${index}`} className="border border-gray-200 dark:border-gray-700 rounded-lg p-4">
                     <div className="flex items-center mb-3">
                       {employee.employeeAvatar ? (
-                        <img className="h-8 w-8 rounded-full mr-3" src={employee.employeeAvatar} alt={employee.employeeName} />
+                        <Image className="h-8 w-8 rounded-full mr-3" src={employee.employeeAvatar} alt={employee.employeeName} width={32} height={32} />
                       ) : (
-                        <div className="h-8 w-8 rounded-full bg-gray-300 flex items-center justify-center mr-3">
-                          <span className="text-sm font-medium text-gray-700">
+                        <div className="h-8 w-8 rounded-full bg-gray-300 dark:bg-gray-600 flex items-center justify-center mr-3">
+                          <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
                             {employee.employeeName.charAt(0).toUpperCase()}
                           </span>
                         </div>
                       )}
                       <div>
-                        <h4 className="font-medium text-gray-900">{employee.employeeName}</h4>
-                        <p className="text-sm text-gray-500">{employee.employeeEmail}</p>
+                        <h4 className="font-medium text-gray-900 dark:text-white">{employee.employeeName}</h4>
+                        <p className="text-sm text-gray-500 dark:text-gray-400">{employee.employeeEmail}</p>
                       </div>
                     </div>
                     
                     <div className="grid grid-cols-7 gap-1">
-                      {days.map(day => (
-                        <div key={day} className="text-center text-xs font-medium text-gray-500 py-1">
+                      {days.map((day, dayIndex) => (
+                        <div key={`day-header-${day}-${dayIndex}`} className="text-center text-xs font-medium text-gray-500 dark:text-gray-400 py-1">
                           {day}
                         </div>
                       ))}
-                      {employee.days.map((dayData) => (
-                        <div key={dayData.day} className="text-center p-1">
-                          <div className="text-sm font-medium text-gray-900">{dayData.day}</div>
+                      {employee.days.map((dayData, dayIndex) => (
+                        <div key={`day-${employee.employeeId}-${dayData.day}-${dayIndex}`} className="text-center p-1">
+                          <div className="text-sm font-medium text-gray-900 dark:text-white">{dayData.day}</div>
                           <div className={`inline-block w-2 h-2 rounded-full ${
                             dayData.status === 'PRESENT' ? 'bg-green-500' :
                             dayData.status === 'WFH' ? 'bg-purple-500' :
                             dayData.status === 'LEAVE' ? 'bg-blue-500' :
-                            'bg-gray-300'
+                            'bg-gray-300 dark:bg-gray-600'
                           }`} title={dayData.status}></div>
                         </div>
                       ))}
@@ -529,38 +585,38 @@ export default function AdminAttendancePage() {
         ) : activeTab === 'requests' ? (
           <div className="space-y-6">
             {/* Leave Requests */}
-            <div className="bg-white rounded-lg shadow-sm p-6">
-              <h3 className="text-lg font-semibold text-gray-900 mb-4">Permohonan Izin ({leaveRequests.length})</h3>
+            <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-6">
+              <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Permohonan Izin ({leaveRequests.length})</h3>
               {leaveRequests.length === 0 ? (
-                <p className="text-gray-500 text-center py-4">Tidak ada permohonan izin yang menunggu</p>
+                <p className="text-gray-500 dark:text-gray-400 text-center py-4">Tidak ada permohonan izin yang menunggu</p>
               ) : (
                 <div className="space-y-4">
-                  {leaveRequests.map((request) => (
-                    <div key={request.id} className="border rounded-lg p-4">
+                  {leaveRequests.map((request, index) => (
+                    <div key={`leave-request-${request.id}-${index}`} className="border border-gray-200 dark:border-gray-700 rounded-lg p-4">
                       <div className="flex items-center justify-between">
                         <div className="flex items-center">
                           {request.user.profilePicture ? (
-                            <img className="h-10 w-10 rounded-full mr-3" src={request.user.profilePicture} alt={request.user.fullName} />
+                            <Image className="h-10 w-10 rounded-full mr-3" src={request.user.profilePicture} alt={request.user.fullName} width={40} height={40} />
                           ) : (
-                            <div className="h-10 w-10 rounded-full bg-gray-300 flex items-center justify-center mr-3">
-                              <span className="text-sm font-medium text-gray-700">
+                            <div className="h-10 w-10 rounded-full bg-gray-300 dark:bg-gray-600 flex items-center justify-center mr-3">
+                              <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
                                 {request.user.fullName.charAt(0).toUpperCase()}
                               </span>
                             </div>
                           )}
                           <div>
-                            <h4 className="font-medium text-gray-900">{request.user.fullName}</h4>
-                            <p className="text-sm text-gray-500">{request.user.email}</p>
-                            <p className="text-sm text-gray-600">
+                            <h4 className="font-medium text-gray-900 dark:text-white">{request.user.fullName}</h4>
+                            <p className="text-sm text-gray-500 dark:text-gray-400">{request.user.email}</p>
+                            <p className="text-sm text-gray-600 dark:text-gray-300">
                               {request.type} • {new Date(request.startDate).toLocaleDateString('id-ID')} - {new Date(request.endDate).toLocaleDateString('id-ID')}
                             </p>
-                            <p className="text-sm text-gray-600 mt-1">{request.reason}</p>
+                            <p className="text-sm text-gray-600 dark:text-gray-300 mt-1">{request.reason}</p>
                           </div>
                         </div>
                         <div className="flex gap-2">
                           <button
                             onClick={() => handleRequest('leave', request.id, 'approve')}
-                            className="px-3 py-1 bg-green-600 text-white rounded hover:bg-green-700"
+                            className="px-3 py-1 bg-green-600 text-white rounded hover:bg-green-700 transition-colors"
                           >
                             Setujui
                           </button>
@@ -569,7 +625,7 @@ export default function AdminAttendancePage() {
                               const notes = prompt('Catatan admin (opsional):')
                               handleRequest('leave', request.id, 'reject', notes || undefined)
                             }}
-                            className="px-3 py-1 bg-red-600 text-white rounded hover:bg-red-700"
+                            className="px-3 py-1 bg-red-600 text-white rounded hover:bg-red-700 transition-colors"
                           >
                             Tolak
                           </button>
@@ -581,52 +637,142 @@ export default function AdminAttendancePage() {
               )}
             </div>
 
-            {/* WFH Logs */}
-            <div className="bg-white rounded-lg shadow-sm p-6">
-              <h3 className="text-lg font-semibold text-gray-900 mb-4">Log WFH ({wfhLogs.length})</h3>
-              {wfhLogs.length === 0 ? (
-                <p className="text-gray-500 text-center py-4">Tidak ada log WFH yang menunggu validasi</p>
-              ) : (
-                <div className="space-y-4">
-                  {wfhLogs.map((log) => (
-                    <div key={log.id} className="border rounded-lg p-4">
-                      <div className="flex items-center justify-between">
+            {/* Enhanced WFH Logs - Full Integration */}
+            <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-6">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Validasi WFH ({wfhLogs.length})</h3>
+                <Button variant="outline" onClick={load} disabled={loading} className="flex items-center gap-2">
+                  {loading ? <RefreshCw className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
+                  Refresh
+                </Button>
+              </div>
+              
+              {loading && (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {Array.from({ length: 4 }).map((_, i) => (
+                    <div key={`loading-skeleton-${i}`} className="bg-white dark:bg-gray-800 rounded-lg shadow p-4 space-y-3 animate-pulse">
+                      <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-1/3" />
+                      <div className="h-3 bg-gray-200 dark:bg-gray-700 rounded w-1/2" />
+                      <div className="h-40 bg-gray-200 dark:bg-gray-700 rounded" />
+                      <div className="h-10 bg-gray-200 dark:bg-gray-700 rounded" />
+                    </div>
+                  ))}
+                </div>
+              )}
+              
+              {error && <div className="text-red-600 dark:text-red-400 text-center py-4">{error}</div>}
+              
+              {!loading && wfhLogs.length === 0 && (
+                <div className="text-gray-600 dark:text-gray-300 text-center py-8">
+                  <div className="flex flex-col items-center gap-2">
+                    <MapPin className="w-12 h-12 text-gray-400 dark:text-gray-500" />
+                    <p>Tidak ada log WFH yang menunggu validasi</p>
+                  </div>
+                </div>
+              )}
+              
+              {!loading && wfhLogs.length > 0 && (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {wfhLogs.map((log, index) => (
+                    <div key={`wfh-log-${log.id}-${index}`} className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow p-4 space-y-3">
+                      <div className="flex items-start justify-between">
                         <div className="flex items-center">
                           {log.user.profilePicture ? (
-                            <img className="h-10 w-10 rounded-full mr-3" src={log.user.profilePicture} alt={log.user.fullName} />
+                            <Image className="h-10 w-10 rounded-full mr-3" src={log.user.profilePicture} alt={log.user.fullName} width={40} height={40} />
                           ) : (
-                            <div className="h-10 w-10 rounded-full bg-gray-300 flex items-center justify-center mr-3">
-                              <span className="text-sm font-medium text-gray-700">
+                            <div className="h-10 w-10 rounded-full bg-gray-300 dark:bg-gray-600 flex items-center justify-center mr-3">
+                              <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
                                 {log.user.fullName.charAt(0).toUpperCase()}
                               </span>
                             </div>
                           )}
                           <div>
-                            <h4 className="font-medium text-gray-900">{log.user.fullName}</h4>
-                            <p className="text-sm text-gray-500">{log.user.email}</p>
-                            <p className="text-sm text-gray-600">
-                              {new Date(log.logTime).toLocaleDateString('id-ID')} • {new Date(log.logTime).toLocaleTimeString('id-ID')}
-                            </p>
-                            <p className="text-sm text-gray-600 mt-1">{log.activityDescription}</p>
+                            <div className="font-medium text-gray-900 dark:text-white flex items-center gap-2">
+                              <User className="w-4 h-4 text-gray-500 dark:text-gray-400" />
+                              {log.user.fullName}
+                            </div>
+                            <div className="text-sm text-gray-500 dark:text-gray-400">{log.user.email}</div>
                           </div>
                         </div>
-                        <div className="flex gap-2">
-                          <button
-                            onClick={() => handleRequest('wfh', log.id, 'approve')}
-                            className="px-3 py-1 bg-green-600 text-white rounded hover:bg-green-700"
+                        <Badge variant="secondary">WFH</Badge>
+                      </div>
+                      
+                      <div className="text-sm text-gray-800 dark:text-gray-100">{log.activityDescription}</div>
+                      
+                      <div className="text-xs text-gray-500 dark:text-gray-400 flex items-center gap-2">
+                        <Calendar className="w-3 h-3" />
+                        Log time: {new Date(log.logTime).toLocaleString('id-ID')}
+                      </div>
+
+                      {/* Screenshot and Location Info */}
+                      <div className="flex items-center gap-3">
+                        {log.screenshotUrl && (
+                          <a 
+                            href={log.screenshotUrl} 
+                            target="_blank" 
+                            rel="noreferrer" 
+                            className="text-blue-600 dark:text-blue-400 underline text-sm flex items-center gap-1 hover:text-blue-800 dark:hover:text-blue-300 transition-colors"
                           >
-                            Setujui
-                          </button>
-                          <button
-                            onClick={() => {
-                              const notes = prompt('Catatan admin (opsional):')
-                              handleRequest('wfh', log.id, 'reject', notes || undefined)
-                            }}
-                            className="px-3 py-1 bg-red-600 text-white rounded hover:bg-red-700"
-                          >
-                            Tolak
-                          </button>
+                            <ImageIcon className="w-4 h-4" /> Lihat Screenshot
+                          </a>
+                        )}
+                        <div className="flex items-center text-xs text-gray-600 dark:text-gray-300 gap-1">
+                          <MapPin className="w-3 h-3" /> 
+                          {log.latitude && log.longitude ? 
+                            `Koordinat: ${log.latitude.toFixed(4)}, ${log.longitude.toFixed(4)}` : 
+                            'Lokasi tidak tersedia'
+                          }
                         </div>
+                      </div>
+
+                      {/* Location Map - Always Visible */}
+                      {log.latitude && log.longitude && (
+                        <div className="space-y-2">
+                          <label className="text-sm font-medium text-gray-700 dark:text-gray-300">Lokasi WFH</label>
+                          <div className="h-48 rounded-lg overflow-hidden border border-gray-200 dark:border-gray-600">
+                            <LocationMap
+                              latitude={log.latitude}
+                              longitude={log.longitude}
+                              radius={0}
+                              height="192px"
+                            />
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Admin Notes */}
+                      <div className="space-y-2">
+                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                          Catatan Admin (opsional)
+                        </label>
+                        <textarea
+                          className="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 text-sm bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors placeholder-gray-500 dark:placeholder-gray-400"
+                          placeholder="Tulis catatan untuk karyawan..."
+                          value={wfhNotes[log.id] || ''}
+                          onChange={(e) => setWfhNotes(prev => ({ ...prev, [log.id]: e.target.value }))}
+                          rows={3}
+                        />
+                      </div>
+
+                      {/* Action Buttons */}
+                      <div className="flex gap-2 pt-2">
+                        <Button
+                          onClick={() => validateWfhLog(log.id, 'APPROVED')}
+                          disabled={processingId === log.id}
+                          className="flex items-center gap-2 flex-1 bg-green-600 hover:bg-green-700 text-white"
+                        >
+                          {processingId === log.id ? <RefreshCw className="w-4 h-4 animate-spin" /> : <CheckCircle2 className="w-4 h-4" />}
+                          Setujui
+                        </Button>
+                        <Button
+                          variant="destructive"
+                          onClick={() => validateWfhLog(log.id, 'REJECTED')}
+                          disabled={processingId === log.id}
+                          className="flex items-center gap-2 flex-1"
+                        >
+                          {processingId === log.id ? <RefreshCw className="w-4 h-4 animate-spin" /> : <XCircle className="w-4 h-4" />}
+                          Tolak
+                        </Button>
                       </div>
                     </div>
                   ))}
@@ -639,42 +785,42 @@ export default function AdminAttendancePage() {
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               <div className="space-y-3">
                 <label className="block">
-                  <span className="text-sm font-medium text-gray-700">Nama Lokasi</span>
+                  <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Nama Lokasi</span>
                   <input 
                     value={name} 
                     onChange={e => setName(e.target.value)} 
-                    className="mt-1 w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent" 
+                    className="mt-1 w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors placeholder-gray-500 dark:placeholder-gray-400" 
                   />
                 </label>
                 <div className="grid grid-cols-2 gap-3">
                   <label className="block">
-                    <span className="text-sm font-medium text-gray-700">Latitude</span>
+                    <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Latitude</span>
                     <input 
                       type="number" 
                       step="any"
                       value={lat ?? ''} 
                       onChange={e => setLat(Number(e.target.value))} 
-                      className="mt-1 w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent" 
+                      className="mt-1 w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors placeholder-gray-500 dark:placeholder-gray-400" 
                     />
                   </label>
                   <label className="block">
-                    <span className="text-sm font-medium text-gray-700">Longitude</span>
+                    <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Longitude</span>
                     <input 
                       type="number" 
                       step="any"
                       value={lng ?? ''} 
                       onChange={e => setLng(Number(e.target.value))} 
-                      className="mt-1 w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent" 
+                      className="mt-1 w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors placeholder-gray-500 dark:placeholder-gray-400" 
                     />
                   </label>
                 </div>
                 <label className="block">
-                  <span className="text-sm font-medium text-gray-700">Radius (meter)</span>
+                  <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Radius (meter)</span>
                   <input 
                     type="number" 
                     value={radius} 
                     onChange={e => setRadius(Number(e.target.value))} 
-                    className="mt-1 w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent" 
+                    className="mt-1 w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors placeholder-gray-500 dark:placeholder-gray-400" 
                   />
                 </label>
                 <button 
@@ -685,7 +831,7 @@ export default function AdminAttendancePage() {
                 </button>
               </div>
               <div>
-                <LocationMap
+                <SimpleLocationMap
                   latitude={lat ?? undefined}
                   longitude={lng ?? undefined}
                   radius={radius}
