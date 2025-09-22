@@ -321,9 +321,84 @@
     padding: var(--table-cell-padding-mobile);
   }
   
-  .table th:nth-child(n+4),
-  .table td:nth-child(n+4) {
+  /* Hide only the "Tanggal Daftar" column (4th column) on mobile, keep actions visible */
+  .table th:nth-child(4),
+  .table td:nth-child(4) {
     display: none;
+  }
+  
+  /* Ensure action buttons are properly spaced on mobile */
+  .table td:last-child {
+    min-width: 120px;
+    white-space: nowrap;
+    position: sticky;
+    right: 0;
+    background-color: var(--color-surface);
+    border-left: 1px solid var(--table-border);
+  }
+  
+  /* Make action buttons slightly smaller on mobile for better fit */
+  .action-button {
+    width: 1.75rem;
+    height: 1.75rem;
+    margin: 0 0.125rem;
+  }
+  
+  /* Ensure table is horizontally scrollable on mobile */
+  .table-responsive {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: thin;
+  }
+  
+  /* Style scrollbar for better mobile experience */
+  .table-responsive::-webkit-scrollbar {
+    height: 6px;
+  }
+  
+  .table-responsive::-webkit-scrollbar-track {
+    background: var(--color-border);
+    border-radius: 3px;
+  }
+  
+  .table-responsive::-webkit-scrollbar-thumb {
+    background: var(--user-primary);
+    border-radius: 3px;
+  }
+  
+  .table-responsive::-webkit-scrollbar-thumb:hover {
+    background: var(--user-primary-hover);
+  }
+}
+
+/* Extra small mobile screens - show card layout */
+@media (max-width: 480px) {
+  .table-container {
+    border-radius: 0.5rem;
+  }
+  
+  .table {
+    font-size: 0.8rem;
+  }
+  
+  .table th,
+  .table td {
+    padding: 0.5rem 0.75rem;
+  }
+  
+  .table td:last-child {
+    min-width: 100px;
+  }
+  
+  .action-button {
+    width: 1.5rem;
+    height: 1.5rem;
+    margin: 0 0.0625rem;
+  }
+  
+  /* Make action buttons more touch-friendly on very small screens */
+  .action-button:active {
+    transform: scale(0.95);
   }
 }
 

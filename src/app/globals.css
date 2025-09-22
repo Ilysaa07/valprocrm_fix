@@ -9,6 +9,9 @@
 /* Invoice Print Styles */
 @import '../styles/invoice-print.css';
 
+/* Chat Mobile Optimizations */
+@import '../styles/chat-mobile.css';
+
 /* SweetAlert2 Animations */
 @keyframes fade-in {
   from {

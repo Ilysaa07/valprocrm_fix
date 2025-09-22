@@ -1,0 +1,117 @@
+/* Mobile Chat Optimizations */
+
+/* Touch-friendly interactions */
+@media (max-width: 768px) {
+  /* Improve touch targets */
+  .chat-mobile-touch {
+    min-height: 44px;
+    min-width: 44px;
+  }
+  
+  /* Better scrolling on mobile */
+  .chat-mobile-scroll {
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior: contain;
+  }
+  
+  /* Prevent zoom on input focus */
+  .chat-mobile-input {
+    font-size: 16px;
+  }
+  
+  /* Better message bubble spacing */
+  .chat-mobile-message {
+    margin-bottom: 8px;
+  }
+  
+  /* Improved conversation list items */
+  .chat-mobile-conversation {
+    padding: 12px;
+    margin-bottom: 4px;
+  }
+  
+  /* Better modal handling */
+  .chat-mobile-modal {
+    max-height: 90vh;
+    margin: 16px;
+  }
+  
+  /* Improved button spacing */
+  .chat-mobile-button {
+    padding: 12px 16px;
+    font-size: 16px;
+  }
+  
+  /* Better textarea handling */
+  .chat-mobile-textarea {
+    font-size: 16px;
+    line-height: 1.4;
+  }
+  
+  /* Smooth transitions for mobile */
+  .chat-mobile-transition {
+    transition: all 0.2s ease-in-out;
+  }
+  
+  /* Better focus states for accessibility */
+  .chat-mobile-focus:focus {
+    outline: 2px solid #3b82f6;
+    outline-offset: 2px;
+  }
+  
+  /* Improved loading states */
+  .chat-mobile-loading {
+    padding: 16px;
+  }
+  
+  /* Better empty states */
+  .chat-mobile-empty {
+    padding: 32px 16px;
+    text-align: center;
+  }
+}
+
+/* Dark mode mobile optimizations */
+@media (max-width: 768px) {
+  .dark .chat-mobile-conversation {
+    background-color: rgba(30, 41, 59, 0.5);
+  }
+  
+  .dark .chat-mobile-focus:focus {
+    outline-color: #60a5fa;
+  }
+}
+
+/* High contrast mode support */
+@media (prefers-contrast: high) {
+  .chat-mobile-conversation {
+    border: 2px solid currentColor;
+  }
+  
+  .chat-mobile-button {
+    border: 2px solid currentColor;
+  }
+}
+
+/* Reduced motion support */
+@media (prefers-reduced-motion: reduce) {
+  .chat-mobile-transition {
+    transition: none;
+  }
+  
+  .chat-mobile-button:hover {
+    transform: none;
+  }
+}
+
+/* Landscape mobile optimizations */
+@media (max-width: 768px) and (orientation: landscape) {
+  .chat-mobile-modal {
+    max-height: 85vh;
+  }
+  
+  .chat-mobile-conversation {
+    padding: 8px 12px;
+  }
+}
+

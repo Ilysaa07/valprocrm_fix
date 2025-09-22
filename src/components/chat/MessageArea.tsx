@@ -4,7 +4,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { showSuccess, showError, showConfirm } from '@/lib/swal';
 import { useSession } from 'next-auth/react';
 import { Socket } from 'socket.io-client';
-import { Send, Paperclip } from 'lucide-react';
+import { Send, Paperclip, ArrowLeft, Users, MoreVertical } from 'lucide-react';
 import { ChatMessage } from '@/lib/socket';
 // Modal removed
 
@@ -36,6 +36,9 @@ interface MessageAreaProps {
   messages: ChatMessage[];
   onSendMessage: (content: string, attachments?: MessageAttachment[]) => void;
   socket: Socket | null;
+  onBack?: () => void;
+  isMobile?: boolean;
+  unreadCount?: number;
 }
 
 
@@ -44,6 +47,9 @@ export default function MessageArea({
   messages,
   onSendMessage,
   socket,
+  onBack,
+  isMobile = false,
+  unreadCount = 0,
 }: MessageAreaProps) {
   const { data: session } = useSession();
   const [message, setMessage] = useState('');
@@ -52,6 +58,7 @@ export default function MessageArea({
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const [isKeyboardOpen, setIsKeyboardOpen] = useState(false);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -60,6 +67,20 @@ export default function MessageArea({
   useEffect(() => {
     scrollToBottom();
   }, [messages]);
+
+  // Handle mobile keyboard visibility
+  useEffect(() => {
+    if (!isMobile) return;
+
+    const handleResize = () => {
+      const initialHeight = window.innerHeight;
+      const currentHeight = window.innerHeight;
+      setIsKeyboardOpen(currentHeight < initialHeight * 0.75);
+    };
+
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, [isMobile]);
 
   // Smooth scroll to bottom when new message arrives quickly
   useEffect(() => {
@@ -188,8 +209,50 @@ export default function MessageArea({
 
   return (
     <div className="flex flex-col h-full bg-gradient-to-br from-gray-50 to-gray-100 dark:from-slate-900 dark:to-slate-800">
+      {/* Mobile Header */}
+      {isMobile && (
+        <div className="flex items-center justify-between p-4 bg-white dark:bg-slate-800 border-b border-gray-200 dark:border-slate-700 shadow-sm">
+          <div className="flex items-center space-x-3">
+            <button
+              onClick={onBack}
+              className="p-2 hover:bg-gray-100 dark:hover:bg-slate-700 rounded-full transition-colors"
+            >
+              <ArrowLeft className="w-5 h-5 text-gray-600 dark:text-gray-300" />
+            </button>
+            <div className="flex items-center space-x-2">
+              {conversation.type === 'GROUP' ? (
+                <div className="w-8 h-8 rounded-full bg-blue-500 text-white flex items-center justify-center">
+                  <Users className="w-4 h-4" />
+                </div>
+              ) : (
+                <div className="w-8 h-8 rounded-full bg-gray-300 dark:bg-slate-600 text-gray-700 dark:text-gray-300 flex items-center justify-center">
+                  {conversation.participants.find(p => p.user.id !== session?.user?.id)?.user.fullName.charAt(0) || 'U'}
+                </div>
+              )}
+              <div>
+                <h3 className="font-semibold text-gray-900 dark:text-white text-sm">
+                  {conversation.type === 'GROUP' 
+                    ? conversation.name 
+                    : conversation.participants.find(p => p.user.id !== session?.user?.id)?.user.fullName
+                  }
+                </h3>
+                <p className="text-xs text-gray-500 dark:text-gray-400">
+                  {conversation.type === 'GROUP' 
+                    ? `${conversation.participants.length} members`
+                    : 'Online'
+                  }
+                </p>
+              </div>
+            </div>
+          </div>
+          <button className="p-2 hover:bg-gray-100 dark:hover:bg-slate-700 rounded-full transition-colors">
+            <MoreVertical className="w-5 h-5 text-gray-600 dark:text-gray-300" />
+          </button>
+        </div>
+      )}
+
       {/* Messages Area */}
-      <div className="flex-1 overflow-y-auto p-6 space-y-4" ref={messagesEndRef}>
+      <div className={`flex-1 overflow-y-auto ${isMobile ? 'p-3' : 'p-6'} space-y-3 sm:space-y-4 chat-mobile-scroll ${isKeyboardOpen ? 'pb-20' : ''}`} ref={messagesEndRef}>
         {messages.map((msg) => {
           const isOwnMessage = msg.senderId === session?.user?.id
           
@@ -199,7 +262,7 @@ export default function MessageArea({
               className={`flex ${isOwnMessage ? 'justify-end' : 'justify-start'}`}
             >
               <div
-                className={`max-w-[70%] rounded-2xl px-4 py-3 shadow-lg transition-all duration-200 hover:shadow-xl ${
+                className={`${isMobile ? 'max-w-[85%]' : 'max-w-[70%]'} rounded-2xl ${isMobile ? 'px-3 py-2' : 'px-4 py-3'} shadow-lg transition-all duration-200 hover:shadow-xl ${
                   isOwnMessage
                     ? 'bg-gradient-to-r from-blue-500 to-indigo-600 text-white rounded-br-md'
                     : 'bg-white dark:bg-slate-800 text-gray-900 dark:text-white rounded-bl-md border border-gray-200 dark:border-slate-700'
@@ -208,7 +271,7 @@ export default function MessageArea({
                 {/* Message Content */}
                 {msg.messageType === 'TEXT' ? (
                   <div className="break-words">
-                    <p className="text-sm leading-relaxed">{msg.content}</p>
+                    <p className={`${isMobile ? 'text-sm' : 'text-sm'} leading-relaxed`}>{msg.content}</p>
                   </div>
                 ) : msg.messageType === 'IMAGE' && msg.attachments && msg.attachments[0] ? (
                   <div className="space-y-2">
@@ -216,20 +279,20 @@ export default function MessageArea({
                       src={msg.attachments[0].fileUrl}
                       alt="Image"
                       className="max-w-full h-auto rounded-lg shadow-sm"
-                      style={{ maxHeight: '300px' }}
+                      style={{ maxHeight: isMobile ? '200px' : '300px' }}
                     />
                     {msg.content && (
-                      <p className="text-sm leading-relaxed">{msg.content}</p>
+                      <p className={`${isMobile ? 'text-sm' : 'text-sm'} leading-relaxed`}>{msg.content}</p>
                     )}
                   </div>
                 ) : (
                   <div className="break-words">
-                    <p className="text-sm leading-relaxed">{msg.content}</p>
+                    <p className={`${isMobile ? 'text-sm' : 'text-sm'} leading-relaxed`}>{msg.content}</p>
                   </div>
                 )}
                 
                 {/* Message Time */}
-                <div className={`text-xs mt-2 ${
+                <div className={`${isMobile ? 'text-xs' : 'text-xs'} mt-1 sm:mt-2 ${
                   isOwnMessage ? 'text-blue-100' : 'text-gray-500 dark:text-neutral-400'
                 }`}>
                   {new Date(msg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
@@ -256,17 +319,16 @@ export default function MessageArea({
       </div>
 
       {/* Input Area */}
-      <div className="border-t border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-6 shadow-lg">
-        <div className="flex items-end space-x-3">
+      <div className={`border-t border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 ${isMobile ? 'p-3 pb-8 mb-4' : 'p-6'} shadow-lg`}>
+        <div className={`flex items-end ${isMobile ? 'space-x-2' : 'space-x-3'}`}>
           {/* File Upload Button */}
           <button
             onClick={() => document.getElementById('fileInput')?.click()}
-            className="p-2 text-gray-500 hover:text-gray-700 dark:text-neutral-400 dark:hover:text-neutral-200 transition-colors rounded-full hover:bg-gray-100 dark:hover:bg-neutral-700"
+            className={`${isMobile ? 'p-2' : 'p-2'} text-gray-500 hover:text-gray-700 dark:text-neutral-400 dark:hover:text-neutral-200 transition-colors rounded-full hover:bg-gray-100 dark:hover:bg-neutral-700`}
             title="Attach File"
           >
-            <Paperclip className="w-5 h-5" />
+            <Paperclip className={`${isMobile ? 'w-4 h-4' : 'w-5 h-5'}`} />
           </button>
-
 
           {/* Text Input */}
           <div className="flex-1 relative">
@@ -281,9 +343,9 @@ export default function MessageArea({
                 }
               }}
               placeholder="Type a message..."
-              className="w-full px-4 py-3 border border-gray-300 dark:border-slate-600 rounded-2xl resize-none focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-slate-700 dark:text-slate-100 dark:placeholder-gray-400 transition-all duration-200 shadow-sm hover:shadow-md"
+              className={`w-full ${isMobile ? 'px-3 py-2 text-sm' : 'px-4 py-3'} border border-gray-300 dark:border-slate-600 rounded-2xl resize-none focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-slate-700 dark:text-slate-100 dark:placeholder-gray-400 transition-all duration-200 shadow-sm hover:shadow-md chat-mobile-input chat-mobile-textarea chat-mobile-focus`}
               rows={1}
-              style={{ minHeight: '48px', maxHeight: '120px' }}
+              style={{ minHeight: isMobile ? '40px' : '48px', maxHeight: '120px' }}
             />
           </div>
           
@@ -291,17 +353,16 @@ export default function MessageArea({
           <button
             onClick={sendMessage}
             disabled={!message.trim()}
-            className={`p-3 rounded-full transition-all duration-200 ${
+            className={`${isMobile ? 'p-2' : 'p-3'} rounded-full transition-all duration-200 chat-mobile-button chat-mobile-touch chat-mobile-transition ${
               message.trim()
                 ? 'bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 text-white shadow-lg hover:shadow-xl transform hover:scale-105 active:scale-95'
                 : 'bg-gray-300 dark:bg-slate-600 text-gray-500 dark:text-slate-400 cursor-not-allowed'
             }`}
             title="Send Message"
           >
-            <Send className="w-5 h-5" />
+            <Send className={`${isMobile ? 'w-4 h-4' : 'w-5 h-5'}`} />
           </button>
         </div>
-
 
         {/* Hidden file input */}
         <input

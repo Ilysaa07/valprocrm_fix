@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { showSuccess, showError, showConfirm } from '@/lib/swal';
+import { showError } from '@/lib/swal';
 import { useSession } from 'next-auth/react'
 import { redirect } from 'next/navigation'
 import EmployeeLayout from '@/components/layout/EmployeeLayout'
@@ -73,8 +73,6 @@ export default function EmployeeTasksPage() {
   const [loading, setLoading] = useState(true)
   const [activeTab, setActiveTab] = useState<'assigned' | 'completed'>('assigned')
   const [attSearch, setAttSearch] = useState('')
-  const [attPage, setAttPage] = useState(1)
-  const [attPageSize, setAttPageSize] = useState(6)
 
   useEffect(() => {
     if (status === 'loading') return
@@ -433,7 +431,7 @@ export default function EmployeeTasksPage() {
                           )}
                           <Button
                             onClick={() => handleUpdateStatus(task.id, 'COMPLETED')}
-                            variant={task.status === 'COMPLETED' ? 'success' : 'outline'}
+                            variant={task.status === 'COMPLETED' ? 'default' : 'outline'}
                             size="sm"
                             disabled={task.status === 'COMPLETED'}
                             className={`${task.status === 'COMPLETED' ? 'text-white' : 'text-green-600 hover:text-green-700'}`}
@@ -495,21 +493,14 @@ export default function EmployeeTasksPage() {
                 {(() => {
                   const all = selectedTask.attachments || []
                   const filtered = all.filter(a => a.title.toLowerCase().includes(attSearch.toLowerCase()))
-                  const pages = Math.max(1, Math.ceil(filtered.length / attPageSize))
-                  const safePage = Math.min(attPage, pages)
-                  const start = (safePage - 1) * attPageSize
-                  const pageItems = filtered.slice(start, start + attPageSize)
                   return (
                     <>
                       <div className="flex items-center gap-2 mb-3">
-                        <input value={attSearch} onChange={(e) => { setAttSearch(e.target.value); setAttPage(1) }} placeholder="Cari lampiran..." className="px-3 py-2 border rounded text-sm w-full md:w-64" />
-                        <select value={attPageSize} onChange={(e) => { setAttPageSize(parseInt(e.target.value)); setAttPage(1) }} className="px-2 py-2 border rounded text-sm">
-                          {[6,9,12].map(n => (<option key={n} value={n}>{n}/hal</option>))}
-                        </select>
+                        <input value={attSearch} onChange={(e) => setAttSearch(e.target.value)} placeholder="Cari lampiran..." className="px-3 py-2 border rounded text-sm w-full md:w-64" />
                       </div>
-                      {pageItems.length > 0 ? (
+                      {filtered.length > 0 ? (
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-                          {pageItems.map(att => (
+                          {filtered.map(att => (
                             <div key={att.id} className="border rounded p-3 bg-white dark:bg-gray-900">
                               <div className="text-sm font-medium text-gray-900 dark:text-gray-100 truncate" title={att.title}>{att.title}</div>
                               <div className="text-xs text-gray-600 dark:text-gray-400 mt-1">{att.mimeType} • {Math.round(att.size/1024)} KB</div>
@@ -535,11 +526,7 @@ export default function EmployeeTasksPage() {
                         <p className="text-sm text-gray-500">Tidak ada lampiran tugas.</p>
                       )}
                       <div className="flex items-center justify-between mt-3 text-xs text-gray-600 dark:text-gray-400">
-                        <div>Halaman {safePage} dari {pages} • {filtered.length} file</div>
-                        <div className="flex gap-2">
-                          <button disabled={safePage <= 1} onClick={() => setAttPage(p => Math.max(1, p - 1))} className={`px-2 py-1 border rounded ${safePage <= 1 ? 'opacity-50 cursor-not-allowed' : ''}`}>Sebelumnya</button>
-                          <button disabled={safePage >= pages} onClick={() => setAttPage(p => Math.min(pages, p + 1))} className={`px-2 py-1 border rounded ${safePage >= pages ? 'opacity-50 cursor-not-allowed' : ''}`}>Berikutnya</button>
-                        </div>
+                        <div>Total {filtered.length} file</div>
                       </div>
                     </>
                   )

@@ -57,6 +57,7 @@ export default function ChatLayout() {
   const [isMobile, setIsMobile] = useState(false);
   const [showNewConversationModal, setShowNewConversationModal] = useState(false);
   const [unreadByConversation, setUnreadByConversation] = useState<Record<string, number>>({});
+  const [showConversationList, setShowConversationList] = useState(true);
   const searchParams = useSearchParams();
 
   useEffect(() => {
@@ -68,6 +69,21 @@ export default function ChatLayout() {
     window.addEventListener('resize', checkMobile);
     return () => window.removeEventListener('resize', checkMobile);
   }, []);
+
+  // Handle mobile back button behavior
+  useEffect(() => {
+    if (!isMobile) return;
+
+    const handlePopState = () => {
+      if (selectedConversation && !showConversationList) {
+        setShowConversationList(true);
+        setSelectedConversation(null);
+      }
+    };
+
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, [isMobile, selectedConversation, showConversationList]);
 
   useEffect(() => {
     if (!session?.user?.id) return;
@@ -197,6 +213,13 @@ export default function ChatLayout() {
     if (socketRef.current) {
       socketRef.current.emit('join_conversation', conversation.id);
     }
+    
+    // On mobile, hide conversation list when selecting a conversation
+    if (isMobile) {
+      setShowConversationList(false);
+      // Push state to history for back button support
+      window.history.pushState({ conversationId: conversation.id }, '', `?c=${conversation.id}`);
+    }
   };
 
   const markAllRead = async (conversationId: string) => {
@@ -303,13 +326,20 @@ export default function ChatLayout() {
   }
 
   return (
-    <div className="flex h-[100dvh] min-h-0 bg-gradient-to-br from-gray-50 to-gray-100 dark:from-slate-900 dark:to-slate-800">
-      {/* Sidebar */}
-      <aside className={`${selectedConversation && isMobile ? 'hidden' : 'flex'} w-full md:w-88 lg:w-[420px] xl:w-[460px] flex-col min-h-0 border-r border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 shadow-lg`}> 
+    <div className={`flex min-h-0 bg-gradient-to-br from-gray-50 to-gray-100 dark:from-slate-900 dark:to-slate-800 chat-mobile-scroll ${
+      isMobile ? 'h-[calc(100dvh-120px)]' : 'h-[100dvh]'
+    }`}>
+      {/* Sidebar - Mobile optimized */}
+      <aside className={`${
+        isMobile 
+          ? (showConversationList ? 'flex' : 'hidden') 
+          : 'flex'
+      } w-full md:w-88 lg:w-[420px] xl:w-[460px] flex-col min-h-0 border-r border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 shadow-lg`}> 
         <ChatHeader 
           onNewChat={() => setShowNewConversationModal(true)}
           onSearch={() => {}}
           totalUnread={Object.values(unreadByConversation).reduce((a, b) => a + (b || 0), 0)}
+          isMobile={isMobile}
         />
         <Separator />
         <ScrollArea className="flex-1 min-h-0">
@@ -320,12 +350,17 @@ export default function ChatLayout() {
             isLoading={isLoading}
             currentUserId={session.user.id}
             unreadByConversation={unreadByConversation}
+            isMobile={isMobile}
           />
         </ScrollArea>
       </aside>
 
-      {/* Chat area */}
-      <main className={`${!selectedConversation && isMobile ? 'hidden' : 'flex'} flex-1 min-w-0 min-h-0`}> 
+      {/* Chat area - Mobile optimized */}
+      <main className={`${
+        isMobile 
+          ? (showConversationList ? 'hidden' : 'flex') 
+          : 'flex'
+      } flex-1 min-w-0 min-h-0`}> 
         {selectedConversation ? (
           <div className="flex-1 flex flex-col min-h-0">
             <MessageArea
@@ -333,36 +368,48 @@ export default function ChatLayout() {
               messages={messages}
               onSendMessage={handleSendMessage}
               socket={socket}
-              onBack={() => setSelectedConversation(null)}
+              onBack={() => {
+                if (isMobile) {
+                  setShowConversationList(true);
+                  setSelectedConversation(null);
+                  // Update URL when going back
+                  window.history.pushState({}, '', window.location.pathname);
+                } else {
+                  setSelectedConversation(null);
+                }
+              }}
               isMobile={isMobile}
               unreadCount={unreadByConversation[selectedConversation.id] || 0}
             />
           </div>
         ) : (
-          <div className="flex-1 flex items-center justify-center p-8 bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-slate-800 dark:to-slate-700">
-            <div className="text-center max-w-md">
-              <div className="w-20 h-20 mx-auto mb-6 bg-gradient-to-br from-blue-500 to-indigo-600 dark:from-blue-600 dark:to-indigo-700 rounded-full flex items-center justify-center shadow-lg">
-                <svg className="w-10 h-10 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <div className="flex-1 flex items-center justify-center p-4 sm:p-8 bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-slate-800 dark:to-slate-700">
+            <div className="text-center max-w-md w-full px-4">
+              <div className="w-16 h-16 sm:w-20 sm:h-20 mx-auto mb-4 sm:mb-6 bg-gradient-to-br from-blue-500 to-indigo-600 dark:from-blue-600 dark:to-indigo-700 rounded-full flex items-center justify-center shadow-lg">
+                <svg className="w-8 h-8 sm:w-10 sm:h-10 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
                 </svg>
               </div>
-              <h3 className="text-2xl font-bold text-gray-900 dark:text-white mb-3">Welcome to Chat</h3>
-              <p className="text-gray-600 dark:text-gray-300 text-lg">Select a conversation to get started</p>
-              <div className="mt-6">
-                <Button
-                  onClick={() => setShowNewConversationModal(true)}
-                  className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg shadow-lg hover:shadow-xl transition-all duration-200 transform hover:scale-105"
-                >
-                  <Plus className="w-5 h-5 mr-2" />
-                  Start New Conversation
-                </Button>
-              </div>
+              <h3 className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white mb-2 sm:mb-3">Welcome to Chat</h3>
+              <p className="text-gray-600 dark:text-gray-300 text-base sm:text-lg mb-4 sm:mb-6">Select a conversation to get started</p>
+              <Button
+                onClick={() => setShowNewConversationModal(true)}
+                className="w-full sm:w-auto bg-blue-600 hover:bg-blue-700 text-white px-4 sm:px-6 py-3 rounded-lg shadow-lg hover:shadow-xl transition-all duration-200 transform hover:scale-105"
+              >
+                <Plus className="w-4 h-4 sm:w-5 sm:h-5 mr-2" />
+                Start New Conversation
+              </Button>
             </div>
           </div>
         )}
       </main>
 
-      <NewConversationModal isOpen={showNewConversationModal} onClose={() => setShowNewConversationModal(false)} onConversationCreated={handleNewConversation} />
+      <NewConversationModal 
+        isOpen={showNewConversationModal} 
+        onClose={() => setShowNewConversationModal(false)} 
+        onConversationCreated={handleNewConversation}
+        isMobile={isMobile}
+      />
     </div>
   );
 }
