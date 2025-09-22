@@ -33,12 +33,10 @@ interface TransactionChartData {
   chartData: ChartData[]
   incomeCategories: CategoryData[]
   expenseCategories: CategoryData[]
-  summary: {
-    totalIncome: number
-    totalExpense: number
-    netIncome: number
-    period: string
-  }
+  totalIncome: number
+  totalExpense: number
+  netIncome: number
+  period: string
 }
 
 const COLORS = ['var(--color-accent)', 'var(--color-success)', 'var(--color-warning)', 'var(--color-error)', 'var(--color-accent)/80', 'var(--color-success)/80', 'var(--color-warning)/80', 'var(--color-error)/80']
@@ -56,8 +54,18 @@ export default function TransactionChart() {
       setLoading(true)
       const response = await fetch(`/api/transactions/chart?period=${period}`)
       if (response.ok) {
-        const chartData = await response.json()
-        setData(chartData)
+        const responseData = await response.json()
+        setData(responseData.data)
+        
+        // Debug logging
+        console.log('TransactionChart - Data fetched:', {
+          period,
+          totalIncome: responseData.data?.totalIncome || 0,
+          totalExpense: responseData.data?.totalExpense || 0,
+          netIncome: responseData.data?.netIncome || 0,
+          chartDataPoints: responseData.data?.chartData?.length || 0,
+          expenseCategories: responseData.data?.expenseCategories?.length || 0
+        })
       } else {
         console.error('Failed to fetch chart data')
       }
@@ -140,81 +148,86 @@ export default function TransactionChart() {
     )
   }
 
+  // Add safety checks for financial data
+  const totalIncome = data.totalIncome || 0
+  const totalExpense = data.totalExpense || 0
+  const netIncome = data.netIncome || 0
+
   return (
     <div className="space-y-6">
       {/* Trading-Style Summary Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <div className="bg-white/95 dark:bg-[#1e293b] rounded-xl border border-neutral-200/50 dark:border-neutral-700/50 p-6 shadow-xl backdrop-blur-sm">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-4 sm:p-6 shadow-xl">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm font-medium text-neutral-600 dark:text-neutral-400">Total Pemasukan</p>
-              <p className="text-2xl font-bold text-secondary-600 dark:text-secondary-400">
-                {formatCurrencyShort(data.summary.totalIncome)}
+              <p className="text-sm font-medium text-gray-600 dark:text-gray-300">Total Pemasukan</p>
+              <p className="text-xl sm:text-2xl font-bold text-green-600 dark:text-green-400">
+                {formatCurrencyShort(totalIncome)}
               </p>
               <div className="flex items-center mt-1">
-                <div className="w-2 h-2 bg-secondary-500 rounded-full mr-2"></div>
-                <span className="text-xs text-neutral-500 dark:text-neutral-400">Positif</span>
+                <div className="w-2 h-2 bg-green-500 rounded-full mr-2"></div>
+                <span className="text-xs text-gray-500 dark:text-gray-400">Positif</span>
               </div>
             </div>
-            <div className="p-3 bg-secondary-500/20 rounded-xl border border-secondary-500/30">
-              <svg className="w-6 h-6 text-secondary-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <div className="p-2 sm:p-3 bg-green-100 dark:bg-green-900 rounded-xl border border-green-200 dark:border-green-700">
+              <svg className="w-5 h-5 sm:w-6 sm:h-6 text-green-600 dark:text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 11l5-5m0 0l5 5m-5-5v12" />
               </svg>
             </div>
           </div>
         </div>
 
-        <div className="bg-white/95 dark:bg-[#1e293b] rounded-xl border border-neutral-200/50 dark:border-neutral-700/50 p-6 shadow-xl backdrop-blur-sm">
+        <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-4 sm:p-6 shadow-xl">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm font-medium text-neutral-600 dark:text-neutral-400">Total Pengeluaran</p>
-              <p className="text-2xl font-bold text-danger-600 dark:text-danger-400">
-                {formatCurrencyShort(data.summary.totalExpense)}
+              <p className="text-sm font-medium text-gray-600 dark:text-gray-300">Total Pengeluaran</p>
+              <p className="text-xl sm:text-2xl font-bold text-red-600 dark:text-red-400">
+                {formatCurrencyShort(totalExpense)}
               </p>
               <div className="flex items-center mt-1">
-                <div className="w-2 h-2 bg-danger-500 rounded-full mr-2"></div>
-                <span className="text-xs text-neutral-500 dark:text-neutral-400">Negatif</span>
+                <div className="w-2 h-2 bg-red-500 rounded-full mr-2"></div>
+                <span className="text-xs text-gray-500 dark:text-gray-400">Negatif</span>
               </div>
             </div>
-            <div className="p-3 bg-danger-500/20 rounded-xl border border-danger-500/30">
-              <svg className="w-6 h-6 text-danger-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <div className="p-2 sm:p-3 bg-red-100 dark:bg-red-900 rounded-xl border border-red-200 dark:border-red-700">
+              <svg className="w-5 h-5 sm:w-6 sm:h-6 text-red-600 dark:text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 13l-5 5m0 0l-5-5m5 5V6" />
               </svg>
             </div>
           </div>
         </div>
 
-        <div className={`bg-white/95 dark:bg-[#1e293b] rounded-xl border p-6 shadow-xl backdrop-blur-sm ${
-          data.summary.netIncome >= 0 
-            ? 'border-secondary-500/30' 
-            : 'border-danger-500/30'
+        <div className={`bg-white dark:bg-gray-800 rounded-xl border p-4 sm:p-6 shadow-xl ${
+          netIncome >= 0 
+            ? 'border-green-200 dark:border-green-700' 
+            : 'border-red-200 dark:border-red-700'
         }`}>
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm font-medium text-neutral-600 dark:text-neutral-400">Laba Bersih</p>
-              <p className={`text-2xl font-bold ${
-                data.summary.netIncome >= 0 
-                  ? 'text-secondary-600 dark:text-secondary-400' 
-                  : 'text-danger-600 dark:text-danger-400'
+              <p className="text-sm font-medium text-gray-600 dark:text-gray-300">Laba Bersih</p>
+              <p className={`text-xl sm:text-2xl font-bold ${
+                netIncome >= 0 
+                  ? 'text-green-600 dark:text-green-400' 
+                  : 'text-red-600 dark:text-red-400'
               }`}>
-                {formatCurrencyShort(data.summary.netIncome)}
+                {formatCurrencyShort(netIncome)}
               </p>
               <div className="flex items-center mt-1">
                 <div className={`w-2 h-2 rounded-full mr-2 ${
-                  data.summary.netIncome >= 0 ? 'bg-secondary-500' : 'bg-danger-500'
+                  netIncome >= 0 ? 'bg-green-500' : 'bg-red-500'
                 }`}></div>
-                <span className="text-xs text-neutral-500 dark:text-neutral-400">
-                  {data.summary.netIncome >= 0 ? 'Untung' : 'Rugi'}
+                <span className="text-xs text-gray-500 dark:text-gray-400">
+                  {netIncome >= 0 ? 'Untung' : 'Rugi'}
                 </span>
               </div>
             </div>
-            <div className={`p-3 rounded-xl border ${
-              data.summary.netIncome >= 0 
-                ? 'bg-secondary-500/20 border-secondary-500/30' 
-                : 'bg-danger-500/20 border-danger-500/30'
+            <div className={`p-2 sm:p-3 rounded-xl border ${
+              netIncome >= 0 
+                ? 'bg-green-100 dark:bg-green-900 border-green-200 dark:border-green-700' 
+                : 'bg-red-100 dark:bg-red-900 border-red-200 dark:border-red-700'
             }`}>
-              <svg className={`w-6 h-6 ${
-                data.summary.netIncome >= 0 ? 'text-secondary-500' : 'text-danger-500'
+              <svg className={`w-5 h-5 sm:w-6 sm:h-6 ${
+                netIncome >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'
               }`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1" />
               </svg>
@@ -224,31 +237,31 @@ export default function TransactionChart() {
       </div>
 
       {/* Trading-Style Chart Controls */}
-      <div className="bg-white/95 dark:bg-[#1e293b] rounded-xl border border-neutral-200/50 dark:border-neutral-700/50 p-6 shadow-xl backdrop-blur-sm">
-        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 space-y-4 sm:space-y-0">
+      <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-6 shadow-xl">
+        <div className="flex flex-col gap-4 sm:flex-row sm:justify-between sm:items-center mb-6">
           <div className="flex items-center space-x-3">
-            <div className="w-3 h-3 bg-primary-500 rounded-full animate-pulse"></div>
-            <h3 className="text-lg font-semibold text-neutral-900 dark:text-neutral-100">Dashboard Keuangan</h3>
+            <div className="w-3 h-3 bg-blue-500 rounded-full animate-pulse"></div>
+            <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Dashboard Keuangan</h3>
           </div>
           
-          <div className="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-4">
+          <div className="flex flex-col sm:flex-row gap-2 sm:gap-4">
             <select
               value={period}
               onChange={(e) => setPeriod(e.target.value)}
-              className="px-3 py-2 border rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 bg-white text-gray-900 border-gray-300 dark:bg-slate-800 dark:text-slate-100 dark:border-slate-600"
+              className="px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white text-gray-900 border-gray-300 dark:bg-gray-700 dark:text-gray-100 dark:border-gray-600"
             >
               <option value="6months">6M</option>
               <option value="1year">1Y</option>
               <option value="all">ALL</option>
             </select>
             
-            <div className="flex rounded-lg p-1 border bg-gray-100 border-gray-300 dark:bg-slate-800 dark:border-slate-600">
+            <div className="flex rounded-lg p-1 border bg-gray-100 border-gray-300 dark:bg-gray-700 dark:border-gray-600">
               <button
                 onClick={() => setActiveChart('trend')}
                 className={`px-3 py-1 rounded-md text-sm font-medium transition-all duration-200 ${
                   activeChart === 'trend' 
-                    ? 'bg-emerald-500 text-slate-900 shadow-sm' 
-                    : 'text-gray-600 hover:text-gray-900 dark:text-slate-400 dark:hover:text-slate-100'
+                    ? 'bg-blue-500 text-white shadow-sm' 
+                    : 'text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-100'
                 }`}
               >
                 Chart
@@ -257,8 +270,8 @@ export default function TransactionChart() {
                 onClick={() => setActiveChart('income')}
                 className={`px-3 py-1 rounded-md text-sm font-medium transition-all duration-200 ${
                   activeChart === 'income' 
-                    ? 'bg-emerald-500 text-slate-900 shadow-sm' 
-                    : 'text-gray-600 hover:text-gray-900 dark:text-slate-400 dark:hover:text-slate-100'
+                    ? 'bg-blue-500 text-white shadow-sm' 
+                    : 'text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-100'
                 }`}
               >
                 Income
@@ -267,8 +280,8 @@ export default function TransactionChart() {
                 onClick={() => setActiveChart('expense')}
                 className={`px-3 py-1 rounded-md text-sm font-medium transition-all duration-200 ${
                   activeChart === 'expense' 
-                    ? 'bg-emerald-500 text-slate-900 shadow-sm' 
-                    : 'text-gray-600 hover:text-gray-900 dark:text-slate-400 dark:hover:text-slate-100'
+                    ? 'bg-blue-500 text-white shadow-sm' 
+                    : 'text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-100'
                 }`}
               >
                 Expense
@@ -278,7 +291,7 @@ export default function TransactionChart() {
         </div>
 
         {/* Trading-Style Charts */}
-        <div className="h-80 rounded-lg border p-4 bg-white border-gray-200 dark:bg-[#1e293b] dark:border-slate-700/50">
+        <div className="h-64 sm:h-80 rounded-lg border p-4 bg-white border-gray-200 dark:bg-gray-800 dark:border-gray-700">
           {activeChart === 'trend' && (
             <ResponsiveContainer width="100%" height="100%">
               <LineChart data={data.chartData}>
@@ -343,81 +356,109 @@ export default function TransactionChart() {
           )}
 
           {activeChart === 'income' && (
-            <ResponsiveContainer width="100%" height="100%">
-              <PieChart>
-                <Pie
-                  data={data.incomeCategories}
-                  cx="50%"
-                  cy="50%"
-                  labelLine={false}
-                  label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
-                  outerRadius={80}
-                  fill="#8884d8"
-                  dataKey="amount"
-                >
-                  {data.incomeCategories.map((entry, index) => (
-                    <Cell 
-                      key={`cell-${index}`} 
-                      fill={COLORS[index % COLORS.length]}
-                      stroke="#1F2937"
-                      strokeWidth={2}
-                    />
-                  ))}
-                </Pie>
-                <Tooltip 
-                  formatter={(value: number) => [formatCurrency(value), 'Amount']}
-                  contentStyle={{
-                    backgroundColor: '#1F2937',
-                    border: '1px solid #374151',
-                    borderRadius: '8px',
-                    color: '#F9FAFB'
-                  }}
-                />
-              </PieChart>
-            </ResponsiveContainer>
+            data.incomeCategories && data.incomeCategories.length > 0 ? (
+              <ResponsiveContainer width="100%" height="100%">
+                <PieChart>
+                  <Pie
+                    data={data.incomeCategories}
+                    cx="50%"
+                    cy="50%"
+                    labelLine={false}
+                    label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
+                    outerRadius={80}
+                    fill="#8884d8"
+                    dataKey="amount"
+                  >
+                    {data.incomeCategories.map((entry, index) => (
+                      <Cell 
+                        key={`cell-${index}`} 
+                        fill={COLORS[index % COLORS.length]}
+                        stroke="#1F2937"
+                        strokeWidth={2}
+                      />
+                    ))}
+                  </Pie>
+                  <Tooltip 
+                    formatter={(value: number) => [formatCurrency(value), 'Amount']}
+                    contentStyle={{
+                      backgroundColor: '#1F2937',
+                      border: '1px solid #374151',
+                      borderRadius: '8px',
+                      color: '#F9FAFB'
+                    }}
+                  />
+                </PieChart>
+              </ResponsiveContainer>
+            ) : (
+              <div className="flex items-center justify-center h-full">
+                <div className="text-center">
+                  <div className="text-gray-400 dark:text-gray-500 mb-2">
+                    <svg className="w-16 h-16 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1" />
+                    </svg>
+                  </div>
+                  <p className="text-gray-500 dark:text-gray-400 text-lg font-medium">Tidak Ada Data Pemasukan</p>
+                  <p className="text-gray-400 dark:text-gray-500 text-sm">Belum ada transaksi pemasukan dalam periode ini</p>
+                </div>
+              </div>
+            )
           )}
 
           {activeChart === 'expense' && (
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={data.expenseCategories}>
-                <defs>
-                  <linearGradient id="expenseBarGradient" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#EF4444" stopOpacity={0.8}/>
-                    <stop offset="95%" stopColor="#EF4444" stopOpacity={0.4}/>
-                  </linearGradient>
-                </defs>
-                <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
-                <XAxis 
-                  dataKey="name" 
-                  angle={-45} 
-                  textAnchor="end" 
-                  height={80}
-                  stroke="#9CA3AF"
-                  fontSize={12}
-                  tickLine={false}
-                />
-                <YAxis 
-                  tickFormatter={formatCurrencyShort}
-                  stroke="#9CA3AF"
-                  fontSize={12}
-                  tickLine={false}
-                />
-                <Tooltip 
-                  formatter={(value: number) => [formatCurrency(value), 'Amount']}
-                  contentStyle={{
-                    backgroundColor: '#1F2937',
-                    border: '1px solid #374151',
-                    borderRadius: '8px',
-                    color: '#F9FAFB'
-                  }}
-                />
-                <Bar 
-                  dataKey="amount" 
-                  fill="url(#expenseBarGradient)"
-                  radius={[4, 4, 0, 0]}
-                />
-              </BarChart>
-            </ResponsiveContainer>
+            data.expenseCategories && data.expenseCategories.length > 0 ? (
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={data.expenseCategories}>
+                  <defs>
+                    <linearGradient id="expenseBarGradient" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="#EF4444" stopOpacity={0.8}/>
+                      <stop offset="95%" stopColor="#EF4444" stopOpacity={0.4}/>
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
+                  <XAxis 
+                    dataKey="name" 
+                    angle={-45} 
+                    textAnchor="end" 
+                    height={80}
+                    stroke="#9CA3AF"
+                    fontSize={12}
+                    tickLine={false}
+                  />
+                  <YAxis 
+                    tickFormatter={formatCurrencyShort}
+                    stroke="#9CA3AF"
+                    fontSize={12}
+                    tickLine={false}
+                  />
+                  <Tooltip 
+                    formatter={(value: number) => [formatCurrency(value), 'Amount']}
+                    contentStyle={{
+                      backgroundColor: '#1F2937',
+                      border: '1px solid #374151',
+                      borderRadius: '8px',
+                      color: '#F9FAFB'
+                    }}
+                  />
+                  <Bar 
+                    dataKey="amount" 
+                    fill="url(#expenseBarGradient)"
+                    radius={[4, 4, 0, 0]}
+                  />
+                </BarChart>
+              </ResponsiveContainer>
+            ) : (
+              <div className="flex items-center justify-center h-full">
+                <div className="text-center">
+                  <div className="text-gray-400 dark:text-gray-500 mb-2">
+                    <svg className="w-16 h-16 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                    </svg>
+                  </div>
+                  <p className="text-gray-500 dark:text-gray-400 text-lg font-medium">Tidak Ada Data Pengeluaran</p>
+                  <p className="text-gray-400 dark:text-gray-500 text-sm">Belum ada transaksi pengeluaran dalam periode ini</p>
+                </div>
+              </div>
+            )
           )}
         </div>
       </div>

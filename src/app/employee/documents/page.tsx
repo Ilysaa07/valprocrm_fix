@@ -108,8 +108,19 @@ export default function EmployeeDocumentsPage() {
     return docs.filter(d => d.title.toLowerCase().includes(q) || (d.description || '').toLowerCase().includes(q))
   }, [docs, search])
 
-  const previewDoc = (d: Doc) => window.open(`/api/documents/${d.id}/download?inline=1`, '_blank')
-  const downloadDoc = (d: Doc) => window.open(`/api/documents/${d.id}/download`, '_blank')
+  const safeOpen = async (url: string) => {
+    try {
+      const head = await fetch(url, { method: 'HEAD' })
+      if (!head.ok) {
+        return alert('Dokumen tidak tersedia atau akses ditolak')
+      }
+      window.open(url, '_blank')
+    } catch {
+      alert('Gagal membuka dokumen')
+    }
+  }
+  const previewDoc = (d: Doc) => safeOpen(`/api/documents/${d.id}/download?inline=1`)
+  const downloadDoc = (d: Doc) => safeOpen(`/api/documents/${d.id}/download`)
 
   return (
     <EmployeeLayout>

@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useSession } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
 import AdminLayout from '@/components/layout/AdminLayout'
@@ -94,6 +94,35 @@ export default function AdminFinancePage() {
     { value: 'OTHER_EXPENSE', label: 'Pengeluaran Lainnya' }
   ]
 
+  const fetchTransactions = useCallback(async () => {
+    try {
+      const queryParams = new URLSearchParams()
+      if (filters.type) queryParams.append('type', filters.type)
+      if (filters.category) queryParams.append('category', filters.category)
+      if (filters.startDate) queryParams.append('startDate', filters.startDate)
+      if (filters.endDate) queryParams.append('endDate', filters.endDate)
+
+      const response = await fetch(`/api/transactions?${queryParams}`)
+      if (response.ok) {
+        const data = await response.json()
+        setTransactions(data.transactions)
+        setSummary(data.summary)
+        
+        // Debug logging
+        console.log('Finance Page - Transactions fetched:', {
+          totalTransactions: data.transactions?.length || 0,
+          totalIncome: data.summary?.totalIncome || 0,
+          totalExpense: data.summary?.totalExpense || 0,
+          netIncome: data.summary?.netIncome || 0
+        })
+      }
+    } catch (error) {
+      console.error('Error fetching transactions:', error)
+    } finally {
+      setIsLoading(false)
+    }
+  }, [filters.type, filters.category, filters.startDate, filters.endDate])
+
   useEffect(() => {
     if (status === 'unauthenticated') {
       router.push('/auth/login')
@@ -109,27 +138,6 @@ export default function AdminFinancePage() {
       fetchTransactions()
     }
   }, [status, session, router])
-
-  const fetchTransactions = async () => {
-    try {
-      const queryParams = new URLSearchParams()
-      if (filters.type) queryParams.append('type', filters.type)
-      if (filters.category) queryParams.append('category', filters.category)
-      if (filters.startDate) queryParams.append('startDate', filters.startDate)
-      if (filters.endDate) queryParams.append('endDate', filters.endDate)
-
-      const response = await fetch(`/api/transactions?${queryParams}`)
-      if (response.ok) {
-        const data = await response.json()
-        setTransactions(data.transactions)
-        setSummary(data.summary)
-      }
-    } catch (error) {
-      console.error('Error fetching transactions:', error)
-    } finally {
-      setIsLoading(false)
-    }
-  }
 
   const handleCreateTransaction = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -239,6 +247,37 @@ export default function AdminFinancePage() {
     return allCategories.find(cat => cat.value === category)?.label || category
   }
 
+  const handleExport = async (format: 'csv' | 'excel') => {
+    try {
+      const params = new URLSearchParams({
+        format,
+        startDate: filters.startDate || '',
+        endDate: filters.endDate || ''
+      })
+
+      const response = await fetch(`/api/exports?${params}`)
+      
+      if (response.ok) {
+        const blob = await response.blob()
+        const url = window.URL.createObjectURL(blob)
+        const a = document.createElement('a')
+        a.href = url
+        a.download = `keuangan.${format === 'excel' ? 'xlsx' : 'csv'}`
+        document.body.appendChild(a)
+        a.click()
+        document.body.removeChild(a)
+        window.URL.revokeObjectURL(url)
+        
+        await showSuccess('Berhasil!', `File ${format.toUpperCase()} berhasil diunduh`)
+      } else {
+        await showError('Gagal!', 'Gagal mengunduh file export')
+      }
+    } catch (error) {
+      console.error('Export error:', error)
+      await showError('Error!', 'Terjadi kesalahan saat export')
+    }
+  }
+
   if (status === 'loading' || isLoading) {
     return (
       <AdminLayout>
@@ -253,68 +292,81 @@ export default function AdminFinancePage() {
     <AdminLayout>
       <div className="space-y-6">
         {/* Header */}
-        <div className="flex justify-between items-center">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">Manajemen Keuangan</h1>
+            <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-gray-100">Manajemen Keuangan</h1>
             <p className="text-gray-600 dark:text-gray-300">Kelola pemasukan dan pengeluaran perusahaan</p>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
             <button
               onClick={() => setShowCreateModal(true)}
-              className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 flex items-center space-x-2"
+              className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 flex items-center justify-center space-x-2 w-full sm:w-auto"
             >
               <Plus className="h-4 w-4" />
-              <span>Tambah Transaksi</span>
+              <span className="hidden sm:inline">Tambah Transaksi</span>
+              <span className="sm:hidden">Tambah</span>
             </button>
-            <a
-              href={`/api/exports?format=csv&startDate=${filters.startDate}&endDate=${filters.endDate}`}
-              className="bg-gray-100 text-gray-800 px-3 py-2 rounded-lg hover:bg-gray-200"
-            >CSV</a>
-            <a
-              href={`/api/exports?format=excel&startDate=${filters.startDate}&endDate=${filters.endDate}`}
-              className="bg-gray-100 text-gray-800 px-3 py-2 rounded-lg hover:bg-gray-200"
-            >Excel</a>
+            <div className="flex gap-2">
+              <button
+                onClick={() => handleExport('csv')}
+                className="bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-200 px-3 py-2 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 text-sm flex-1 text-center flex items-center justify-center gap-1"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                </svg>
+                CSV
+              </button>
+              <button
+                onClick={() => handleExport('excel')}
+                className="bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-200 px-3 py-2 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 text-sm flex-1 text-center flex items-center justify-center gap-1"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                </svg>
+                Excel
+              </button>
+            </div>
           </div>
         </div>
 
         {/* Summary Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          <div className="rounded-lg shadow p-6 border border-black/10 dark:border-white/10 bg-white dark:bg-black/30">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
+          <div className="rounded-lg shadow p-6 border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800">
             <div className="flex items-center">
-              <div className="p-2 bg-green-100 rounded-lg">
-                <TrendingUp className="h-6 w-6 text-green-600" />
+              <div className="p-2 bg-green-100 dark:bg-green-900 rounded-lg">
+                <TrendingUp className="h-6 w-6 text-green-600 dark:text-green-400" />
               </div>
               <div className="ml-4">
                 <p className="text-sm font-medium text-gray-600 dark:text-gray-300">Total Pemasukan</p>
-                <p className="text-2xl font-bold text-green-600">
+                <p className="text-2xl font-bold text-green-600 dark:text-green-400">
                   {formatCurrency(summary.totalIncome)}
                 </p>
               </div>
             </div>
           </div>
 
-          <div className="rounded-lg shadow p-6 border border-black/10 dark:border-white/10 bg-white dark:bg-black/30">
+          <div className="rounded-lg shadow p-6 border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800">
             <div className="flex items-center">
-              <div className="p-2 bg-red-100 rounded-lg">
-                <TrendingDown className="h-6 w-6 text-red-600" />
+              <div className="p-2 bg-red-100 dark:bg-red-900 rounded-lg">
+                <TrendingDown className="h-6 w-6 text-red-600 dark:text-red-400" />
               </div>
               <div className="ml-4">
                 <p className="text-sm font-medium text-gray-600 dark:text-gray-300">Total Pengeluaran</p>
-                <p className="text-2xl font-bold text-red-600">
+                <p className="text-2xl font-bold text-red-600 dark:text-red-400">
                   {formatCurrency(summary.totalExpense)}
                 </p>
               </div>
             </div>
           </div>
 
-          <div className="rounded-lg shadow p-6 border border-black/10 dark:border-white/10 bg-white dark:bg-black/30">
+          <div className="rounded-lg shadow p-6 border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800">
             <div className="flex items-center">
-              <div className="p-2 bg-blue-100 rounded-lg">
-                <DollarSign className="h-6 w-6 text-blue-600" />
+              <div className="p-2 bg-blue-100 dark:bg-blue-900 rounded-lg">
+                <DollarSign className="h-6 w-6 text-blue-600 dark:text-blue-400" />
               </div>
               <div className="ml-4">
                 <p className="text-sm font-medium text-gray-600 dark:text-gray-300">Saldo Bersih</p>
-                <p className={`text-2xl font-bold ${summary.netIncome >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                <p className={`text-2xl font-bold ${summary.netIncome >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
                   {formatCurrency(summary.netIncome)}
                 </p>
               </div>
@@ -323,14 +375,14 @@ export default function AdminFinancePage() {
         </div>
 
         {/* Filters */}
-        <div className="rounded-lg shadow p-6 border border-black/10 dark:border-white/10 bg-white dark:bg-black/30">
-          <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
+        <div className="rounded-lg shadow p-4 sm:p-6 border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Tipe</label>
               <select
                 value={filters.type}
                 onChange={(e) => setFilters({ ...filters, type: e.target.value })}
-                className="w-full px-3 py-2 border border-gray-300 dark:border-white/10 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 bg-white dark:bg-black/20 text-gray-900 dark:text-gray-200"
+                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
               >
                 <option value="">Semua Tipe</option>
                 <option value="INCOME">Pemasukan</option>
@@ -343,7 +395,7 @@ export default function AdminFinancePage() {
               <select
                 value={filters.category}
                 onChange={(e) => setFilters({ ...filters, category: e.target.value })}
-                className="w-full px-3 py-2 border border-gray-300 dark:border-white/10 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 bg-white dark:bg-black/20 text-gray-900 dark:text-gray-200"
+                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
               >
                 <option value="">Semua Kategori</option>
                 <optgroup label="Pemasukan">
@@ -365,7 +417,7 @@ export default function AdminFinancePage() {
                 type="date"
                 value={filters.startDate}
                 onChange={(e) => setFilters({ ...filters, startDate: e.target.value })}
-                className="w-full px-3 py-2 border border-gray-300 dark:border-white/10 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 bg-white dark:bg-black/20 text-gray-900 dark:text-gray-200"
+                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
               />
             </div>
 
@@ -375,11 +427,11 @@ export default function AdminFinancePage() {
                 type="date"
                 value={filters.endDate}
                 onChange={(e) => setFilters({ ...filters, endDate: e.target.value })}
-                className="w-full px-3 py-2 border border-gray-300 dark:border-white/10 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 bg-white dark:bg-black/20 text-gray-900 dark:text-gray-200"
+                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
               />
             </div>
 
-            <div className="flex items-end">
+            <div className="flex items-end sm:col-span-2 lg:col-span-1">
               <button
                 onClick={fetchTransactions}
                 className="w-full bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 flex items-center justify-center space-x-2"
@@ -392,70 +444,83 @@ export default function AdminFinancePage() {
         </div>
 
         {/* Charts placeholder (can plug existing TransactionChart or new charts here) */}
-        <div className="rounded-lg shadow p-6 border border-black/10 dark:border-white/10 bg-white dark:bg-black/30">
+        <div className="rounded-lg shadow p-6 border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800">
           <TransactionChart />
         </div>
 
         {/* Transactions Table */}
-        <div className="rounded-lg shadow overflow-hidden border border-black/10 dark:border-white/10 bg-white dark:bg-black/30">
+        <div className="rounded-lg shadow overflow-hidden border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800">
           <div className="overflow-x-auto">
             <table className="min-w-full divide-y divide-gray-200 dark:divide-white/10">
-              <thead className="bg-gray-50 dark:bg-black/20">
+              <thead className="bg-gray-50 dark:bg-gray-700">
                 <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                  <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
                     Tanggal
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                  <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
                     Tipe
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                  <th className="hidden sm:table-cell px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
                     Kategori
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                  <th className="hidden md:table-cell px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
                     Deskripsi
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                  <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
                     Jumlah
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                  <th className="hidden lg:table-cell px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
                     Dibuat Oleh
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                  <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
                     Aksi
                   </th>
                 </tr>
               </thead>
-              <tbody className="bg-white dark:bg-black/10 divide-y divide-gray-200 dark:divide-white/10">
+              <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
                 {transactions.map((transaction) => (
-                  <tr key={transaction.id} className="hover:bg-gray-50 dark:hover:bg-white/10">
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-200">
-                      {new Date(transaction.date).toLocaleDateString('id-ID')}
+                  <tr key={transaction.id} className="hover:bg-gray-50 dark:hover:bg-gray-700">
+                    <td className="px-3 sm:px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-200">
+                      <div className="flex flex-col">
+                        <span>{new Date(transaction.date).toLocaleDateString('id-ID')}</span>
+                        <span className="text-xs text-gray-500 dark:text-gray-400 sm:hidden">
+                          {getCategoryLabel(transaction.category)}
+                        </span>
+                      </div>
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
+                    <td className="px-3 sm:px-6 py-4 whitespace-nowrap">
                       <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
                         transaction.type === 'INCOME' 
-                          ? 'bg-green-100 text-green-800' 
-                          : 'bg-red-100 text-red-800'
+                          ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200' 
+                          : 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200'
                       }`}>
-                        {transaction.type === 'INCOME' ? 'Pemasukan' : 'Pengeluaran'}
+                        <span className="hidden sm:inline">{transaction.type === 'INCOME' ? 'Pemasukan' : 'Pengeluaran'}</span>
+                        <span className="sm:hidden">{transaction.type === 'INCOME' ? '+' : '-'}</span>
                       </span>
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-200">
+                    <td className="hidden sm:table-cell px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-200">
                       {getCategoryLabel(transaction.category)}
                     </td>
-                    <td className="px-6 py-4 text-sm text-gray-900 dark:text-gray-200">
-                      {transaction.description}
+                    <td className="hidden md:table-cell px-6 py-4 text-sm text-gray-900 dark:text-gray-200">
+                      <div className="max-w-xs truncate" title={transaction.description}>
+                        {transaction.description}
+                      </div>
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                      <span className={transaction.type === 'INCOME' ? 'text-green-600' : 'text-red-600'}>
-                        {transaction.type === 'INCOME' ? '+' : '-'}{formatCurrency(transaction.amount)}
-                      </span>
+                    <td className="px-3 sm:px-6 py-4 whitespace-nowrap text-sm font-medium">
+                      <div className="flex flex-col">
+                        <span className={transaction.type === 'INCOME' ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}>
+                          {transaction.type === 'INCOME' ? '+' : '-'}{formatCurrency(transaction.amount)}
+                        </span>
+                        <span className="text-xs text-gray-500 dark:text-gray-400 lg:hidden">
+                          {transaction.createdBy.fullName}
+                        </span>
+                      </div>
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-200">
+                    <td className="hidden lg:table-cell px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-200">
                       {transaction.createdBy.fullName}
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                      <div className="flex space-x-2">
+                    <td className="px-3 sm:px-6 py-4 whitespace-nowrap text-sm font-medium">
+                      <div className="flex space-x-1 sm:space-x-2">
                         <button
                           onClick={() => {
                             setEditingTransaction(transaction)
@@ -467,13 +532,15 @@ export default function AdminFinancePage() {
                               date: new Date(transaction.date).toISOString().split('T')[0]
                             })
                           }}
-                          className="text-blue-600 hover:text-blue-900"
+                          className="text-blue-600 hover:text-blue-900 dark:text-blue-400 dark:hover:text-blue-300 p-1"
+                          title="Edit"
                         >
                           <Edit className="h-4 w-4" />
                         </button>
                         <button
                           onClick={() => handleDeleteTransaction(transaction.id)}
-                          className="text-red-600 hover:text-red-900"
+                          className="text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-300 p-1"
+                          title="Hapus"
                         >
                           <Trash2 className="h-4 w-4" />
                         </button>
@@ -494,8 +561,8 @@ export default function AdminFinancePage() {
 
         {/* Create Transaction Modal */}
         {showCreateModal && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-            <div className="bg-white dark:bg-black/30 rounded-lg p-6 w-full max-w-md border border-black/10 dark:border-white/10">
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+            <div className="bg-white dark:bg-gray-800 rounded-lg p-4 sm:p-6 w-full max-w-md border border-gray-200 dark:border-gray-700 max-h-[90vh] overflow-y-auto">
               <h2 className="text-lg font-semibold mb-4">Tambah Transaksi</h2>
               
               <form onSubmit={handleCreateTransaction} className="space-y-4">
@@ -508,7 +575,7 @@ export default function AdminFinancePage() {
                       type: e.target.value as 'INCOME' | 'EXPENSE',
                       category: '' // Reset category when type changes
                     })}
-                    className="w-full px-3 py-2 border border-gray-300 dark:border-white/10 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 bg-white dark:bg-black/20 text-gray-900 dark:text-gray-200"
+                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
                     required
                   >
                     <option value="INCOME">Pemasukan</option>
@@ -521,7 +588,7 @@ export default function AdminFinancePage() {
                   <select
                     value={formData.category}
                     onChange={(e) => setFormData({ ...formData, category: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-300 dark:border-white/10 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 bg-white dark:bg-black/20 text-gray-900 dark:text-gray-200"
+                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
                     required
                   >
                     <option value="">Pilih Kategori</option>
@@ -538,7 +605,7 @@ export default function AdminFinancePage() {
                     step="0.01"
                     value={formData.amount}
                     onChange={(e) => setFormData({ ...formData, amount: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-300 dark:border-white/10 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 bg-white dark:bg-black/20 text-gray-900 dark:text-gray-200"
+                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
                     required
                   />
                 </div>
@@ -549,7 +616,7 @@ export default function AdminFinancePage() {
                     value={formData.description}
                     onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                     rows={3}
-                    className="w-full px-3 py-2 border border-gray-300 dark:border-white/10 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 bg-white dark:bg-black/20 text-gray-900 dark:text-gray-200"
+                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
                     required
                   />
                 </div>
@@ -560,7 +627,7 @@ export default function AdminFinancePage() {
                     type="date"
                     value={formData.date}
                     onChange={(e) => setFormData({ ...formData, date: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-300 dark:border-white/10 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 bg-white dark:bg-black/20 text-gray-900 dark:text-gray-200"
+                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
                     required
                   />
                 </div>
@@ -587,8 +654,8 @@ export default function AdminFinancePage() {
 
         {/* Edit Transaction Modal */}
         {editingTransaction && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-            <div className="bg-white dark:bg-black/30 rounded-lg p-6 w-full max-w-md border border-black/10 dark:border-white/10">
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+            <div className="bg-white dark:bg-gray-800 rounded-lg p-4 sm:p-6 w-full max-w-md border border-gray-200 dark:border-gray-700 max-h-[90vh] overflow-y-auto">
               <h2 className="text-lg font-semibold mb-4">Edit Transaksi</h2>
               
               <form onSubmit={handleUpdateTransaction} className="space-y-4">
@@ -601,7 +668,7 @@ export default function AdminFinancePage() {
                       type: e.target.value as 'INCOME' | 'EXPENSE',
                       category: '' // Reset category when type changes
                     })}
-                    className="w-full px-3 py-2 border border-gray-300 dark:border-white/10 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 bg-white dark:bg-black/20 text-gray-900 dark:text-gray-200"
+                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
                     required
                   >
                     <option value="INCOME">Pemasukan</option>
@@ -614,7 +681,7 @@ export default function AdminFinancePage() {
                   <select
                     value={editFormData.category}
                     onChange={(e) => setEditFormData({ ...editFormData, category: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-300 dark:border-white/10 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 bg-white dark:bg-black/20 text-gray-900 dark:text-gray-200"
+                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
                     required
                   >
                     <option value="">Pilih Kategori</option>
@@ -631,7 +698,7 @@ export default function AdminFinancePage() {
                     step="0.01"
                     value={editFormData.amount}
                     onChange={(e) => setEditFormData({ ...editFormData, amount: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-300 dark:border-white/10 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 bg-white dark:bg-black/20 text-gray-900 dark:text-gray-200"
+                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
                     required
                   />
                 </div>
@@ -642,7 +709,7 @@ export default function AdminFinancePage() {
                     value={editFormData.description}
                     onChange={(e) => setEditFormData({ ...editFormData, description: e.target.value })}
                     rows={3}
-                    className="w-full px-3 py-2 border border-gray-300 dark:border-white/10 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 bg-white dark:bg-black/20 text-gray-900 dark:text-gray-200"
+                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
                     required
                   />
                 </div>
@@ -653,7 +720,7 @@ export default function AdminFinancePage() {
                     type="date"
                     value={editFormData.date}
                     onChange={(e) => setEditFormData({ ...editFormData, date: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-300 dark:border-white/10 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 bg-white dark:bg-black/20 text-gray-900 dark:text-gray-200"
+                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
                     required
                   />
                 </div>

@@ -21,10 +21,10 @@ export default function CreateInvoicePage() {
 
   if (status === 'loading') {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
-          <p className="mt-4 text-gray-600">Memuat...</p>
+          <p className="mt-4 text-gray-600 dark:text-gray-300">Memuat...</p>
         </div>
       </div>
     );
@@ -33,20 +33,20 @@ export default function CreateInvoicePage() {
   return (
     <AppLayout title="Buat Faktur" description="Buat faktur baru untuk klien" role="ADMIN">
       {/* Header */}
-      <div className="bg-white shadow-sm border rounded-lg">
+      <div className="bg-white dark:bg-gray-800 shadow-sm border border-gray-200 dark:border-gray-700 rounded-lg">
         <div className="px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center py-4">
             <div>
-              <h1 className="text-2xl font-bold" style={{ color: '#042d63' }}>
+              <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
                 Buat Faktur Baru
               </h1>
-              <p className="text-sm text-gray-600">
+              <p className="text-sm text-gray-600 dark:text-gray-300">
                 Buat faktur baru untuk klien Anda
               </p>
             </div>
             <button
               onClick={() => router.back()}
-              className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
+              className="px-4 py-2 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-600 transition-colors"
             >
               Kembali
             </button>

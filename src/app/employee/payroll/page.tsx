@@ -203,7 +203,7 @@ export default function EmployeePayrollPage() {
 
         {/* Filters */}
         <Card className="p-4">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                 Periode
@@ -367,7 +367,7 @@ export default function EmployeePayrollPage() {
                     <User className="w-5 h-5" />
                     Informasi Karyawan
                   </h4>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
                       <p className="text-sm text-gray-600 dark:text-gray-400">Nama Lengkap</p>
                       <p className="font-medium text-gray-900 dark:text-white">{selectedPayroll.employee.fullName}</p>
@@ -410,7 +410,7 @@ export default function EmployeePayrollPage() {
                 </Card>
 
                 {/* Payroll Summary */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 mb-6">
                   <Card className="p-4">
                     <h4 className="font-semibold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
                       <DollarSign className="w-5 h-5" />

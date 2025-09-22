@@ -101,10 +101,10 @@ export default function InvoiceDetailPage() {
 
   if (status === 'loading' || loading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
-          <p className="mt-4 text-gray-600">Memuat faktur...</p>
+          <p className="mt-4 text-gray-600 dark:text-gray-300">Memuat faktur...</p>
         </div>
       </div>
     );
@@ -112,11 +112,11 @@ export default function InvoiceDetailPage() {
 
   if (error) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center">
         <div className="text-center">
           <div className="text-red-500 text-6xl mb-4">⚠️</div>
-          <h1 className="text-2xl font-bold text-gray-900 mb-2">Terjadi Kesalahan</h1>
-          <p className="text-gray-600 mb-4">{error}</p>
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">Terjadi Kesalahan</h1>
+          <p className="text-gray-600 dark:text-gray-300 mb-4">{error}</p>
           <button
             onClick={() => router.back()}
             className="px-4 py-2 text-white rounded-lg hover:opacity-90 transition-colors"
@@ -131,11 +131,11 @@ export default function InvoiceDetailPage() {
 
   if (!invoice) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center">
         <div className="text-center">
           <div className="text-gray-500 text-6xl mb-4">📄</div>
-          <h1 className="text-2xl font-bold text-gray-900 mb-2">Faktur Tidak Ditemukan</h1>
-          <p className="text-gray-600 mb-4">Faktur yang diminta tidak ditemukan.</p>
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">Faktur Tidak Ditemukan</h1>
+          <p className="text-gray-600 dark:text-gray-300 mb-4">Faktur yang diminta tidak ditemukan.</p>
           <button
             onClick={() => router.back()}
             className="px-4 py-2 text-white rounded-lg hover:opacity-90 transition-colors"
@@ -151,14 +151,14 @@ export default function InvoiceDetailPage() {
   return (
     <AppLayout title={`Faktur #${invoice.invoiceNumber}`} description="Detail faktur" role={(session?.user?.role as 'ADMIN' | 'EMPLOYEE') || 'ADMIN'}>
           {/* Header */}
-          <div className="bg-white shadow-sm border rounded-lg">
+          <div className="bg-white dark:bg-gray-800 shadow-sm border border-gray-200 dark:border-gray-700 rounded-lg">
             <div className="px-4 sm:px-6 lg:px-8">
               <div className="flex justify-between items-center py-4">
                 <div>
-                  <h1 className="text-2xl font-bold" style={{ color: '#042d63' }}>
+                  <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
                     Faktur #{invoice.invoiceNumber}
                   </h1>
-                  <p className="text-sm text-gray-600">
+                  <p className="text-sm text-gray-600 dark:text-gray-300">
                     Dibuat pada {new Date(invoice.date).toLocaleDateString('id-ID')}
                   </p>
                 </div>
@@ -173,7 +173,7 @@ export default function InvoiceDetailPage() {
                   )}
                   <button
                     onClick={() => router.back()}
-                    className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
+                    className="px-4 py-2 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-600 transition-colors"
                   >
                     Kembali
                   </button>

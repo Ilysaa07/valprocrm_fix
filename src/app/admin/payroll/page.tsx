@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
-import { showSuccess, showError, showConfirm } from '@/lib/swal';
+import { showConfirm } from '@/lib/swal';
 import { useSession } from 'next-auth/react'
 import { redirect } from 'next/navigation'
 import AdminLayout from '@/components/layout/AdminLayout'
@@ -10,27 +10,21 @@ import { Card } from '@/components/ui/Card'
 import Badge from '@/components/ui/Badge'
 import { useToast } from '@/components/providers/ToastProvider'
 import { 
-  Users, 
   FileText, 
   Download, 
   Plus, 
-  Edit, 
   Trash2, 
   Eye,
   Search,
-  Filter,
-  Calendar,
   DollarSign,
   Banknote,
-  CreditCard,
   RefreshCw,
   CheckCircle,
   XCircle,
   Clock,
-  AlertTriangle
+  
 } from 'lucide-react'
 import PayrollModal from '@/components/payroll/PayrollModal'
-import EmployeeBankWarning from '@/components/payroll/EmployeeBankWarning'
 import NoEligibleEmployeesWarning from '@/components/payroll/NoEligibleEmployeesWarning'
 import PayrollPDFGenerator from '@/components/payroll/PayrollPDFGenerator'
 
@@ -85,7 +79,7 @@ export default function AdminPayrollPage() {
   const [employees, setEmployees] = useState<Employee[]>([])
   const [loading, setLoading] = useState(false)
   const [loadingEmployees, setLoadingEmployees] = useState(false)
-  const [activeTab, setActiveTab] = useState<'list' | 'create' | 'templates'>('list')
+  // const [activeTab, setActiveTab] = useState<'list' | 'create' | 'templates'>('list')
   const [showCreateModal, setShowCreateModal] = useState(false)
   const [editingPayroll, setEditingPayroll] = useState<Payroll | null>(null)
   const [selectedPeriod, setSelectedPeriod] = useState('')
@@ -157,13 +151,7 @@ export default function AdminPayrollPage() {
     }).format(amount)
   }
 
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('id-ID', {
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric'
-    })
-  }
+  // const formatDate = (dateString: string) => new Date(dateString).toLocaleDateString('id-ID', { year: 'numeric', month: 'long', day: 'numeric' })
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -273,7 +261,8 @@ export default function AdminPayrollPage() {
     }
   }
 
-  const handleSavePayroll = async (payrollData: any) => {
+  type PayrollSavePayload = { employeeId: string; period: string; basicSalary: number; notes?: string; components: Array<{ name: string; type: string; amount: number; isTaxable: boolean; description?: string; order: number }>; };
+  const handleSavePayroll = async (payrollData: PayrollSavePayload) => {
     try {
       const url = editingPayroll ? `/api/admin/payroll/${editingPayroll.id}` : '/api/admin/payroll'
       const method = editingPayroll ? 'PUT' : 'POST'
@@ -322,7 +311,7 @@ export default function AdminPayrollPage() {
 
   return (
     <AdminLayout>
-      <div className="p-6 space-y-6 bg-gray-50 dark:bg-[#121212] min-h-screen transition-colors duration-200">
+      <div className="p-6 space-y-6 bg-surface min-h-screen transition-colors duration-200">
         {/* Header */}
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
@@ -357,27 +346,27 @@ export default function AdminPayrollPage() {
         </div>
 
         {/* Filters */}
-        <Card className="p-4">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        <Card className="p-4 bg-card border border-border shadow-soft">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+              <label className="block text-sm font-medium text-text-secondary mb-1">
                 Periode
               </label>
               <input
                 type="month"
                 value={selectedPeriod}
                 onChange={(e) => setSelectedPeriod(e.target.value)}
-                className="w-full border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white rounded-lg px-3 py-2"
+                className="w-full input-default rounded-lg px-3 py-2"
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+              <label className="block text-sm font-medium text-text-secondary mb-1">
                 Karyawan
               </label>
               <select
                 value={selectedEmployee}
                 onChange={(e) => setSelectedEmployee(e.target.value)}
-                className="w-full border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white rounded-lg px-3 py-2"
+                className="w-full input-default rounded-lg px-3 py-2"
               >
                 <option value="">Semua Karyawan</option>
                 {employees.map(employee => (
@@ -388,13 +377,13 @@ export default function AdminPayrollPage() {
               </select>
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+              <label className="block text-sm font-medium text-text-secondary mb-1">
                 Status
               </label>
               <select
                 value={selectedStatus}
                 onChange={(e) => setSelectedStatus(e.target.value)}
-                className="w-full border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white rounded-lg px-3 py-2"
+                className="w-full input-default rounded-lg px-3 py-2"
               >
                 <option value="">Semua Status</option>
                 <option value="DRAFT">Draft</option>
@@ -404,7 +393,7 @@ export default function AdminPayrollPage() {
               </select>
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+              <label className="block text-sm font-medium text-text-secondary mb-1">
                 Pencarian
               </label>
               <div className="relative">
@@ -414,7 +403,7 @@ export default function AdminPayrollPage() {
                   placeholder="Cari nama atau email..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
-                  className="w-full pl-10 pr-3 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white rounded-lg"
+                  className="w-full pl-10 pr-3 py-2 input-default rounded-lg"
                 />
               </div>
             </div>
@@ -422,9 +411,9 @@ export default function AdminPayrollPage() {
         </Card>
 
         {/* Export Actions */}
-        <Card className="p-4">
+        <Card className="p-4 bg-card border border-border shadow-soft">
           <div className="flex items-center justify-between">
-            <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Export Data</h3>
+            <h3 className="text-lg font-semibold text-text-primary">Export Data</h3>
             <div className="flex gap-2">
               <Button
                 variant="outline"
@@ -454,9 +443,9 @@ export default function AdminPayrollPage() {
         )}
 
         {/* Payroll List */}
-        <Card className="p-6">
+        <Card className="p-6 bg-card border border-border shadow-soft">
           <div className="flex items-center justify-between mb-4">
-            <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Daftar Slip Gaji</h3>
+            <h3 className="text-lg font-semibold text-text-primary">Daftar Slip Gaji</h3>
             <Badge variant="secondary">
               {payrolls.length} slip gaji
             </Badge>
@@ -479,42 +468,49 @@ export default function AdminPayrollPage() {
           ) : (
             <div className="space-y-4">
               {payrolls.map((payroll) => (
-                <div key={payroll.id} className="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-800 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors">
-                  <div className="flex items-center gap-4">
-                    <div className="p-2 bg-gray-200 dark:bg-gray-600 rounded-lg">
+                <div key={payroll.id} className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 p-4 bg-card border border-border rounded-lg hover:bg-card-hover transition-colors">
+                  <div className="flex items-start sm:items-center gap-3 sm:gap-4">
+                    <div className="p-2 bg-elevated rounded-lg">
                       {getStatusIcon(payroll.status)}
                     </div>
                     <div>
                       <div className="flex items-center gap-2 mb-1">
-                        <h4 className="font-medium text-gray-900 dark:text-white">
+                        <h4 className="font-medium text-text-primary">
                           {payroll.employee.fullName}
                         </h4>
                         <Badge className={`text-xs ${getStatusColor(payroll.status)}`}>
                           {payroll.status}
                         </Badge>
                       </div>
-                      <div className="flex items-center gap-4 text-sm text-gray-500 dark:text-gray-400">
+                      <div className="text-sm text-text-secondary">
+                        <div className="sm:hidden space-y-1">
+                          <div>{payroll.period}</div>
+                          <div>Gaji Pokok: {formatCurrency(payroll.basicSalary)}</div>
+                          <div>Gaji Bersih: {formatCurrency(payroll.netSalary)}</div>
+                        </div>
+                        <div className="hidden sm:flex flex-wrap items-center gap-x-4 gap-y-1">
                         <span>{payroll.period}</span>
-                        <span>•</span>
+                          <span className="hidden sm:inline">•</span>
                         <span>Gaji Pokok: {formatCurrency(payroll.basicSalary)}</span>
-                        <span>•</span>
+                          <span className="hidden sm:inline">•</span>
                         <span>Gaji Bersih: {formatCurrency(payroll.netSalary)}</span>
+                        </div>
                         {payroll.employee.bankAccountNumber && (
-                          <>
-                            <span>•</span>
+                          <div className="mt-1 sm:mt-0 sm:ml-0">
+                            <span className="hidden sm:inline">• </span>
                             <span>Rek: {payroll.employee.bankAccountNumber}</span>
-                          </>
+                          </div>
                         )}
                         {payroll.employee.ewalletNumber && (
-                          <>
-                            <span>•</span>
+                          <div className="mt-1 sm:mt-0 sm:ml-0">
+                            <span className="hidden sm:inline">• </span>
                             <span>E-wallet: {payroll.employee.ewalletNumber}</span>
-                          </>
+                          </div>
                         )}
                       </div>
                     </div>
                   </div>
-                  <div className="flex gap-2">
+                  <div className="flex gap-2 flex-col sm:flex-row w-full sm:w-auto">
                     <Button
                       variant="outline"
                       size="sm"
@@ -522,7 +518,7 @@ export default function AdminPayrollPage() {
                         setEditingPayroll(payroll)
                         setShowCreateModal(true)
                       }}
-                      className="flex items-center gap-1"
+                      className="flex items-center gap-1 w-full sm:w-auto"
                     >
                       <Eye className="w-3 h-3" />
                       Lihat
@@ -531,22 +527,25 @@ export default function AdminPayrollPage() {
                     <div className="hidden sm:block">
                       <PayrollPDFGenerator payroll={payroll} />
                     </div>
+                    <div className="sm:hidden w-full">
+                      <PayrollPDFGenerator payroll={payroll} />
+                    </div>
                     {payroll.status === 'DRAFT' && (
                       <>
                         <Button
                           variant="outline"
                           size="sm"
                           onClick={() => updatePayrollStatus(payroll.id, 'APPROVED')}
-                          className="flex items-center gap-1"
+                          className="flex items-center gap-1 w-full sm:w-auto"
                         >
                           <CheckCircle className="w-3 h-3" />
                           Setujui
                         </Button>
                         <Button
-                          variant="danger"
+                          variant="destructive"
                           size="sm"
                           onClick={() => deletePayroll(payroll.id)}
-                          className="flex items-center gap-1"
+                          className="flex items-center gap-1 w-full sm:w-auto"
                         >
                           <Trash2 className="w-3 h-3" />
                           Hapus
@@ -558,7 +557,7 @@ export default function AdminPayrollPage() {
                         variant="outline"
                         size="sm"
                         onClick={() => updatePayrollStatus(payroll.id, 'PAID')}
-                        className="flex items-center gap-1"
+                        className="flex items-center gap-1 w-full sm:w-auto"
                       >
                         <Banknote className="w-3 h-3" />
                         Tandai Dibayar
@@ -612,3 +611,5 @@ export default function AdminPayrollPage() {
     </AdminLayout>
   )
 }
+
+

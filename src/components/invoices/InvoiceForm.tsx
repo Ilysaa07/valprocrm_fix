@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useSession } from 'next-auth/react';
 import { showError, showSuccess } from '@/lib/swal';
 import { InvoiceData, InvoiceItem } from './InvoicePreview';
+type SubItem = { id?: string; name: string; description?: string; quantity: number; unitPrice: number; total: number };
 
 type Mode = 'create' | 'edit';
 
@@ -97,8 +98,9 @@ export default function InvoiceForm({ mode, initialData, initialItems, invoiceId
   const addSubItem = (itemId: string) => {
     setItems(prev => prev.map(it => {
       if (it.id !== itemId) return it;
-      const sub = { name: '', description: '', quantity: 1, unitPrice: 0, total: 0 };
-      const subItems = Array.isArray(it.subItems) ? [...it.subItems, sub] : [sub];
+      const sub = { name: '', description: '', quantity: 1, unitPrice: 0, total: 0 } as SubItem;
+      const subItems = (Array.isArray(it.subItems) ? [...it.subItems] : []) as SubItem[];
+      subItems.push(sub);
       return { ...it, subItems } as InvoiceItem;
     }));
   };
@@ -106,9 +108,9 @@ export default function InvoiceForm({ mode, initialData, initialItems, invoiceId
   const updateSubItem = (itemId: string, index: number, field: 'name'|'description'|'quantity'|'unitPrice', value: string | number) => {
     setItems(prev => prev.map(it => {
       if (it.id !== itemId) return it;
-      const subItems = (it.subItems || []).map((si, idx) => {
-        if (idx !== index) return si as any;
-        const next: any = { ...si, [field]: value };
+      const subItems = ((it.subItems || []) as SubItem[]).map((si: SubItem, idx: number) => {
+        if (idx !== index) return si;
+        const next: SubItem = { ...si, [field]: value } as SubItem;
         if (field === 'quantity' || field === 'unitPrice') {
           next.total = Number(next.quantity) * Number(next.unitPrice);
         }
@@ -198,7 +200,7 @@ export default function InvoiceForm({ mode, initialData, initialItems, invoiceId
         })
       });
       if (!response.ok) {
-        const errorData = await response.json().catch(() => ({} as any));
+        const errorData = await response.json().catch(() => ({} as { error?: string }));
         throw new Error(errorData.error || `Gagal ${mode === 'create' ? 'membuat' : 'memperbarui'} faktur`);
       }
       await showSuccess('Berhasil!', `Faktur berhasil ${mode === 'create' ? 'dibuat' : 'diperbarui'}`);
@@ -221,36 +223,36 @@ export default function InvoiceForm({ mode, initialData, initialItems, invoiceId
         </div>
       )}
 
-      <div className="bg-white dark:bg-black/30 rounded-lg shadow border border-black/10 dark:border-white/10 p-6">
-        <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">Detail Faktur</h2>
+      <div className="bg-card rounded-lg shadow-soft border border-border p-6">
+        <h2 className="text-lg font-semibold text-text-primary mb-4">Detail Faktur</h2>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Nomor Faktur *</label>
+            <label className="block text-sm font-medium text-text-secondary mb-2">Nomor Faktur *</label>
             <div className="flex gap-2">
               <input
                 type="text"
                 value={formData.invoiceNumber}
                 onChange={(e) => setFormData(prev => ({ ...prev, invoiceNumber: e.target.value }))}
-                className="flex-1 px-3 py-2 border border-gray-300 dark:border-white/10 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white dark:bg-black/20 text-gray-900 dark:text-gray-200"
+                className="flex-1 input-default px-3 py-2 rounded-lg"
                 placeholder="INV-20240115-0001"
                 required
               />
               {mode === 'create' && (
-                <button type="button" onClick={generateInvoiceNumber} className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">Generate</button>
+                <button type="button" onClick={generateInvoiceNumber} className="px-4 py-2 rounded-lg btn-primary">Generate</button>
               )}
             </div>
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Tanggal Faktur *</label>
-            <input type="date" value={formData.date} onChange={(e) => setFormData(prev => ({ ...prev, date: e.target.value }))} className="w-full px-3 py-2 border border-gray-300 dark:border-white/10 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white dark:bg-black/20 text-gray-900 dark:text-gray-200" required />
+            <label className="block text-sm font-medium text-text-secondary mb-2">Tanggal Faktur *</label>
+            <input type="date" value={formData.date} onChange={(e) => setFormData(prev => ({ ...prev, date: e.target.value }))} className="w-full input-default px-3 py-2 rounded-lg" required />
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Jatuh Tempo *</label>
-            <input type="date" value={formData.dueDate} onChange={(e) => setFormData(prev => ({ ...prev, dueDate: e.target.value }))} className="w-full px-3 py-2 border border-gray-300 dark:border-white/10 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white dark:bg-black/20 text-gray-900 dark:text-gray-200" required />
+            <label className="block text-sm font-medium text-text-secondary mb-2">Jatuh Tempo *</label>
+            <input type="date" value={formData.dueDate} onChange={(e) => setFormData(prev => ({ ...prev, dueDate: e.target.value }))} className="w-full input-default px-3 py-2 rounded-lg" required />
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Status</label>
-            <select value={formData.status} onChange={(e) => setFormData(prev => ({ ...prev, status: e.target.value as any }))} className="w-full px-3 py-2 border border-gray-300 dark:border-white/10 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white dark:bg-black/20 text-gray-900 dark:text-gray-200">
+            <label className="block text-sm font-medium text-text-secondary mb-2">Status</label>
+            <select value={formData.status} onChange={(e) => setFormData(prev => ({ ...prev, status: e.target.value as InvoiceData['status'] }))} className="w-full input-default px-3 py-2 rounded-lg">
               <option value="DRAFT">Draft</option>
               <option value="SENT">Terkirim</option>
               <option value="PAID">Lunas</option>
@@ -261,51 +263,51 @@ export default function InvoiceForm({ mode, initialData, initialItems, invoiceId
         </div>
       </div>
 
-      <div className="bg-white dark:bg-black/30 rounded-lg shadow border border-black/10 dark:border-white/10 p-6">
-        <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">Detail Klien</h2>
+      <div className="bg-card rounded-lg shadow-soft border border-border p-6">
+        <h2 className="text-lg font-semibold text-text-primary mb-4">Detail Klien</h2>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Nama Klien *</label>
-            <input type="text" value={formData.clientName} onChange={(e) => setFormData(prev => ({ ...prev, clientName: e.target.value }))} className="w-full px-3 py-2 border border-gray-300 dark:border-white/10 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white dark:bg-black/20 text-gray-900 dark:text-gray-200" placeholder="Masukkan nama klien" required />
+            <label className="block text-sm font-medium text-text-secondary mb-2">Nama Klien *</label>
+            <input type="text" value={formData.clientName} onChange={(e) => setFormData(prev => ({ ...prev, clientName: e.target.value }))} className="w-full input-default px-3 py-2 rounded-lg" placeholder="Masukkan nama klien" required />
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Email Klien (Opsional)</label>
-            <input type="email" value={formData.clientEmail || ''} onChange={(e) => setFormData(prev => ({ ...prev, clientEmail: e.target.value }))} className="w-full px-3 py-2 border border-gray-300 dark:border-white/10 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white dark:bg-black/20 text-gray-900 dark:text-gray-200" placeholder="klien@email.com" />
+            <label className="block text-sm font-medium text-text-secondary mb-2">Email Klien (Opsional)</label>
+            <input type="email" value={formData.clientEmail || ''} onChange={(e) => setFormData(prev => ({ ...prev, clientEmail: e.target.value }))} className="w-full input-default px-3 py-2 rounded-lg" placeholder="klien@email.com" />
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Telepon Klien</label>
-            <input type="text" value={formData.clientPhone || ''} onChange={(e) => setFormData(prev => ({ ...prev, clientPhone: e.target.value }))} className="w-full px-3 py-2 border border-gray-300 dark:border-white/10 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white dark:bg-black/20 text-gray-900 dark:text-gray-200" placeholder="08123456789" />
+            <label className="block text-sm font-medium text-text-secondary mb-2">Telepon Klien</label>
+            <input type="text" value={formData.clientPhone || ''} onChange={(e) => setFormData(prev => ({ ...prev, clientPhone: e.target.value }))} className="w-full input-default px-3 py-2 rounded-lg" placeholder="08123456789" />
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Alamat Klien</label>
-            <textarea value={formData.clientAddress || ''} onChange={(e) => setFormData(prev => ({ ...prev, clientAddress: e.target.value }))} rows={3} className="w-full px-3 py-2 border border-gray-300 dark:border-white/10 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white dark:bg-black/20 text-gray-900 dark:text-gray-200" placeholder="Masukkan alamat lengkap klien" />
+            <label className="block text-sm font-medium text-text-secondary mb-2">Alamat Klien</label>
+            <textarea value={formData.clientAddress || ''} onChange={(e) => setFormData(prev => ({ ...prev, clientAddress: e.target.value }))} rows={3} className="w-full input-default px-3 py-2 rounded-lg" placeholder="Masukkan alamat lengkap klien" />
           </div>
         </div>
       </div>
 
-      <div className="bg-white dark:bg.black/30 rounded-lg shadow border border-black/10 dark:border-white/10 p-6">
+      <div className="bg-card rounded-lg shadow-soft border border-border p-6">
         <div className="flex justify-between items-center mb-4">
           <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Item Barang/Jasa</h2>
-          <button type="button" onClick={addItem} className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">Tambah Item</button>
+          <button type="button" onClick={addItem} className="px-4 py-2 rounded-lg btn-primary w-full sm:w-auto">Tambah Item</button>
         </div>
         <div className="space-y-4">
           {items.map((item) => (
             <div key={item.id} className="grid grid-cols-1 md:grid-cols-6 gap-4 items-end">
               <div className="md:col-span-2">
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Deskripsi Barang/Jasa</label>
-                <input type="text" value={item.description} onChange={(e) => updateItem(item.id, 'description', e.target.value)} className="w-full px-3 py-2 border border-gray-300 dark:border-white/10 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white dark:bg-black/20 text-gray-900 dark:text-gray-200" placeholder="Masukkan deskripsi barang/jasa" />
+                <label className="block text-sm font-medium text-text-secondary mb-2">Deskripsi Barang/Jasa</label>
+                <input type="text" value={item.description} onChange={(e) => updateItem(item.id, 'description', e.target.value)} className="w-full input-default px-3 py-2 rounded-lg" placeholder="Masukkan deskripsi barang/jasa" />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Jumlah</label>
-                <input type="number" min="1" value={item.quantity === 0 ? '' : item.quantity} onChange={(e) => updateItem(item.id, 'quantity', parseInt(normalizeLeadingZeros(e.target.value)) || 0)} className="w-full px-3 py-2 border border-gray-300 dark:border-white/10 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white dark:bg-black/20 text-gray-900 dark:text-gray-200" />
+                <label className="block text-sm font-medium text-text-secondary mb-2">Jumlah</label>
+                <input type="number" min="1" value={item.quantity === 0 ? '' : item.quantity} onChange={(e) => updateItem(item.id, 'quantity', parseInt(normalizeLeadingZeros(e.target.value)) || 0)} className="w-full input-default px-3 py-2 rounded-lg" />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Harga Satuan</label>
-                <input type="number" min="0" step="0.01" value={item.unitPrice === 0 ? '' : item.unitPrice} onChange={(e) => updateItem(item.id, 'unitPrice', parseFloat(normalizeLeadingZeros(e.target.value)) || 0)} className="w-full px-3 py-2 border border-gray-300 dark:border-white/10 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white dark:bg-black/20 text-gray-900 dark:text-gray-200" placeholder="0" />
+                <label className="block text-sm font-medium text-text-secondary mb-2">Harga Satuan</label>
+                <input type="number" min="0" step="0.01" value={item.unitPrice === 0 ? '' : item.unitPrice} onChange={(e) => updateItem(item.id, 'unitPrice', parseFloat(normalizeLeadingZeros(e.target.value)) || 0)} className="w-full input-default px-3 py-2 rounded-lg" placeholder="0" />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Total</label>
-                <div className="w-full px-3 py-2 border border-gray-300 dark:border-white/10 rounded-lg bg-gray-50 dark:bg-black/20 text-gray-900 dark:text-gray-200 flex justify-between items-center">
+                <label className="block text-sm font-medium text-text-secondary mb-2">Total</label>
+                <div className="w-full px-3 py-2 border border-border rounded-lg bg-elevated text-gray-900 dark:text-gray-200 flex justify-between items-center">
                   <span>Rp</span>
                   <span>{new Intl.NumberFormat('id-ID', { minimumFractionDigits: 0 }).format(item.total)}</span>
                 </div>
@@ -316,35 +318,35 @@ export default function InvoiceForm({ mode, initialData, initialItems, invoiceId
                 )}
               </div>
               <div className="md:col-span-6">
-                <div className="mt-3 p-3 border border-gray-300 dark:border-white/10 rounded-lg bg-gray-50 dark:bg-black/20">
+                <div className="mt-3 p-3 border border-border rounded-lg bg-elevated">
                   <div className="flex items-center justify-between mb-2">
-                    <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Sub Item (opsional)</span>
-                    <button type="button" onClick={() => addSubItem(item.id)} className="text-sm px-3 py-1 rounded bg-blue-600 text-white hover:bg-blue-700 transition-colors">Tambah Sub Item</button>
+                    <span className="text-sm font-medium text-text-secondary">Sub Item (opsional)</span>
+                    <button type="button" onClick={() => addSubItem(item.id)} className="text-sm px-3 py-1 rounded btn-primary">Tambah Sub Item</button>
                   </div>
                   {(item.subItems || []).length === 0 && (
-                    <p className="text-xs text-gray-500 dark:text-gray-400">Belum ada sub item.</p>
+                    <p className="text-xs text-text-tertiary">Belum ada sub item.</p>
                   )}
                   <div className="space-y-3">
                     {(item.subItems || []).map((si, siIndex) => (
                       <div key={siIndex} className="grid grid-cols-1 md:grid-cols-6 gap-3 items-end">
                         <div className="md:col-span-2">
-                          <label className="block text-xs text-gray-600 dark:text-gray-400 mb-1">Nama Sub Item</label>
-                          <input type="text" value={si.name} onChange={(e) => updateSubItem(item.id, siIndex, 'name', e.target.value)} className="w-full px-3 py-2 border border-gray-300 dark:border-white/10 rounded bg-white dark:bg-black/20 text-gray-900 dark:text-gray-200" />
+                          <label className="block text-xs text-text-secondary mb-1">Nama Sub Item</label>
+                          <input type="text" value={si.name} onChange={(e) => updateSubItem(item.id, siIndex, 'name', e.target.value)} className="w-full input-default px-3 py-2 rounded" />
                         </div>
                         <div className="md:col-span-2">
-                          <label className="block text-xs text-gray-600 dark:text-gray-400 mb-1">Keterangan</label>
-                          <input type="text" value={si.description || ''} onChange={(e) => updateSubItem(item.id, siIndex, 'description', e.target.value)} className="w-full px-3 py-2 border border-gray-300 dark:border-white/10 rounded bg-white dark:bg-black/20 text-gray-900 dark:text-gray-200" />
+                          <label className="block text-xs text-text-secondary mb-1">Keterangan</label>
+                          <input type="text" value={si.description || ''} onChange={(e) => updateSubItem(item.id, siIndex, 'description', e.target.value)} className="w-full input-default px-3 py-2 rounded" />
                         </div>
                         <div>
-                          <label className="block text-xs text-gray-600 dark:text-gray-400 mb-1">Jumlah</label>
-                          <input type="number" min="1" value={(si.quantity || 0) === 0 ? '' : si.quantity} onChange={(e) => updateSubItem(item.id, siIndex, 'quantity', parseInt(normalizeLeadingZeros(e.target.value)) || 0)} className="w-full px-3 py-2 border border-gray-300 dark:border-white/10 rounded bg-white dark:bg-black/20 text-gray-900 dark:text-gray-200" />
+                          <label className="block text-xs text-text-secondary mb-1">Jumlah</label>
+                          <input type="number" min="1" value={(si.quantity || 0) === 0 ? '' : si.quantity} onChange={(e) => updateSubItem(item.id, siIndex, 'quantity', parseInt(normalizeLeadingZeros(e.target.value)) || 0)} className="w-full input-default px-3 py-2 rounded" />
                         </div>
                         <div>
-                          <label className="block text-xs text-gray-600 dark:text-gray-400 mb-1">Harga Satuan</label>
-                          <input type="number" min="0" step="0.01" value={(si.unitPrice || 0) === 0 ? '' : si.unitPrice} onChange={(e) => updateSubItem(item.id, siIndex, 'unitPrice', parseFloat(normalizeLeadingZeros(e.target.value)) || 0)} className="w-full px-3 py-2 border border-gray-300 dark:border-white/10 rounded bg-white dark:bg-black/20 text-gray-900 dark:text-gray-200" />
+                          <label className="block text-xs text-text-secondary mb-1">Harga Satuan</label>
+                          <input type="number" min="0" step="0.01" value={(si.unitPrice || 0) === 0 ? '' : si.unitPrice} onChange={(e) => updateSubItem(item.id, siIndex, 'unitPrice', parseFloat(normalizeLeadingZeros(e.target.value)) || 0)} className="w-full input-default px-3 py-2 rounded" />
                         </div>
                         <div className="md:col-span-6 flex justify-between items-center">
-                          <div className="text-xs text-gray-600 dark:text-gray-400">Total Sub Item: Rp {new Intl.NumberFormat('id-ID', { minimumFractionDigits: 0 }).format(si.total || 0)}</div>
+                          <div className="text-xs text-text-secondary">Total Sub Item: Rp {new Intl.NumberFormat('id-ID', { minimumFractionDigits: 0 }).format(si.total || 0)}</div>
                           <button type="button" onClick={() => removeSubItem(item.id, siIndex)} className="text-xs px-2 py-1 rounded bg-red-600 text-white hover:bg-red-700 transition-colors">Hapus</button>
                         </div>
                       </div>
@@ -357,99 +359,99 @@ export default function InvoiceForm({ mode, initialData, initialItems, invoiceId
         </div>
       </div>
 
-      <div className="bg-white rounded-lg shadow p-6">
-        <h2 className="text-lg font-semibold text-gray-900 mb-4">Diskon, Biaya Pengiriman, Pajak & Pembayaran</h2>
+      <div className="bg-card rounded-lg shadow-soft border border-border p-6">
+        <h2 className="text-lg font-semibold text-text-primary mb-4">Diskon, Biaya Pengiriman, Pajak & Pembayaran</h2>
         <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">Tipe Diskon (Opsional)</label>
-            <select value={formData.discountType} onChange={(e) => setFormData(prev => ({ ...prev, discountType: e.target.value as 'FIXED' | 'PERCENTAGE' }))} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+            <label className="block text-sm font-medium text-text-secondary mb-2">Tipe Diskon (Opsional)</label>
+            <select value={formData.discountType} onChange={(e) => setFormData(prev => ({ ...prev, discountType: e.target.value as 'FIXED' | 'PERCENTAGE' }))} className="w-full input-default px-3 py-2 rounded-lg">
               <option value="PERCENTAGE">Persentase (%)</option>
               <option value="FIXED">Tetap (Rp)</option>
             </select>
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">Nilai Diskon (Opsional)</label>
-            <input type="number" min="0" step="0.01" value={(formData.discountValue || 0) === 0 ? '' : formData.discountValue} onChange={(e) => setFormData(prev => ({ ...prev, discountValue: parseFloat(normalizeLeadingZeros(e.target.value)) || 0 }))} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500" placeholder="0" />
+            <label className="block text-sm font-medium text-text-secondary mb-2">Nilai Diskon (Opsional)</label>
+            <input type="number" min="0" step="0.01" value={(formData.discountValue || 0) === 0 ? '' : formData.discountValue} onChange={(e) => setFormData(prev => ({ ...prev, discountValue: parseFloat(normalizeLeadingZeros(e.target.value)) || 0 }))} className="w-full input-default px-3 py-2 rounded-lg" placeholder="0" />
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">Biaya Pengiriman (Opsional)</label>
-            <input type="number" min="0" step="0.01" value={(formData.shippingAmount || 0) === 0 ? '' : formData.shippingAmount} onChange={(e) => setFormData(prev => ({ ...prev, shippingAmount: parseFloat(normalizeLeadingZeros(e.target.value)) || 0 }))} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500" placeholder="0" />
+            <label className="block text-sm font-medium text-text-secondary mb-2">Biaya Pengiriman (Opsional)</label>
+            <input type="number" min="0" step="0.01" value={(formData.shippingAmount || 0) === 0 ? '' : formData.shippingAmount} onChange={(e) => setFormData(prev => ({ ...prev, shippingAmount: parseFloat(normalizeLeadingZeros(e.target.value)) || 0 }))} className="w-full input-default px-3 py-2 rounded-lg" placeholder="0" />
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">Dibayar</label>
-            <input type="number" min="0" step="0.01" value={(formData.amountPaid || 0) === 0 ? '' : formData.amountPaid} onChange={(e) => setFormData(prev => ({ ...prev, amountPaid: parseFloat(normalizeLeadingZeros(e.target.value)) || 0 }))} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500" placeholder="0" />
+            <label className="block text-sm font-medium text-text-secondary mb-2">Dibayar</label>
+            <input type="number" min="0" step="0.01" value={(formData.amountPaid || 0) === 0 ? '' : formData.amountPaid} onChange={(e) => setFormData(prev => ({ ...prev, amountPaid: parseFloat(normalizeLeadingZeros(e.target.value)) || 0 }))} className="w-full input-default px-3 py-2 rounded-lg" placeholder="0" />
           </div>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">Pajak (%) - Opsional</label>
-            <input type="number" min="0" max="100" step="0.01" value={(formData.taxRate || 0) === 0 ? '' : formData.taxRate} onChange={(e) => setFormData(prev => ({ ...prev, taxRate: parseFloat(normalizeLeadingZeros(e.target.value)) || 0 }))} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500" placeholder="0" />
+            <label className="block text-sm font-medium text-text-secondary mb-2">Pajak (%) - Opsional</label>
+            <input type="number" min="0" max="100" step="0.01" value={(formData.taxRate || 0) === 0 ? '' : formData.taxRate} onChange={(e) => setFormData(prev => ({ ...prev, taxRate: parseFloat(normalizeLeadingZeros(e.target.value)) || 0 }))} className="w-full input-default px-3 py-2 rounded-lg" placeholder="0" />
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">Catatan</label>
-            <textarea value={formData.notes || ''} onChange={(e) => setFormData(prev => ({ ...prev, notes: e.target.value }))} rows={3} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500" placeholder="Catatan tambahan atau syarat..." />
+            <label className="block text-sm font-medium text-text-secondary mb-2">Catatan</label>
+            <textarea value={formData.notes || ''} onChange={(e) => setFormData(prev => ({ ...prev, notes: e.target.value }))} rows={3} className="w-full input-default px-3 py-2 rounded-lg" placeholder="Catatan tambahan atau syarat..." />
           </div>
         </div>
 
         <div className="mt-6 flex justify-end">
           <div className="w-64 space-y-2">
             <div className="flex justify-between text-sm">
-              <span className="text-gray-600">Subtotal:</span>
+              <span className="text-text-secondary">Subtotal:</span>
               <div className="flex justify-between items-center w-24">
-                <span className="text-gray-900 font-medium">Rp</span>
-                <span className="text-gray-900 font-medium">{new Intl.NumberFormat('id-ID', { minimumFractionDigits: 0 }).format(formData.subtotal || 0)}</span>
+                <span className="text-text-primary font-medium">Rp</span>
+                <span className="text-text-primary font-medium">{new Intl.NumberFormat('id-ID', { minimumFractionDigits: 0 }).format(formData.subtotal || 0)}</span>
               </div>
             </div>
             {(formData.discountAmount || 0) > 0 && (
               <div className="flex justify-between text-sm">
-                <span className="text-gray-600">Diskon:</span>
+                <span className="text-text-secondary">Diskon:</span>
                 <div className="flex justify-between items-center w-24">
-                  <span className="text-gray-900 font-medium">Rp</span>
-                  <span className="text-gray-900 font-medium">{new Intl.NumberFormat('id-ID', { minimumFractionDigits: 0 }).format(formData.discountAmount || 0)}</span>
+                  <span className="text-text-primary font-medium">Rp</span>
+                  <span className="text-text-primary font-medium">{new Intl.NumberFormat('id-ID', { minimumFractionDigits: 0 }).format(formData.discountAmount || 0)}</span>
                 </div>
               </div>
             )}
             {(formData.shippingAmount || 0) > 0 && (
               <div className="flex justify-between text-sm">
-                <span className="text-gray-600">Biaya Pengiriman:</span>
+                <span className="text-text-secondary">Biaya Pengiriman:</span>
                 <div className="flex justify-between items-center w-24">
-                  <span className="text-gray-900 font-medium">Rp</span>
-                  <span className="text-gray-900 font-medium">{new Intl.NumberFormat('id-ID', { minimumFractionDigits: 0 }).format(formData.shippingAmount || 0)}</span>
+                  <span className="text-text-primary font-medium">Rp</span>
+                  <span className="text-text-primary font-medium">{new Intl.NumberFormat('id-ID', { minimumFractionDigits: 0 }).format(formData.shippingAmount || 0)}</span>
                 </div>
               </div>
             )}
             <div className="flex justify-between text-sm">
-              <span className="text-gray-600">Pajak ({formData.taxRate}%):</span>
+              <span className="text-text-secondary">Pajak ({formData.taxRate}%):</span>
               <div className="flex justify-between items-center w-24">
-                <span className="text-gray-900 font-medium">Rp</span>
-                <span className="text-gray-900 font-medium">{new Intl.NumberFormat('id-ID', { minimumFractionDigits: 0 }).format(formData.taxAmount || 0)}</span>
+                <span className="text-text-primary font-medium">Rp</span>
+                <span className="text-text-primary font-medium">{new Intl.NumberFormat('id-ID', { minimumFractionDigits: 0 }).format(formData.taxAmount || 0)}</span>
               </div>
             </div>
-            <div className="border-t border-gray-200 pt-2">
+            <div className="border-t border-border pt-2">
               <div className="flex justify-between text-lg font-bold">
-                <span className="text-gray-900">Total:</span>
+                <span className="text-text-primary">Total:</span>
                 <div className="flex justify-between items-center w-24">
-                  <span className="text-gray-900">Rp</span>
-                  <span className="text-gray-900">{new Intl.NumberFormat('id-ID', { minimumFractionDigits: 0 }).format(formData.total || 0)}</span>
+                  <span className="text-text-primary">Rp</span>
+                  <span className="text-text-primary">{new Intl.NumberFormat('id-ID', { minimumFractionDigits: 0 }).format(formData.total || 0)}</span>
                 </div>
               </div>
             </div>
             {(formData.amountPaid || 0) > 0 && (
               <div className="flex justify-between text-sm">
-                <span className="text-gray-600">Dibayar:</span>
+                <span className="text-text-secondary">Dibayar:</span>
                 <div className="flex justify-between items-center w-24">
-                  <span className="text-gray-900 font-medium">Rp</span>
-                  <span className="text-gray-900 font-medium">{new Intl.NumberFormat('id-ID', { minimumFractionDigits: 0 }).format(formData.amountPaid || 0)}</span>
+                  <span className="text-text-primary font-medium">Rp</span>
+                  <span className="text-text-primary font-medium">{new Intl.NumberFormat('id-ID', { minimumFractionDigits: 0 }).format(formData.amountPaid || 0)}</span>
                 </div>
               </div>
             )}
             {(formData.status !== 'PAID' && (formData.balanceDue || 0) > 0) && (
               <div className="flex justify-between text-sm font-bold">
-                <span className="text-gray-900">Sisa/Balance Due:</span>
+                <span className="text-text-primary">Sisa/Balance Due:</span>
                 <div className="flex justify-between items-center w-24">
-                  <span className="text-gray-900">Rp</span>
-                  <span className="text-gray-900">{new Intl.NumberFormat('id-ID', { minimumFractionDigits: 0 }).format(formData.balanceDue || 0)}</span>
+                  <span className="text-text-primary">Rp</span>
+                  <span className="text-text-primary">{new Intl.NumberFormat('id-ID', { minimumFractionDigits: 0 }).format(formData.balanceDue || 0)}</span>
                 </div>
               </div>
             )}
@@ -457,9 +459,17 @@ export default function InvoiceForm({ mode, initialData, initialItems, invoiceId
         </div>
       </div>
 
-      <div className="flex justify-end space-x-4">
-        <button type="button" onClick={() => router.back()} className="px-6 py-2 border border-gray-300 dark:border-white/10 text-gray-700 dark:text-gray-200 rounded-lg hover:bg-gray-50 dark:hover:bg-white/10 transition-colors">Batal</button>
-        <button type="submit" disabled={loading} className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed">{loading ? (mode === 'create' ? 'Membuat...' : 'Menyimpan...') : (mode === 'create' ? 'Buat Faktur' : 'Simpan Perubahan')}</button>
+      {/* Desktop action buttons */}
+      <div className="hidden md:flex justify-end space-x-4">
+        <button type="button" onClick={() => router.back()} className="px-6 py-2 rounded-lg btn-secondary">Batal</button>
+        <button type="submit" disabled={loading} className="px-6 py-2 rounded-lg btn-primary disabled:opacity-50 disabled:cursor-not-allowed">{loading ? (mode === 'create' ? 'Membuat...' : 'Menyimpan...') : (mode === 'create' ? 'Buat Faktur' : 'Simpan Perubahan')}</button>
+      </div>
+
+      {/* Sticky mobile action bar */}
+      <div className="md:hidden h-16" />
+      <div className="md:hidden fixed bottom-0 left-0 right-0 bg-card border-t border-border p-3 flex gap-3 items-center z-40" style={{ paddingBottom: 'calc(0.75rem + env(safe-area-inset-bottom))' }}>
+        <button type="button" onClick={() => router.back()} className="flex-1 px-4 py-3 rounded-lg btn-secondary">Batal</button>
+        <button type="submit" disabled={loading} className="flex-1 px-4 py-3 rounded-lg btn-primary disabled:opacity-50 disabled:cursor-not-allowed">{loading ? 'Menyimpan...' : 'Simpan'}</button>
       </div>
     </form>
   );

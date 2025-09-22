@@ -92,14 +92,14 @@ export default function InvoicePreview({
   };
 
   return (
-    <div className="bg-white">
+    <div className="bg-white dark:bg-gray-800">
       {/* Tombol Aksi - Disembunyikan saat Cetak */}
       {showActions && (
         <div className="mb-6 print:hidden">
           <div className="flex gap-3">
             <button
               onClick={onDownload}
-              className="px-4 py-2 text-white rounded-lg transition-colors flex items-center gap-2"
+              className="px-4 py-2 text-white rounded-lg transition-colors flex items-center gap-2 hover:opacity-90"
               style={{ backgroundColor: '#042d63' }}
             >
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -109,7 +109,7 @@ export default function InvoicePreview({
             </button>
             <button
               onClick={onPrint}
-              className="px-4 py-2 text-white rounded-lg transition-colors flex items-center gap-2"
+              className="px-4 py-2 text-white rounded-lg transition-colors flex items-center gap-2 hover:opacity-90"
               style={{ backgroundColor: '#042d63' }}
             >
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">

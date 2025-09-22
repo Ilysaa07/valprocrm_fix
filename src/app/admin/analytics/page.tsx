@@ -61,6 +61,17 @@ interface EnhancedAnalyticsData {
   totalIncome: number
   totalExpense: number
   netIncome: number
+  financialTrends: {
+    month: string
+    income: number
+    expense: number
+    netIncome: number
+  }[]
+  expenseCategories: {
+    category: string
+    amount: number
+    name: string
+  }[]
   
   // Trends
   monthlyTrend: {
@@ -78,6 +89,24 @@ interface EnhancedAnalyticsData {
 }
 
 type MinimalSocket = { on: (event: string, handler: (...args: unknown[]) => void) => void; disconnect: () => void }
+
+// Helper function to get category colors
+const getCategoryColor = (category: string): string => {
+  const colors = {
+    'PAYROLL_EXPENSE': '#EF4444',
+    'OFFICE_SUPPLIES': '#F59E0B',
+    'UTILITIES': '#3B82F6',
+    'RENT': '#8B5CF6',
+    'MARKETING': '#10B981',
+    'TRAVEL': '#06B6D4',
+    'MEALS': '#84CC16',
+    'EQUIPMENT': '#F97316',
+    'SOFTWARE': '#6366F1',
+    'TRAINING': '#EC4899',
+    'OTHER_EXPENSE': '#6B7280'
+  }
+  return colors[category as keyof typeof colors] || '#6B7280'
+}
 
 export default function AdminAnalytics() {
   const [analytics, setAnalytics] = useState<EnhancedAnalyticsData | null>(null)
@@ -232,7 +261,9 @@ export default function AdminAnalytics() {
           // Financial Analytics
           totalIncome: Number(financialData.totalIncome || 0),
           totalExpense: Number(financialData.totalExpense || 0),
-          netIncome: Number(financialData.totalIncome || 0) - Number(financialData.totalExpense || 0),
+          netIncome: Number(financialData.netIncome || 0),
+          financialTrends: financialData.chartData || [],
+          expenseCategories: financialData.expenseCategories || [],
           
           // Trends
           monthlyTrend: monthlyTrendsData,
@@ -471,11 +502,92 @@ export default function AdminAnalytics() {
             title: 'Trend Kehadiran Bulanan',
             subtitle: 'Data kehadiran 6 bulan terakhir',
             type: 'bar',
-            data: analytics.monthlyTrend.map(trend => ({
+            data: analytics.monthlyTrend.map((trend: { month: string; present: number }) => ({
               label: trend.month,
               value: trend.present,
               color: '#10B981'
             })),
+            showLegend: false,
+            showTotal: false
+          }
+        ]
+      
+      case 'financial':
+        const hasFinancialData = analytics.totalIncome > 0 || analytics.totalExpense > 0
+        const hasTrendsData = analytics.financialTrends && analytics.financialTrends.length > 0
+        const hasExpenseCategories = analytics.expenseCategories && analytics.expenseCategories.length > 0
+        
+        return [
+          {
+            title: 'Pendapatan vs Pengeluaran',
+            subtitle: 'Perbandingan pendapatan dan pengeluaran',
+            type: 'bar',
+            data: hasFinancialData ? [
+              { label: 'Pendapatan', value: analytics.totalIncome, color: '#10B981' },
+              { label: 'Pengeluaran', value: analytics.totalExpense, color: '#EF4444' }
+            ] : [
+              { label: 'Tidak ada data keuangan', value: 0, color: '#6B7280' }
+            ],
+            showLegend: true,
+            showTotal: true
+          },
+          ...(hasTrendsData ? [{
+            title: 'Trend Keuangan Bulanan',
+            subtitle: 'Pendapatan dan pengeluaran 6 bulan terakhir',
+            type: 'line' as const,
+            data: analytics.financialTrends.map(trend => ({
+              label: trend.month,
+              value: trend.income,
+              color: '#10B981'
+            })).concat(analytics.financialTrends.map(trend => ({
+              label: `${trend.month} (Expense)`,
+              value: trend.expense,
+              color: '#EF4444'
+            }))),
+            showLegend: true,
+            showTotal: false
+          }] : []),
+          ...(hasExpenseCategories ? [{
+            title: 'Breakdown Pengeluaran',
+            subtitle: 'Kategori pengeluaran berdasarkan jenis',
+            type: 'pie' as const,
+            data: analytics.expenseCategories.map(cat => ({
+              label: cat.name,
+              value: cat.amount,
+              color: getCategoryColor(cat.category)
+            })),
+            showLegend: true,
+            showTotal: true
+          }] : [])
+        ]
+      
+      case 'tasks':
+        return [
+          {
+            title: 'Distribusi Status Tugas',
+            subtitle: 'Breakdown tugas berdasarkan status',
+            type: 'pie',
+            data: [
+              { label: 'Selesai', value: analytics.completedTasks, color: '#10B981' },
+              { label: 'Dalam Progress', value: analytics.pendingTasks, color: '#F59E0B' },
+              { label: 'Belum Dimulai', value: analytics.totalTasks - analytics.completedTasks - analytics.pendingTasks, color: '#6B7280' }
+            ],
+            showLegend: true,
+            showTotal: true
+          }
+        ]
+      
+      case 'documents':
+        return [
+          {
+            title: 'Aktivitas Dokumen',
+            subtitle: 'Upload dan download dokumen',
+            type: 'bar',
+            data: [
+              { label: 'Total Dokumen', value: analytics.totalDocuments, color: '#3B82F6' },
+              { label: 'Upload Terbaru', value: analytics.recentUploads, color: '#10B981' },
+              { label: 'Total Download', value: analytics.totalDownloads, color: '#8B5CF6' }
+            ],
             showLegend: false,
             showTotal: false
           }

@@ -9,11 +9,8 @@ import {
   Plus, 
   Trash2, 
   DollarSign, 
-  AlertTriangle,
   User,
-  Calendar,
-  Banknote,
-  CreditCard
+  Banknote
 } from 'lucide-react'
 import EmployeeBankWarning from './EmployeeBankWarning'
 
@@ -38,9 +35,15 @@ interface Employee {
 interface PayrollModalProps {
   isOpen: boolean
   onClose: () => void
-  onSave: (payrollData: any) => void
+  onSave: (payrollData: { employeeId: string; period: string; basicSalary: number; notes?: string; components: Array<{ name: string; type: string; amount: number; isTaxable: boolean; description?: string; order: number }>; }) => void
   employees: Employee[]
-  editingPayroll?: any
+  editingPayroll?: {
+    employeeId: string
+    period: string
+    basicSalary: number
+    notes?: string
+    components?: PayrollComponent[]
+  } | null
   loadingEmployees?: boolean
 }
 
@@ -120,16 +123,13 @@ export default function PayrollModal({
     setComponents(components.filter((_, i) => i !== index))
   }
 
-  const updateComponent = (index: number, field: keyof PayrollComponent, value: any) => {
+  const updateComponent = (index: number, field: keyof PayrollComponent, value: string | number | boolean) => {
     const newComponents = [...components]
     newComponents[index] = { ...newComponents[index], [field]: value }
     setComponents(newComponents)
   }
 
-  const getComponentTypeLabel = (type: string) => {
-    const componentType = COMPONENT_TYPES.find(ct => ct.value === type)
-    return componentType ? componentType.label : type
-  }
+  // const getComponentTypeLabel = (type: string) => COMPONENT_TYPES.find(ct => ct.value === type)?.label || type
 
   const getComponentCategory = (type: string) => {
     const componentType = COMPONENT_TYPES.find(ct => ct.value === type)
@@ -178,7 +178,7 @@ export default function PayrollModal({
         }))
       })
       onClose()
-    } catch (error) {
+    } catch {
       showToast('Terjadi kesalahan saat menyimpan', { title: 'Error', type: 'error' })
     } finally {
       setLoading(false)
@@ -190,11 +190,11 @@ export default function PayrollModal({
   if (!isOpen) return null
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white dark:bg-gray-800 rounded-lg w-full max-w-4xl max-h-[90vh] overflow-y-auto">
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+      <div className="bg-card border border-border shadow-soft rounded-lg w-full max-w-4xl max-h-[90vh] overflow-y-auto">
         <div className="p-6">
           <div className="flex items-center justify-between mb-6">
-            <h3 className="text-xl font-bold text-gray-900 dark:text-white">
+            <h3 className="text-xl font-bold text-text-primary">
               {editingPayroll ? 'Edit Slip Gaji' : 'Buat Slip Gaji Baru'}
             </h3>
             <Button
@@ -208,8 +208,8 @@ export default function PayrollModal({
 
           <form onSubmit={handleSubmit} className="space-y-6">
             {/* Basic Information */}
-            <Card className="p-4">
-              <h4 className="font-semibold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
+            <Card className="p-4 bg-card border border-border shadow-soft">
+              <h4 className="font-semibold text-text-primary mb-4 flex items-center gap-2">
                 <User className="w-5 h-5" />
                 Informasi Dasar
               </h4>
@@ -226,13 +226,13 @@ export default function PayrollModal({
               )}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                  <label className="block text-sm font-medium text-text-secondary mb-1">
                     Karyawan *
                   </label>
                   <select
                     value={formData.employeeId}
                     onChange={(e) => setFormData({ ...formData, employeeId: e.target.value })}
-                    className="w-full border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white rounded-lg px-3 py-2"
+                    className="w-full input-default rounded-lg px-3 py-2"
                     required
                     disabled={loadingEmployees}
                   >
@@ -269,39 +269,39 @@ export default function PayrollModal({
                   </select>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                  <label className="block text-sm font-medium text-text-secondary mb-1">
                     Periode *
                   </label>
                   <input
                     type="month"
                     value={formData.period}
                     onChange={(e) => setFormData({ ...formData, period: e.target.value })}
-                    className="w-full border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white rounded-lg px-3 py-2"
+                    className="w-full input-default rounded-lg px-3 py-2"
                     required
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                  <label className="block text-sm font-medium text-text-secondary mb-1">
                     Gaji Pokok *
                   </label>
                   <input
                     type="number"
                     value={formData.basicSalary}
                     onChange={(e) => setFormData({ ...formData, basicSalary: Number(e.target.value) })}
-                    className="w-full border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white rounded-lg px-3 py-2"
+                    className="w-full input-default rounded-lg px-3 py-2"
                     required
                     min="0"
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                  <label className="block text-sm font-medium text-text-secondary mb-1">
                     Catatan
                   </label>
                   <input
                     type="text"
                     value={formData.notes}
                     onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
-                    className="w-full border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white rounded-lg px-3 py-2"
+                    className="w-full input-default rounded-lg px-3 py-2"
                     placeholder="Catatan tambahan..."
                   />
                 </div>
@@ -309,9 +309,9 @@ export default function PayrollModal({
             </Card>
 
             {/* Components */}
-            <Card className="p-4">
+            <Card className="p-4 bg-card border border-border shadow-soft">
               <div className="flex items-center justify-between mb-4">
-                <h4 className="font-semibold text-gray-900 dark:text-white flex items-center gap-2">
+                <h4 className="font-semibold text-text-primary flex items-center gap-2">
                   <DollarSign className="w-5 h-5" />
                   Komponen Gaji
                 </h4>
@@ -327,16 +327,16 @@ export default function PayrollModal({
 
               <div className="space-y-3">
                 {components.map((component, index) => (
-                  <div key={index} className="p-3 bg-gray-50 dark:bg-gray-700 rounded-lg">
+                  <div key={index} className="p-3 bg-elevated rounded-lg border border-border">
                     <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
                       <div>
-                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                        <label className="block text-sm font-medium text-text-secondary mb-1">
                           Jenis
                         </label>
                         <select
                           value={component.type}
                           onChange={(e) => updateComponent(index, 'type', e.target.value)}
-                          className="w-full border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white rounded-lg px-3 py-2 text-sm"
+                          className="w-full input-default rounded-lg px-3 py-2 text-sm"
                         >
                           {COMPONENT_TYPES.map(type => (
                             <option key={type.value} value={type.value}>
@@ -346,32 +346,32 @@ export default function PayrollModal({
                         </select>
                       </div>
                       <div>
-                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                        <label className="block text-sm font-medium text-text-secondary mb-1">
                           Nama
                         </label>
                         <input
                           type="text"
                           value={component.name}
                           onChange={(e) => updateComponent(index, 'name', e.target.value)}
-                          className="w-full border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white rounded-lg px-3 py-2 text-sm"
+                          className="w-full input-default rounded-lg px-3 py-2 text-sm"
                           placeholder="Nama komponen"
                         />
                       </div>
                       <div>
-                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                        <label className="block text-sm font-medium text-text-secondary mb-1">
                           Jumlah
                         </label>
                         <input
                           type="number"
                           value={component.amount}
                           onChange={(e) => updateComponent(index, 'amount', Number(e.target.value))}
-                          className="w-full border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white rounded-lg px-3 py-2 text-sm"
+                          className="w-full input-default rounded-lg px-3 py-2 text-sm"
                           min="0"
                         />
                       </div>
                       <div className="flex items-end gap-2">
                         <div className="flex-1">
-                          <label className="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300">
+                          <label className="flex items-center gap-2 text-sm text-text-secondary">
                             <input
                               type="checkbox"
                               checked={component.isTaxable}
@@ -383,7 +383,7 @@ export default function PayrollModal({
                         </div>
                         <Button
                           type="button"
-                          variant="danger"
+                          variant="destructive"
                           size="sm"
                           onClick={() => removeComponent(index)}
                           className="p-2"
@@ -397,7 +397,7 @@ export default function PayrollModal({
                         type="text"
                         value={component.description || ''}
                         onChange={(e) => updateComponent(index, 'description', e.target.value)}
-                        className="w-full border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white rounded-lg px-3 py-2 text-sm"
+                        className="w-full input-default rounded-lg px-3 py-2 text-sm"
                         placeholder="Deskripsi (opsional)"
                       />
                     </div>
@@ -407,27 +407,27 @@ export default function PayrollModal({
             </Card>
 
             {/* Summary */}
-            <Card className="p-4">
-              <h4 className="font-semibold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
+            <Card className="p-4 bg-card border border-border shadow-soft">
+              <h4 className="font-semibold text-text-primary mb-4 flex items-center gap-2">
                 <Banknote className="w-5 h-5" />
                 Ringkasan Gaji
               </h4>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <div className="flex justify-between">
-                    <span className="text-gray-600 dark:text-gray-400">Gaji Pokok</span>
-                    <span className="font-medium text-gray-900 dark:text-white">
+                    <span className="text-text-secondary">Gaji Pokok</span>
+                    <span className="font-medium text-text-primary">
                       {new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR' }).format(formData.basicSalary)}
                     </span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-gray-600 dark:text-gray-400">Total Tunjangan</span>
+                    <span className="text-text-secondary">Total Tunjangan</span>
                     <span className="font-medium text-green-600 dark:text-green-400">
                       +{new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR' }).format(totals.totalAllowances)}
                     </span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-gray-600 dark:text-gray-400">Total Potongan</span>
+                    <span className="text-text-secondary">Total Potongan</span>
                     <span className="font-medium text-red-600 dark:text-red-400">
                       -{new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR' }).format(totals.totalDeductions)}
                     </span>
@@ -435,13 +435,13 @@ export default function PayrollModal({
                 </div>
                 <div className="space-y-2">
                   <div className="flex justify-between text-lg font-bold">
-                    <span className="text-gray-900 dark:text-white">Gaji Kotor</span>
+                    <span className="text-text-primary">Gaji Kotor</span>
                     <span className="text-blue-600 dark:text-blue-400">
                       {new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR' }).format(totals.grossSalary)}
                     </span>
                   </div>
-                  <div className="flex justify-between text-xl font-bold border-t pt-2">
-                    <span className="text-gray-900 dark:text-white">Gaji Bersih</span>
+                  <div className="flex justify-between text-xl font-bold border-t border-border pt-2">
+                    <span className="text-text-primary">Gaji Bersih</span>
                     <span className="text-green-600 dark:text-green-400">
                       {new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR' }).format(totals.netSalary)}
                     </span>
@@ -451,22 +451,15 @@ export default function PayrollModal({
             </Card>
 
             {/* Actions */}
-            <div className="flex gap-3 pt-4">
-              <Button
-                type="button"
-                variant="outline"
-                onClick={onClose}
-                className="flex-1"
-              >
-                Batal
-              </Button>
-              <Button
-                type="submit"
-                disabled={loading}
-                className="flex-1"
-              >
-                {loading ? 'Menyimpan...' : (editingPayroll ? 'Update' : 'Simpan')}
-              </Button>
+            <div className="hidden md:flex gap-3 pt-4">
+              <Button type="button" variant="outline" onClick={onClose} className="flex-1">Batal</Button>
+              <Button type="submit" disabled={loading} className="flex-1">{loading ? 'Menyimpan...' : (editingPayroll ? 'Update' : 'Simpan')}</Button>
+            </div>
+            {/* Sticky mobile action bar */}
+            <div className="md:hidden h-16" />
+            <div className="md:hidden fixed bottom-4 left-4 right-4 flex gap-3 z-50">
+              <Button type="button" variant="outline" onClick={onClose} className="flex-1">Batal</Button>
+              <Button type="submit" disabled={loading} className="flex-1">{loading ? 'Menyimpan...' : 'Simpan'}</Button>
             </div>
           </form>
         </div>

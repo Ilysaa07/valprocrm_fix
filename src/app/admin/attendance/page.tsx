@@ -326,10 +326,10 @@ export default function AdminAttendancePage() {
 
         {/* Tab Navigation */}
         <div className="border-b border-gray-200 dark:border-gray-700">
-          <nav className="-mb-px flex space-x-8">
+          <nav className="-mb-px flex space-x-6 overflow-x-auto whitespace-nowrap -mx-6 px-6 scroll-smooth">
             <button
               onClick={() => setActiveTab('overview')}
-              className={`py-2 px-1 border-b-2 font-medium text-sm transition-colors ${
+              className={`py-3 px-2 border-b-2 font-medium text-sm transition-colors shrink-0 ${
                 activeTab === 'overview'
                   ? 'border-blue-500 text-blue-600 dark:text-blue-400'
                   : 'border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 hover:border-gray-300 dark:hover:border-gray-600'
@@ -339,7 +339,7 @@ export default function AdminAttendancePage() {
             </button>
             <button
               onClick={() => setActiveTab('details')}
-              className={`py-2 px-1 border-b-2 font-medium text-sm transition-colors ${
+              className={`py-3 px-2 border-b-2 font-medium text-sm transition-colors shrink-0 ${
                 activeTab === 'details'
                   ? 'border-blue-500 text-blue-600 dark:text-blue-400'
                   : 'border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 hover:border-gray-300 dark:hover:border-gray-600'
@@ -349,7 +349,7 @@ export default function AdminAttendancePage() {
             </button>
             <button
               onClick={() => setActiveTab('calendar')}
-              className={`py-2 px-1 border-b-2 font-medium text-sm transition-colors ${
+              className={`py-3 px-2 border-b-2 font-medium text-sm transition-colors shrink-0 ${
                 activeTab === 'calendar'
                   ? 'border-blue-500 text-blue-600 dark:text-blue-400'
                   : 'border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 hover:border-gray-300 dark:hover:border-gray-600'
@@ -359,7 +359,7 @@ export default function AdminAttendancePage() {
             </button>
             <button
               onClick={() => setActiveTab('requests')}
-              className={`py-2 px-1 border-b-2 font-medium text-sm transition-colors ${
+              className={`py-3 px-2 border-b-2 font-medium text-sm transition-colors shrink-0 ${
                 activeTab === 'requests'
                   ? 'border-blue-500 text-blue-600 dark:text-blue-400'
                   : 'border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 hover:border-gray-300 dark:hover:border-gray-600'
@@ -369,7 +369,7 @@ export default function AdminAttendancePage() {
             </button>
             <button
               onClick={() => setActiveTab('location')}
-              className={`py-2 px-1 border-b-2 font-medium text-sm transition-colors ${
+              className={`py-3 px-2 border-b-2 font-medium text-sm transition-colors shrink-0 ${
                 activeTab === 'location'
                   ? 'border-blue-500 text-blue-600 dark:text-blue-400'
                   : 'border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 hover:border-gray-300 dark:hover:border-gray-600'
@@ -470,7 +470,50 @@ export default function AdminAttendancePage() {
           <div className="space-y-6">
             <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-6">
               <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Detail Kehadiran Karyawan Hari Ini</h3>
-              <div className="overflow-x-auto">
+              {/* Mobile: Card list */}
+              <div className="md:hidden space-y-3">
+                {employeeAttendance.map((employee, index) => (
+                  <div key={`employee-card-${employee.userId}-${index}`} className="border border-gray-200 dark:border-gray-700 rounded-lg p-4">
+                    <div className="flex items-start gap-3">
+                      {employee.userAvatar ? (
+                        <Image className="h-12 w-12 rounded-full" src={employee.userAvatar} alt={employee.userName} width={48} height={48} />
+                      ) : (
+                        <div className="h-12 w-12 rounded-full bg-gray-300 dark:bg-gray-600 flex items-center justify-center">
+                          <span className="text-base font-semibold text-gray-700 dark:text-gray-300">{employee.userName.charAt(0).toUpperCase()}</span>
+                        </div>
+                      )}
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center justify-between gap-2">
+                          <div className="min-w-0">
+                            <p className="text-sm font-medium text-gray-900 dark:text-white truncate">{employee.userName}</p>
+                            <p className="text-xs text-gray-500 dark:text-gray-400 truncate">{employee.userEmail}</p>
+                          </div>
+                          <AttendanceStatusBadge 
+                            status={employee.status as 'PRESENT' | 'LATE' | 'ABSENT' | 'SICK' | 'LEAVE' | 'WFH'} 
+                            size="sm"
+                            showIcon={true}
+                          />
+                        </div>
+                        <div className="mt-3 grid grid-cols-2 gap-2 text-sm">
+                          <div className="p-2 bg-gray-50 dark:bg-gray-700/50 rounded">
+                            <p className="text-xs text-gray-500 dark:text-gray-400">Check-in</p>
+                            <p className="font-medium text-gray-900 dark:text-gray-100">{employee.checkInTime ? new Date(employee.checkInTime).toLocaleTimeString('id-ID', {hour: '2-digit', minute: '2-digit'}) : '-'}</p>
+                          </div>
+                          <div className="p-2 bg-gray-50 dark:bg-gray-700/50 rounded">
+                            <p className="text-xs text-gray-500 dark:text-gray-400">Check-out</p>
+                            <p className="font-medium text-gray-900 dark:text-gray-100">{employee.checkOutTime ? new Date(employee.checkOutTime).toLocaleTimeString('id-ID', {hour: '2-digit', minute: '2-digit'}) : '-'}</p>
+                          </div>
+                        </div>
+                        {employee.notes && (
+                          <p className="mt-2 text-xs text-gray-600 dark:text-gray-300">{employee.notes}</p>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+              {/* Desktop: Table */}
+              <div className="hidden md:block overflow-x-auto">
                 <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
                   <thead className="bg-gray-50 dark:bg-gray-700">
                     <tr>
@@ -531,11 +574,11 @@ export default function AdminAttendancePage() {
             <div className="flex items-center justify-between">
               <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Kalender Kehadiran Karyawan</h3>
               <div className="flex items-center gap-2">
-                <button onClick={() => changeMonth(-1)} className="px-3 py-1 border border-gray-300 dark:border-gray-600 rounded hover:bg-gray-50 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 transition-colors">Prev</button>
+                <button onClick={() => changeMonth(-1)} className="px-3 py-2 min-h-[40px] border border-gray-300 dark:border-gray-600 rounded hover:bg-gray-50 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 transition-colors">Prev</button>
                 <div className="min-w-[160px] text-center font-medium text-gray-900 dark:text-white">
                   {new Date(calendarYear, calendarMonth - 1).toLocaleString('id-ID', { month: 'long', year: 'numeric' })}
                 </div>
-                <button onClick={() => changeMonth(1)} className="px-3 py-1 border border-gray-300 dark:border-gray-600 rounded hover:bg-gray-50 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 transition-colors">Next</button>
+                <button onClick={() => changeMonth(1)} className="px-3 py-2 min-h-[40px] border border-gray-300 dark:border-gray-600 rounded hover:bg-gray-50 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 transition-colors">Next</button>
               </div>
             </div>
             
@@ -559,7 +602,8 @@ export default function AdminAttendancePage() {
                       </div>
                     </div>
                     
-                    <div className="grid grid-cols-7 gap-1">
+                    <div className="overflow-x-auto">
+                      <div className="grid grid-cols-7 gap-1 min-w-[560px]">
                       {days.map((day, dayIndex) => (
                         <div key={`day-header-${day}-${dayIndex}`} className="text-center text-xs font-medium text-gray-500 dark:text-gray-400 py-1">
                           {day}
@@ -576,6 +620,7 @@ export default function AdminAttendancePage() {
                           }`} title={dayData.status}></div>
                         </div>
                       ))}
+                      </div>
                     </div>
                   </div>
                 ))}
@@ -613,10 +658,10 @@ export default function AdminAttendancePage() {
                             <p className="text-sm text-gray-600 dark:text-gray-300 mt-1">{request.reason}</p>
                           </div>
                         </div>
-                        <div className="flex gap-2">
+                        <div className="flex gap-2 flex-col sm:flex-row w-full sm:w-auto sm:ml-4">
                           <button
                             onClick={() => handleRequest('leave', request.id, 'approve')}
-                            className="px-3 py-1 bg-green-600 text-white rounded hover:bg-green-700 transition-colors"
+                            className="px-3 py-2 min-h-[44px] bg-green-600 text-white rounded hover:bg-green-700 transition-colors w-full sm:w-auto"
                           >
                             Setujui
                           </button>
@@ -625,7 +670,7 @@ export default function AdminAttendancePage() {
                               const notes = prompt('Catatan admin (opsional):')
                               handleRequest('leave', request.id, 'reject', notes || undefined)
                             }}
-                            className="px-3 py-1 bg-red-600 text-white rounded hover:bg-red-700 transition-colors"
+                            className="px-3 py-2 min-h-[44px] bg-red-600 text-white rounded hover:bg-red-700 transition-colors w-full sm:w-auto"
                           >
                             Tolak
                           </button>
@@ -755,11 +800,11 @@ export default function AdminAttendancePage() {
                       </div>
 
                       {/* Action Buttons */}
-                      <div className="flex gap-2 pt-2">
+                      <div className="flex gap-2 pt-2 flex-col sm:flex-row">
                         <Button
                           onClick={() => validateWfhLog(log.id, 'APPROVED')}
                           disabled={processingId === log.id}
-                          className="flex items-center gap-2 flex-1 bg-green-600 hover:bg-green-700 text-white"
+                          className="flex items-center gap-2 flex-1 bg-green-600 hover:bg-green-700 text-white min-h-[44px]"
                         >
                           {processingId === log.id ? <RefreshCw className="w-4 h-4 animate-spin" /> : <CheckCircle2 className="w-4 h-4" />}
                           Setujui
@@ -768,7 +813,7 @@ export default function AdminAttendancePage() {
                           variant="destructive"
                           onClick={() => validateWfhLog(log.id, 'REJECTED')}
                           disabled={processingId === log.id}
-                          className="flex items-center gap-2 flex-1"
+                          className="flex items-center gap-2 flex-1 min-h-[44px]"
                         >
                           {processingId === log.id ? <RefreshCw className="w-4 h-4 animate-spin" /> : <XCircle className="w-4 h-4" />}
                           Tolak

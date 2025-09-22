@@ -177,13 +177,24 @@ export default function AdminDocumentsPage() {
     return <File className="w-6 h-6 text-gray-500" />
   }
 
-  const previewDoc = (d: Doc) => {
-    window.open(`/api/documents/${d.id}/download?inline=1`, '_blank')
+  const safeOpen = async (url: string) => {
+    try {
+      const head = await fetch(url, { method: 'HEAD' })
+      if (!head.ok) {
+        let msg = 'Dokumen tidak tersedia atau akses ditolak'
+        try { const j = await head.json(); if (j?.error) msg = j.error } catch {}
+        showToast(msg, { title: 'Error', type: 'error' })
+        return
+      }
+      window.open(url, '_blank')
+    } catch {
+      showToast('Gagal membuka dokumen', { title: 'Error', type: 'error' })
+    }
   }
 
-  const downloadDoc = (d: Doc) => {
-    window.open(`/api/documents/${d.id}/download`, '_blank')
-  }
+  const previewDoc = (d: Doc) => safeOpen(`/api/documents/${d.id}/download?inline=1`)
+
+  const downloadDoc = (d: Doc) => safeOpen(`/api/documents/${d.id}/download`)
 
   const archiveDoc = async (id: string) => {
     try {
@@ -548,11 +559,11 @@ export default function AdminDocumentsPage() {
                 />
               </Card>
             ) : (
-              <div className={viewMode === 'grid' ? 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4' : 'space-y-3'}>
+              <div className={viewMode === 'grid' ? 'grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4' : 'space-y-3'}>
                 {displayedDocs.map((d, index) => {
                   if (viewMode === 'grid') {
                     return (
-                      <Card key={d.id} className="p-4 doc-grid-item hover:shadow-lg transition-all duration-200 group fade-in" style={{ animationDelay: `${index * 50}ms` }}>
+                      <Card key={d.id} className="p-4 bg-card border border-border doc-grid-item hover:shadow-lg transition-all duration-200 group fade-in" style={{ animationDelay: `${index * 50}ms` }}>
                         <div className="flex items-start justify-between mb-3">
                           <div className="file-icon">
                             {getFileIcon(d.mimeType)}
@@ -614,11 +625,11 @@ export default function AdminDocumentsPage() {
                         </div>
                         
                         <div className="flex gap-2">
-                          <Button variant="outline" size="sm" onClick={() => previewDoc(d)} className="flex-1 flex items-center justify-center gap-1 btn-hover">
+                          <Button variant="outline" size="sm" onClick={() => previewDoc(d)} className="flex-1 flex items-center justify-center gap-1 btn-hover min-h-[40px]">
                             <Eye className="w-3 h-3" />
                             Preview
                           </Button>
-                          <Button variant="outline" size="sm" onClick={() => downloadDoc(d)} className="flex-1 flex items-center justify-center gap-1 btn-hover">
+                          <Button variant="outline" size="sm" onClick={() => downloadDoc(d)} className="flex-1 flex items-center justify-center gap-1 btn-hover min-h-[40px]">
                             <Download className="w-3 h-3" />
                             Download
                           </Button>
@@ -633,7 +644,7 @@ export default function AdminDocumentsPage() {
                             <Share2 className="w-3 h-3" />
                             Share
                           </Button>
-                          <Button variant="danger" size="sm" onClick={() => archiveDoc(d.id)} className="flex-1 text-xs flex items-center justify-center gap-1 btn-hover">
+                          <Button variant="destructive" size="sm" onClick={() => archiveDoc(d.id)} className="flex-1 text-xs flex items-center justify-center gap-1 btn-hover">
                             <Archive className="w-3 h-3" />
                             Archive
                           </Button>
@@ -642,7 +653,7 @@ export default function AdminDocumentsPage() {
                     )
                   } else {
                     return (
-                      <Card key={d.id} className="p-4 hover:shadow-md transition-shadow doc-grid-item fade-in" style={{ animationDelay: `${index * 30}ms` }}>
+                      <Card key={d.id} className="p-4 bg-card border border-border hover:shadow-md transition-shadow doc-grid-item fade-in" style={{ animationDelay: `${index * 30}ms` }}>
                         <div className="flex items-center gap-4">
                           <div className="file-icon">
                             {getFileIcon(d.mimeType)}
@@ -665,24 +676,24 @@ export default function AdminDocumentsPage() {
                               <span>{new Date(d.updatedAt).toLocaleDateString()}</span>
                             </div>
                           </div>
-                          <div className="flex gap-2">
-                            <Button variant="outline" size="sm" onClick={() => previewDoc(d)} className="flex items-center gap-1 btn-hover">
+                          <div className="flex gap-2 flex-col sm:flex-row w-full sm:w-auto">
+                            <Button variant="outline" size="sm" onClick={() => previewDoc(d)} className="flex items-center gap-1 btn-hover w-full sm:w-auto min-h-[40px]">
                               <Eye className="w-3 h-3" />
                               Preview
                             </Button>
-                            <Button variant="outline" size="sm" onClick={() => downloadDoc(d)} className="flex items-center gap-1 btn-hover">
+                            <Button variant="outline" size="sm" onClick={() => downloadDoc(d)} className="flex items-center gap-1 btn-hover w-full sm:w-auto min-h-[40px]">
                               <Download className="w-3 h-3" />
                               Download
                             </Button>
-                            <Button variant="outline" size="sm" onClick={() => handlePickVersion(d.id)} className="flex items-center gap-1 btn-hover">
+                            <Button variant="outline" size="sm" onClick={() => handlePickVersion(d.id)} className="flex items-center gap-1 btn-hover w-full sm:w-auto min-h-[40px]">
                               <RefreshCw className="w-3 h-3" />
                               Versi
                             </Button>
-                            <Button variant="outline" size="sm" onClick={() => shareToRole(d.id, 'EMPLOYEE')} className="flex items-center gap-1 btn-hover">
+                            <Button variant="outline" size="sm" onClick={() => shareToRole(d.id, 'EMPLOYEE')} className="flex items-center gap-1 btn-hover w-full sm:w-auto min-h-[40px]">
                               <Share2 className="w-3 h-3" />
                               Share
                             </Button>
-                            <Button variant="danger" size="sm" onClick={() => archiveDoc(d.id)} className="flex items-center gap-1 btn-hover">
+                            <Button variant="destructive" size="sm" onClick={() => archiveDoc(d.id)} className="flex items-center gap-1 btn-hover w-full sm:w-auto min-h-[40px]">
                               <Archive className="w-3 h-3" />
                               Archive
                             </Button>

@@ -54,4 +54,28 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
   return response
 }
 
+// Lightweight probe to validate access and file existence before attempting to open a new tab
+export async function HEAD(req: NextRequest, { params }: { params: { id: string } }) {
+  const session = await getServerSession(authOptions)
+  if (!session?.user?.id) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
+  const doc = await prisma.document.findUnique({
+    where: { id: params.id },
+    include: { currentVer: true, acls: true }
+  })
+  if (!doc || !doc.currentVer) return NextResponse.json({ error: 'Not found' }, { status: 404 })
+
+  if (!canView(session.user.id, session.user.role, doc)) {
+    return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+  }
+
+  const storageDir = join(process.cwd(), 'storage', 'documents')
+  const filePath = join(storageDir, doc.currentVer.fileUrl)
+  if (!existsSync(filePath)) {
+    return NextResponse.json({ error: 'File missing' }, { status: 404 })
+  }
+
+  return new NextResponse(null, { status: 200 })
+}
+
 
