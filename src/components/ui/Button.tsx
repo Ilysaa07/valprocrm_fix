@@ -5,12 +5,14 @@ interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
   variant?: 'default' | 'destructive' | 'outline' | 'secondary' | 'ghost' | 'link'
   size?: 'default' | 'sm' | 'lg' | 'icon'
   className?: string
+  loading?: boolean
 }
 
 export function Button({ 
   className, 
   variant = 'default', 
   size = 'default', 
+  loading = false,
   ...props 
 }: ButtonProps) {
   const baseClasses = 'inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:pointer-events-none disabled:opacity-50'
@@ -39,6 +41,7 @@ export function Button({
         sizes[size],
         className
       )}
+      aria-busy={loading || undefined}
       {...props}
     />
   )

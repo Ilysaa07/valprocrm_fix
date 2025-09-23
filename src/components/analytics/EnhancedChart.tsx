@@ -53,15 +53,21 @@ const formatValue = (value: number): string => {
 }
 
 const renderBarChart = (data: ChartData[], onDrillDown?: (data: ChartData) => void) => {
-  const maxValue = Math.max(...data.map(item => item.value))
-  
-  // Handle empty data case
+  // Normalize values to safe non-negative finite numbers
+  const normalizedValues = data.map((item) => {
+    const numeric = Number(item.value)
+    return Number.isFinite(numeric) && numeric > 0 ? numeric : 0
+  })
+
+  const maxValue = normalizedValues.reduce((max, v) => (v > max ? v : max), 0)
+
+  // Empty-state: all values are zero
   if (maxValue === 0) {
     return (
       <div className="space-y-3">
         {data.map((item, index) => (
-          <div 
-            key={index} 
+          <div
+            key={index}
             className="flex items-center space-x-3 p-2 rounded-lg transition-colors"
           >
             <div className="w-20 sm:w-24 text-sm text-gray-700 dark:text-gray-300 truncate">
@@ -76,40 +82,47 @@ const renderBarChart = (data: ChartData[], onDrillDown?: (data: ChartData) => vo
               </div>
             </div>
             <div className="w-16 text-sm font-medium text-gray-900 dark:text-gray-50 text-right">
-              {formatValue(item.value)}
+              {formatValue(Number(item.value) || 0)}
             </div>
           </div>
         ))}
       </div>
     )
   }
-  
+
   return (
     <div className="space-y-3">
-      {data.map((item, index) => (
-        <div 
-          key={index} 
-          className={`flex items-center space-x-3 p-2 rounded-lg transition-colors ${
-            onDrillDown ? 'hover:bg-gray-50 dark:hover:bg-gray-800 cursor-pointer' : ''
-          }`}
-          onClick={() => onDrillDown?.(item)}
-        >
-          <div className="w-20 sm:w-24 text-sm text-gray-700 dark:text-gray-300 truncate">
-            {item.label}
-          </div>
-          <div className="flex-1">
-            <div className="w-full bg-gray-200 dark:bg-gray-600 rounded-full h-3">
-              <div
-                className={`h-3 rounded-full transition-all duration-300 ${item.color || 'bg-blue-500'}`}
-                style={{ width: `${(item.value / maxValue) * 100}%` }}
-              ></div>
+      {data.map((item, index) => {
+        const value = normalizedValues[index]
+        // Ensure bars are visible for very small non-zero values
+        const rawPercent = (value / maxValue) * 100
+        const widthPercent = value > 0 ? Math.min(100, Math.max(6, rawPercent)) : 0
+        return (
+          <div
+            key={index}
+            className={`flex items-center space-x-3 p-2 rounded-lg transition-colors ${
+              onDrillDown ? 'hover:bg-gray-50 dark:hover:bg-gray-800 cursor-pointer' : ''
+            }`}
+            onClick={() => onDrillDown?.(item)}
+          >
+            <div className="w-20 sm:w-24 text-sm text-gray-700 dark:text-gray-300 truncate">
+              {item.label}
+            </div>
+            <div className="flex-1">
+              <div className="w-full bg-gray-200 dark:bg-gray-600 rounded-full h-3">
+                <div
+                  className={`h-3 rounded-full transition-all duration-300 ${item.color || 'bg-blue-500'}`}
+                  style={{ width: `${widthPercent}%` }}
+                  title={`${value}`}
+                ></div>
+              </div>
+            </div>
+            <div className="w-16 text-sm font-medium text-gray-900 dark:text-gray-50 text-right">
+              {formatValue(value)}
             </div>
           </div>
-          <div className="w-16 text-sm font-medium text-gray-900 dark:text-gray-50 text-right">
-            {formatValue(item.value)}
-          </div>
-        </div>
-      ))}
+        )
+      })}
     </div>
   )
 }

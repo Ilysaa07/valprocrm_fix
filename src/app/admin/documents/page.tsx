@@ -72,6 +72,7 @@ export default function AdminDocumentsPage() {
   const [filterVisibility, setFilterVisibility] = useState<'ALL' | 'PUBLIC' | 'PRIVATE'>('ALL')
   const [filterFolderId, setFilterFolderId] = useState<string>('')
   const [filterTag, setFilterTag] = useState<string>('')
+  const [filterTagInput, setFilterTagInput] = useState<string>('')
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid')
   const [showUploadForm, setShowUploadForm] = useState(false)
   const [activeTab, setActiveTab] = useState<'documents' | 'analytics' | 'search'>('documents')
@@ -107,6 +108,14 @@ export default function AdminDocumentsPage() {
   }
 
   useEffect(() => { load() }, [filterVisibility, filterFolderId, filterTag])
+
+  // Debounce filterTag updates to avoid rapid loops and unnecessary fetches
+  useEffect(() => {
+    const handler = setTimeout(() => {
+      setFilterTag(prev => (prev === filterTagInput ? prev : filterTagInput))
+    }, 300)
+    return () => clearTimeout(handler)
+  }, [filterTagInput])
 
   // Removed folder loading
 
@@ -450,8 +459,8 @@ export default function AdminDocumentsPage() {
                     <input
                       placeholder="Filter tag"
                       className="border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white rounded-lg pl-10 pr-3 py-2 w-32 focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors"
-                      value={filterTag}
-                      onChange={e => setFilterTag(e.target.value)}
+                      value={filterTagInput}
+                      onChange={e => setFilterTagInput(e.target.value)}
                     />
                   </div>
                 </div>

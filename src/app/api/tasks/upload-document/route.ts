@@ -84,19 +84,20 @@ export async function POST(request: NextRequest) {
     const fileExtension = file.name.split('.').pop()
     const uniqueFilename = `task_${session.user.id}_${uuidv4()}.${fileExtension}`
     
-    // Ensure upload directory exists
-    const uploadDir = join(process.cwd(), 'public/uploads/tasks')
-    if (!existsSync(uploadDir)) {
-      await mkdir(uploadDir, { recursive: true })
+    // Use the same private storage strategy as main documents API
+    const storageDir = join(process.cwd(), 'storage/documents')
+    if (!existsSync(storageDir)) {
+      await mkdir(storageDir, { recursive: true })
     }
-    
-    const uploadPath = join(uploadDir, uniqueFilename)
 
-    // Save file
-    await writeFile(uploadPath, buffer)
+    const key = `task_${session.user.id}_${uuidv4()}.${fileExtension}`
+    const absPath = join(storageDir, key)
 
-    // Compose public URL
-    const fileUrl = `/uploads/tasks/${uniqueFilename}`
+    // Save file into private storage
+    await writeFile(absPath, buffer)
+
+    // Store key-only path; download API will resolve it
+    const fileUrl = key
 
     // Create Document + Version and link to Task via TaskFile
     const document = await prisma.document.create({

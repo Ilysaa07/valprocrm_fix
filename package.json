@@ -1,10 +1,10 @@
 {
-  "name": "valpro-portal",
+  "name": "valpro-EMS",
   "version": "1.0.0",
-  "description": "Valpro Portal - Employee Management System",
+  "description": "ValproEMS - Employee Management System",
   "private": true,
   "scripts": {
-    "dev": "next dev",
+    "dev": "next dev --turbopack",
     "build": "next build",
     "start": "next start -p 3000",
     "lint": "next lint",

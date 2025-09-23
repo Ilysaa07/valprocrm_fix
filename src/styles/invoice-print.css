@@ -13,7 +13,7 @@
   * { box-sizing: border-box !important; }
 
   /* Hide action buttons when printing */
-  .print\\:hidden {
+  .print\:hidden {
     display: none !important;
   }
 
@@ -121,43 +121,43 @@
   }
   
   /* Ensure proper spacing */
-  .print\\:p-6 {
+  .print\:p-6 {
     padding: 16px !important;
   }
   
-  .print\\:p-4 {
+  .print\:p-4 {
     padding: 12px !important;
   }
   
   /* Font size adjustments for print */
-  .print\\:text-2xl {
+  .print\:text-2xl {
     font-size: 1.25rem !important;
     line-height: 1.5rem !important;
   }
   
-  .print\\:text-xl {
+  .print\:text-xl {
     font-size: 1.125rem !important;
     line-height: 1.375rem !important;
   }
   
-  .print\\:text-lg {
+  .print\:text-lg {
     font-size: 1rem !important;
     line-height: 1.25rem !important;
   }
   
-  .print\\:text-sm {
+  .print\:text-sm {
     font-size: 0.875rem !important;
     line-height: 1.125rem !important;
   }
   
-  .print\\:text-xs {
+  .print\:text-xs {
     font-size: 0.75rem !important;
     line-height: 1rem !important;
   }
   
   /* Remove background colors for print */
-  .print\\:bg-white { background-color: white !important; }
-  .print\\:hidden { display: none !important; }
+  .print\:bg-white { background-color: white !important; }
+  .print\:hidden { display: none !important; }
   .print-bg-white { background: #ffffff !important; }
   
   /* Ensure proper margins */

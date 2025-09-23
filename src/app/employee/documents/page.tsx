@@ -124,12 +124,12 @@ export default function EmployeeDocumentsPage() {
 
   return (
     <EmployeeLayout>
-      <div className="p-6 space-y-6">
+      <div className="p-6 space-y-6 bg-gray-50 dark:bg-[#121212] min-h-screen transition-colors duration-200">
         {/* Header */}
         <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
           <div>
-            <h1 className="text-2xl md:text-3xl font-bold text-gray-900">Dokumen</h1>
-            <p className="text-gray-600 mt-1">Akses cepat dokumen anda (Public/Shared/Mine)</p>
+            <h1 className="text-2xl md:text-3xl font-bold text-gray-900 dark:text-gray-50">Dokumen</h1>
+            <p className="text-gray-600 dark:text-gray-300 mt-1">Akses cepat dokumen anda (Public/Shared/Mine)</p>
           </div>
       <div className="flex gap-2">
         <Button variant={tab==='mine'?'primary':'outline'} onClick={() => setTab('mine')}>My Documents</Button>
@@ -146,7 +146,7 @@ export default function EmployeeDocumentsPage() {
           <div className="flex gap-3 items-center">
             <div className="flex-1 relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4"/>
-              <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Cari judul/desk..." className="w-full border rounded-lg pl-10 pr-3 py-2"/>
+              <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Cari judul/desk..." className="w-full border border-gray-300 dark:border-gray-600 rounded-lg pl-10 pr-3 py-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-400"/>
             </div>
             <Button onClick={()=>load()} variant="outline" className="flex items-center gap-1"><RefreshCw className="w-4 h-4"/>Refresh</Button>
           </div>
@@ -156,16 +156,16 @@ export default function EmployeeDocumentsPage() {
         <Card className="p-4">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-3">
-              <input className="border rounded px-3 py-2 w-full" placeholder="Judul" value={form.title} onChange={e=>setForm(s=>({...s,title:e.target.value}))}/>
-              <textarea className="border rounded px-3 py-2 w-full" placeholder="Deskripsi (opsional)" rows={3} value={form.description} onChange={e=>setForm(s=>({...s,description:e.target.value}))}/>
+              <input className="border border-gray-300 dark:border-gray-600 rounded px-3 py-2 w-full bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100" placeholder="Judul" value={form.title} onChange={e=>setForm(s=>({...s,title:e.target.value}))}/>
+              <textarea className="border border-gray-300 dark:border-gray-600 rounded px-3 py-2 w-full bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100" placeholder="Deskripsi (opsional)" rows={3} value={form.description} onChange={e=>setForm(s=>({...s,description:e.target.value}))}/>
               <div className="flex gap-2">
-                <select className="border rounded px-3 py-2" value={form.visibility} onChange={e=>setForm(s=>({...s,visibility:e.target.value}))}>
+                <select className="border border-gray-300 dark:border-gray-600 rounded px-3 py-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100" value={form.visibility} onChange={e=>setForm(s=>({...s,visibility:e.target.value}))}>
                   <option value="PRIVATE">🔒 Private</option>
                   <option value="PUBLIC">🌐 Public</option>
                 </select>
-                <input className="border rounded px-3 py-2 flex-1" placeholder="tag1, tag2" value={form.tags} onChange={e=>setForm(s=>({...s,tags:e.target.value}))}/>
+                <input className="border border-gray-300 dark:border-gray-600 rounded px-3 py-2 flex-1 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100" placeholder="tag1, tag2" value={form.tags} onChange={e=>setForm(s=>({...s,tags:e.target.value}))}/>
               </div>
-              <div className="text-xs text-gray-500">Format didukung: PDF, DOCX, XLSX, CSV, ZIP, Images</div>
+              <div className="text-xs text-gray-500 dark:text-gray-400">Format didukung: PDF, DOCX, XLSX, CSV, ZIP, Images</div>
       </div>
         <div className="space-y-3">
               <FileUpload onFileUpload={setFile} onFileRemove={()=>setFile(null)} currentFile={file}/>

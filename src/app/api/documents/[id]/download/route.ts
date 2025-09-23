@@ -32,8 +32,20 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
     data: { documentId: doc.id, userId: session.user.id }
   })
 
-  const storageDir = join(process.cwd(), 'storage', 'documents')
-  const filePath = join(storageDir, doc.currentVer.fileUrl)
+  const fileRef = doc.currentVer.fileUrl || ''
+  const isHttpUrl = /^https?:\/\//i.test(fileRef)
+
+  if (isHttpUrl) {
+    // If stored as remote URL, redirect for now (MVP behavior)
+    return NextResponse.redirect(fileRef)
+  }
+
+  const isPublicUploads = fileRef.startsWith('/uploads/') || fileRef.startsWith('uploads/')
+  const baseDir = isPublicUploads
+    ? join(process.cwd(), 'public')
+    : join(process.cwd(), 'storage', 'documents')
+  const safeRef = fileRef.replace(/^\/+/, '')
+  const filePath = join(baseDir, safeRef)
   if (!existsSync(filePath)) {
     return NextResponse.json({ error: 'File missing' }, { status: 404 })
   }
@@ -41,12 +53,17 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
   const stream = createReadStream(filePath)
   const { searchParams } = new URL(req.url)
   const asInline = searchParams.get('inline') === '1'
-  const ext = '.' + (doc.currentVer.fileUrl.split('.').pop() || 'bin')
+  const ext = '.' + (safeRef.split('.').pop() || 'bin')
   const filename = `${doc.title}${ext}`
   const headers = new Headers({
     'Content-Type': doc.mimeType,
-    'Content-Disposition': `${asInline ? 'inline' : 'attachment'}; filename="${encodeURIComponent(filename)}"`
+    'Content-Disposition': `${asInline ? 'inline' : 'attachment'}; filename="${encodeURIComponent(filename)}"`,
+    'X-Content-Type-Options': 'nosniff'
   })
+  // Hint browser for images/pdf to preview smoothly in inline mode
+  if (asInline) {
+    headers.set('Cache-Control', 'private, max-age=60')
+  }
   const response = new NextResponse(stream as any, {
     status: 200,
     headers
@@ -69,8 +86,18 @@ export async function HEAD(req: NextRequest, { params }: { params: { id: string 
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
   }
 
-  const storageDir = join(process.cwd(), 'storage', 'documents')
-  const filePath = join(storageDir, doc.currentVer.fileUrl)
+  const fileRef = doc.currentVer.fileUrl || ''
+  const isHttpUrl = /^https?:\/\//i.test(fileRef)
+  if (isHttpUrl) {
+    return new NextResponse(null, { status: 200 })
+  }
+
+  const isPublicUploads = fileRef.startsWith('/uploads/') || fileRef.startsWith('uploads/')
+  const baseDir = isPublicUploads
+    ? join(process.cwd(), 'public')
+    : join(process.cwd(), 'storage', 'documents')
+  const safeRef = fileRef.replace(/^\/+/, '')
+  const filePath = join(baseDir, safeRef)
   if (!existsSync(filePath)) {
     return NextResponse.json({ error: 'File missing' }, { status: 404 })
   }

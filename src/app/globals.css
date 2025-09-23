@@ -1,7 +1,3 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
-
 /* Design Tokens */
 @import '../styles/design-tokens.css';
 @import '../styles/user-management-design-tokens.css';
@@ -11,6 +7,10 @@
 
 /* Chat Mobile Optimizations */
 @import '../styles/chat-mobile.css';
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
 
 /* SweetAlert2 Animations */
 @keyframes fade-in {
@@ -238,8 +238,7 @@
   animation: slide-out-to-right 0.3s ease-in;
 }
 
-/* Import design tokens */
-@import '../styles/design-tokens.css';
+/* Import design tokens (moved to top) */
 
 /* ========================================
    CORE RESET & BASE STYLES
