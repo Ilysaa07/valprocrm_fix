@@ -50,6 +50,8 @@ export default function RootLayout({
         <link rel="apple-touch-icon" href="/logometa.png" />
         <link rel="icon" type="image/png" sizes="32x32" href="/logometa.png" />
         <link rel="icon" type="image/png" sizes="16x16" href="/logometa.png" />
+        <link rel="manifest" href="/manifest.webmanifest" />
+        <meta name="theme-color" content="#6366f1" />
       </head>
       <body className={inter.className}>
         <Providers>

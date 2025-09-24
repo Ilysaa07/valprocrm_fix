@@ -1,0 +1,14 @@
+{
+  "name": "Internal System Web - Valpro Intertech",
+  "short_name": "Valpro CRM",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#6366f1",
+  "description": "Comprehensive CRM system for employee management, task tracking, and analytics",
+  "icons": [
+    { "src": "/logometa.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "/logometa.png", "sizes": "512x512", "type": "image/png" }
+  ]
+}

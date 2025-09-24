@@ -12,7 +12,9 @@ interface EmployeeLayoutProps {
 export default function EmployeeLayout({ children, title, description }: EmployeeLayoutProps) {
   return (
     <AppLayout role="EMPLOYEE" title={title} description={description}>
-      {children}
+      <div className="px-3 sm:px-0">
+        {children}
+      </div>
     </AppLayout>
   )
 }

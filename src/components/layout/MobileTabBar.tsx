@@ -164,7 +164,7 @@ export default function MobileTabBar({
   return (
     <>
       {/* Mobile Tab Bar */}
-      <div className="fixed bottom-0 left-0 right-0 z-50 md:hidden animate-slide-in-from-bottom">
+      <div className="fixed bottom-0 left-0 right-0 z-50 md:hidden animate-slide-in-from-bottom" role="navigation" aria-label="Menu bawah">
         <div className="bg-white/95 dark:bg-slate-900/95 backdrop-blur-lg border-t border-gray-200 dark:border-slate-700 shadow-lg relative overflow-visible">
           {/* Animated background gradient */}
           <div className="absolute inset-0 bg-gradient-to-r from-blue-50/30 via-purple-50/20 to-pink-50/30 dark:from-blue-900/20 dark:via-purple-900/10 dark:to-pink-900/20 animate-float-up"></div>
@@ -191,6 +191,9 @@ export default function MobileTabBar({
                         activeTab === 'Lainnya' && 'animate-tab-pulse'
                       )}
                       aria-label="Lainnya options"
+                      aria-haspopup="true"
+                      aria-expanded={showMoreMenu}
+                      aria-label="Buka menu lainnya"
                     >
                       {/* Ripple Effect */}
                       {rippleEffect && activeTab === 'Lainnya' && (
@@ -336,6 +339,8 @@ export default function MobileTabBar({
                     active && 'bg-blue-50 dark:bg-blue-900/20 animate-glow-effect',
                     activeTab === tab.name && 'animate-tab-pulse'
                   )}
+                  aria-current={active ? 'page' : undefined}
+                  aria-label={`Buka ${tab.name}`}
                 >
                   {/* Ripple Effect */}
                   {rippleEffect && activeTab === tab.name && (

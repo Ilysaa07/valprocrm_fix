@@ -274,7 +274,7 @@ export default function EmployeeDashboardPage() {
 
   return (
     <EmployeeLayout>
-      <div className="p-6">
+      <div className="p-4 sm:p-6">
         <EmployeeDashboard
           stats={stats}
           recentTasks={recentTasks}

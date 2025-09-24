@@ -1,0 +1,10 @@
+{
+  "version": 1,
+  "fixed": [
+    { "date": "* * 0", "name": "Minggu" }
+  ],
+  "dates": [
+    { "date": "2025-12-25", "name": "Libur Natal" },
+    { "date": "2025-01-01", "name": "Tahun Baru" }
+  ]
+}

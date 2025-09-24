@@ -173,9 +173,9 @@ export default function EmployeeDashboard({
       <div className="space-y-6 min-w-0 overflow-x-hidden" role="main" aria-label="Employee Dashboard">
         {/* Welcome Header */}
         <div className="bg-gradient-to-r from-accent/10 to-accent/5 rounded-2xl p-4 sm:p-6 border border-accent/20" role="banner">
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4">
             <div className="min-w-0">
-              <h1 className="text-xl sm:text-2xl font-bold text-text-primary truncate" id="welcome-title">
+              <h1 className="text-lg sm:text-2xl font-bold text-text-primary truncate" id="welcome-title">
                 Selamat datang, {session?.user?.name || 'Karyawan'}! 👋
               </h1>
             <p className="text-text-secondary mt-1 text-sm sm:text-base">
@@ -211,7 +211,7 @@ export default function EmployeeDashboard({
       </div>
 
       {/* Key Metrics Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 w-full max-w-screen-sm mx-auto sm:max-w-none sm:mx-0 px-3 sm:px-0 min-w-0" role="region" aria-label="Key Metrics">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 w-full max-w-screen-sm mx-auto sm:max-w-none sm:mx-0 px-3 sm:px-0 min-w-0" role="region" aria-label="Key Metrics">
         {/* Total Tasks */}
         <Card className="hover:shadow-lg transition-shadow duration-200">
           <CardBody className="p-6">
@@ -288,7 +288,7 @@ export default function EmployeeDashboard({
               <div className="flex items-center justify-between">
                 <h2 className="text-xl font-semibold text-text-primary">Tugas Terbaru</h2>
                 <Link href="/employee/tasks">
-                  <Button variant="outline" size="sm">
+                  <Button variant="outline" size="sm" className="hidden xs:inline-flex">
                     <Eye className="h-4 w-4 mr-2" />
                     Lihat Semua
                   </Button>
@@ -303,11 +303,11 @@ export default function EmployeeDashboard({
                   <p className="text-sm text-text-muted">Tugas yang diberikan akan muncul di sini</p>
                 </div>
               ) : (
-                <div className="space-y-4">
+                <div className="space-y-3 sm:space-y-4">
                   {recentTasks.slice(0, 5).map((task) => (
-                    <div key={task.id} className="flex items-center justify-between p-4 bg-card rounded-xl border border-border hover:bg-card-hover transition-colors">
+                    <div key={task.id} className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 p-4 bg-card rounded-xl border border-border hover:bg-card-hover transition-colors">
                       <div className="flex-1 min-w-0">
-                        <div className="flex items-center space-x-3">
+                        <div className="flex items-center flex-wrap gap-2 sm:gap-3">
                           <h3 className="text-sm font-medium text-text-primary truncate">
                             {task.title}
                           </h3>
@@ -318,7 +318,7 @@ export default function EmployeeDashboard({
                         <p className="text-xs text-text-secondary mt-1 line-clamp-2">
                           {task.description}
                         </p>
-                        <div className="flex items-center space-x-4 mt-2">
+                        <div className="flex items-center flex-wrap gap-x-4 gap-y-1 mt-2">
                           <span className={`text-xs font-medium ${getPriorityColor(task.priority)}`}>
                             {task.priority}
                           </span>
@@ -334,7 +334,7 @@ export default function EmployeeDashboard({
                           </div>
                         )}
                       </div>
-                      <ArrowRight className="h-4 w-4 text-text-muted flex-shrink-0 ml-2" />
+                      <ArrowRight className="h-4 w-4 text-text-muted flex-shrink-0 ml-2 hidden sm:block" />
                     </div>
                   ))}
                 </div>
@@ -386,7 +386,7 @@ export default function EmployeeDashboard({
               <div className="flex items-center justify-between">
                 <h2 className="text-xl font-semibold text-text-primary">Notifikasi</h2>
                 <Link href="/employee/notifications">
-                  <Button variant="outline" size="sm">
+                  <Button variant="outline" size="sm" className="hidden xs:inline-flex">
                     <Eye className="h-4 w-4 mr-2" />
                     Semua
                   </Button>

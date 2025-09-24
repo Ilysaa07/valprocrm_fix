@@ -3,6 +3,8 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { z } from 'zod'
+import { isHoliday } from '@/lib/holidays'
+import type { AttendanceStatus as PrismaAttendanceStatus } from '@prisma/client'
 
 const checkInSchema = z.object({
   latitude: z.number().min(-90).max(90),
@@ -25,9 +27,9 @@ function isLateCheckIn(checkInTime: Date): boolean {
   const checkInHour = checkInTime.getHours()
   const checkInMinute = checkInTime.getMinutes()
   
-  // Set late threshold to 09:10
-  const lateThresholdHour = 9
-  const lateThresholdMinute = 10
+  // Set late threshold to 10:00
+  const lateThresholdHour = 10
+  const lateThresholdMinute = 0
   
   // Convert to minutes for easier comparison
   const checkInTotalMinutes = checkInHour * 60 + checkInMinute
@@ -37,8 +39,8 @@ function isLateCheckIn(checkInTime: Date): boolean {
 }
 
 // Function to get attendance status based on check-in time
-function getAttendanceStatus(checkInTime: Date): 'PRESENT' | 'LATE' {
-  return isLateCheckIn(checkInTime) ? 'LATE' : 'PRESENT'
+function getAttendanceStatus(checkInTime: Date): PrismaAttendanceStatus {
+  return (isLateCheckIn(checkInTime) ? 'LATE' : 'PRESENT') as PrismaAttendanceStatus
 }
 
 export async function POST(req: NextRequest) {
@@ -53,6 +55,13 @@ export async function POST(req: NextRequest) {
     // Check today's date range
     const todayStart = new Date(); todayStart.setHours(0,0,0,0)
     const todayEnd = new Date(); todayEnd.setHours(23,59,59,999)
+
+    // Block check-in on holidays
+    const today = new Date()
+    const holiday = isHoliday(today)
+    if (holiday.isHoliday) {
+      return NextResponse.json({ error: `Hari libur${holiday.name ? ` - ${holiday.name}` : ''}. Check-in tidak diperbolehkan.` }, { status: 400 })
+    }
 
     // Check if user already has attendance record today
     const existingAttendance = await prisma.attendance.findFirst({
@@ -128,7 +137,8 @@ export async function POST(req: NextRequest) {
 
     // Emit socket event for dashboard refresh
     try {
-      const io = (global as any).io || (require('@/lib/socket') as any).getSocketIO?.()
+      const { getSocketIO } = await import('@/lib/socket')
+      const io = getSocketIO?.()
       if (io) io.emit('attendance_updated', { userId: session.user.id, id: record.id })
     } catch {}
 
