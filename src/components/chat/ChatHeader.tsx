@@ -3,7 +3,7 @@
 import React from 'react';
 import { Plus, Search, Circle } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
-import { Input } from '@/components/ui/Input';
+import Input from '@/components/ui/Input';
 import { Badge } from '@/components/ui/Badge';
 
 interface ChatHeaderProps {
