@@ -48,7 +48,7 @@ export function SummaryCards({ cards, title, className = '' }: SummaryCardsProps
   return (
     <div className={className}>
       {title && (
-        <h3 className="text-base sm:text-lg font-semibold text-gray-900 dark:text-gray-100 mb-3 sm:mb-4">
+        <h3 className="text-base sm:text-lg font-semibold text-text-primary mb-3 sm:mb-4">
           {title}
         </h3>
       )}
@@ -57,33 +57,33 @@ export function SummaryCards({ cards, title, className = '' }: SummaryCardsProps
           const Icon = card.icon
           
           return (
-            <Card key={index} className="hover:shadow-lg transition-shadow">
+            <Card key={index} className="hover:shadow-lg transition-shadow dashboard-card">
               <CardBody>
                 <div className="flex items-start justify-between mb-3 sm:mb-4">
                   <div className={`p-2.5 sm:p-3 rounded-lg ${card.color}`}>
-                    <Icon className="h-5 w-5 sm:h-6 sm:w-6 text-white" />
+                    <Icon className="h-5 w-5 sm:h-6 sm:w-6 text-text-inverse" />
                   </div>
                   {card.trend && (
                     <div className="text-right">
-                      <span className={`text-xs sm:text-sm font-medium ${card.trend.isPositive ? 'text-green-600' : 'text-red-600'}`}>
+                      <span className={`text-xs sm:text-sm font-medium ${card.trend.isPositive ? 'text-success' : 'text-error'}`}>
                         {card.trend.isPositive ? '+' : ''}{card.trend.value}%
                       </span>
-                      <p className="text-[11px] sm:text-xs text-gray-500 dark:text-gray-400">
+                      <p className="text-[11px] sm:text-xs text-text-secondary">
                         {card.trend.period}
                       </p>
                     </div>
                   )}
                 </div>
                 
-                <h4 className="text-base sm:text-lg font-semibold text-gray-900 dark:text-gray-100 mb-1">
+                <h4 className="text-base sm:text-lg font-semibold text-text-primary mb-1">
                   {card.title}
                 </h4>
                 
-                <p className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-gray-100 mb-1 sm:mb-2">
+                <p className="text-2xl sm:text-3xl font-bold text-text-primary mb-1 sm:mb-2">
                   {card.value}
                 </p>
                 
-                <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400 mb-3 sm:mb-4">
+                <p className="text-xs sm:text-sm text-text-secondary mb-3 sm:mb-4">
                   {card.description}
                 </p>
                 
@@ -96,7 +96,7 @@ export function SummaryCards({ cards, title, className = '' }: SummaryCardsProps
                         <Link
                           key={actionIndex}
                           href={action.href}
-                          className="inline-flex items-center px-2.5 sm:px-3 py-1.5 text-xs font-medium bg-gray-100 text-gray-700 rounded-md hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600 transition-colors"
+                          className="inline-flex items-center px-2.5 sm:px-3 py-1.5 text-xs font-medium bg-bg-tertiary text-text-primary rounded-md border border-border hover:bg-card-hover transition-colors"
                         >
                           <ActionIcon className="h-3 w-3 mr-1" />
                           {action.label}

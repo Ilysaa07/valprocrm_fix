@@ -164,8 +164,8 @@ export const authOptions: NextAuthOptions = {
   },
   pages: {
     signIn: '/auth/login',
-    signOut: 'https://crm.valprointertech.com/auth/login',
-    error: '/auth/error',
+    signOut: '/auth/login',
+    error: '/auth/login',
   },
   secret: process.env.NEXTAUTH_SECRET || 'fallback-secret-key',
   debug: process.env.NODE_ENV === 'development',

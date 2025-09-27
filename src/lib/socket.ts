@@ -42,18 +42,37 @@ class SocketClient {
 
   public static getSocket(): Socket {
     if (!this.socket && typeof window !== 'undefined') {
-      // Opt-in only: require explicit flag to enable socket client
-      if (process.env.NEXT_PUBLIC_SOCKET_ENABLED !== 'true') {
+      // Enable socket by default, but allow disabling via environment variable
+      if (process.env.NEXT_PUBLIC_SOCKET_ENABLED === 'false') {
         // @ts-expect-error allow null for disabled mode
         return { on: () => {}, off: () => {}, disconnect: () => {} } as Socket
       }
-      this.socket = io(process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000', {
+      
+      const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 
+                     (typeof window !== 'undefined' ? window.location.origin : 'http://localhost:3000')
+      
+      this.socket = io(baseUrl, {
         path: '/socket.io',
         transports: ['polling', 'websocket'],
         reconnection: true,
-        reconnectionAttempts: 3,
-        timeout: 5000,
-        forceNew: true
+        reconnectionAttempts: 5,
+        reconnectionDelay: 1000,
+        timeout: 10000,
+        forceNew: true,
+        autoConnect: true
+      })
+
+      // Add error handling
+      this.socket.on('connect_error', (error) => {
+        console.warn('Socket connection error:', error.message)
+      })
+
+      this.socket.on('connect', () => {
+        console.log('Socket connected:', this.socket?.id)
+      })
+
+      this.socket.on('disconnect', (reason) => {
+        console.log('Socket disconnected:', reason)
       })
     }
     return this.socket

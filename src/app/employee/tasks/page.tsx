@@ -12,8 +12,11 @@ import {
   Clock,
   FileText,
   Upload,
-  Eye
+  Eye,
+  X,
+  Download
 } from 'lucide-react'
+import TaskFileUpload from '@/components/tasks/TaskFileUpload'
 // Inline submission UI; legacy modal removed
 
 interface TaskAttachment { id: string; documentId: string; title: string; url: string | null; size: number; mimeType: string; uploadedAt: string | null }
@@ -73,6 +76,13 @@ export default function EmployeeTasksPage() {
   const [loading, setLoading] = useState(true)
   const [activeTab, setActiveTab] = useState<'assigned' | 'completed'>('assigned')
   const [attSearch, setAttSearch] = useState('')
+  const [pagination, setPagination] = useState({
+    page: 1,
+    limit: 50,
+    total: 0,
+    pages: 0
+  })
+  const [allTasksLoaded, setAllTasksLoaded] = useState(false)
 
   useEffect(() => {
     if (status === 'loading') return
@@ -88,13 +98,25 @@ export default function EmployeeTasksPage() {
     fetchTasks()
   }, [session, status])
 
-  const fetchTasks = async () => {
+  const fetchTasks = async (loadAll = false) => {
     try {
       setLoading(true)
-      const response = await fetch('/api/tasks')
+      const params = new URLSearchParams()
+      if (loadAll) {
+        params.set('limit', '1000') // Load all tasks
+      } else {
+        params.set('page', pagination.page.toString())
+        params.set('limit', pagination.limit.toString())
+      }
+      
+      const response = await fetch(`/api/tasks?${params.toString()}`)
       if (response.ok) {
         const data = await response.json()
         setTasks(data.tasks || [])
+        if (data.pagination) {
+          setPagination(data.pagination)
+        }
+        setAllTasksLoaded(loadAll)
       } else {
         console.error('Failed to fetch tasks')
       }
@@ -255,11 +277,23 @@ export default function EmployeeTasksPage() {
           </ol>
         </nav>
         {/* Header */}
-        <div className="flex items-center justify-between">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
             <h1 className="text-2xl font-bold text-text-primary">Tugas Saya</h1>
-            <p className="text-text-secondary">Kelola dan kerjakan tugas yang diberikan</p>
+            <p className="text-text-secondary">
+              Kelola dan kerjakan tugas yang diberikan | Total: {pagination.total} tugas | Halaman: {pagination.page}/{pagination.pages}
+            </p>
           </div>
+          {!allTasksLoaded && (
+            <Button 
+              onClick={() => fetchTasks(true)} 
+              variant="outline"
+              className="w-full sm:w-auto"
+            >
+              <Download className="w-4 h-4 mr-2" />
+              Muat Semua Tugas
+            </Button>
+          )}
         </div>
 
         {/* Stats Cards */}
@@ -450,29 +484,39 @@ export default function EmployeeTasksPage() {
 
         {/* Inline detail & submission */}
         {selectedTask && (
-          <div className="mt-6 bg-white dark:bg-gray-800 rounded-lg shadow-sm p-4">
-            <div className="flex items-start justify-between">
-              <div>
-                <h2 className="text-lg font-semibold text-gray-900 dark:text-white">{selectedTask.title}</h2>
-                <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
-                  <span>{getStatusText(selectedTask.status)}</span>
+          <div className="mt-6 bg-white dark:bg-gray-800 rounded-lg shadow-sm p-4 sm:p-6">
+            <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
+              <div className="flex-1">
+                <h2 className="text-lg sm:text-xl font-semibold text-gray-900 dark:text-white">{selectedTask.title}</h2>
+                <div className="flex flex-col sm:flex-row sm:items-center gap-2 text-sm text-gray-600 dark:text-gray-400 mt-2">
+                  <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                    {getStatusText(selectedTask.status)}
+                  </span>
                   {selectedTask.dueDate && (
-                    <>
-                      <span>•</span>
+                    <div className="flex items-center gap-2">
                       <span>Deadline: {formatDate(selectedTask.dueDate)}</span>
                       {(() => { const d = daysRemaining(selectedTask.dueDate); return d !== null ? (
                         <span className={`inline-flex px-2 py-0.5 rounded-full text-xs ${d < 0 ? 'bg-red-100 text-red-700' : d <= 3 ? 'bg-amber-100 text-amber-700' : 'bg-emerald-100 text-emerald-700'}`}>
                           {d < 0 ? `Terlambat ${Math.abs(d)}h` : `${d}h lagi`}
                         </span>
                       ) : null })()}
-                    </>
+                    </div>
                   )}
                 </div>
                 {selectedTask.status === 'REVISION' && selectedTask.validationMessage && (
-                  <p className="mt-1 text-sm text-amber-700 bg-amber-50 border border-amber-200 rounded px-2 py-1">Catatan Revisi: {selectedTask.validationMessage}</p>
+                  <div className="mt-3 p-3 text-sm text-amber-700 bg-amber-50 border border-amber-200 rounded-lg">
+                    <strong>Catatan Revisi:</strong> {selectedTask.validationMessage}
+                  </div>
                 )}
               </div>
-              <Button variant="outline" onClick={() => setSelectedTask(null)}>Tutup</Button>
+              <Button 
+                variant="outline" 
+                onClick={() => setSelectedTask(null)}
+                className="w-full sm:w-auto"
+              >
+                <X className="w-4 h-4 mr-2" />
+                Tutup
+              </Button>
             </div>
             {/* Progress */}
             <div className="mt-3">
@@ -534,86 +578,157 @@ export default function EmployeeTasksPage() {
               </div>
 
               {(selectedTask.status !== 'COMPLETED') && (
-                <div className="border rounded p-4">
-                  <h3 className="text-sm font-medium text-gray-700 mb-2">Submit Tugas</h3>
-                  <div className="space-y-3">
-                    <div>
-                      <label className="block text-sm text-gray-600 mb-1">Deskripsi</label>
-                      <textarea className="w-full border rounded px-3 py-2" rows={3} value={submitDesc} onChange={(e) => setSubmitDesc(e.target.value)} />
+                <div className="border border-gray-200 dark:border-gray-600 rounded-lg p-4 sm:p-6 bg-gray-50 dark:bg-gray-700/50">
+                  <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-4 flex items-center">
+                    <Upload className="w-5 h-5 mr-2 text-blue-600" />
+                    Submit Tugas
+                  </h3>
+                  <div className="space-y-4">
+                    <div className="space-y-2">
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Deskripsi Submission</label>
+                      <textarea 
+                        className="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent" 
+                        rows={4} 
+                        value={submitDesc} 
+                        onChange={(e) => setSubmitDesc(e.target.value)}
+                        placeholder="Jelaskan apa yang telah Anda kerjakan..."
+                      />
                     </div>
-                    <div>
-                      <label className="block text-sm text-gray-600 mb-1">File (bisa multi)</label>
-                      <input type="file" multiple onChange={(e) => setSubmitFiles(Array.from(e.target.files || []))} />
-                      {submitFiles.length > 0 && (
-                        <div className="mt-2 text-xs text-gray-600">{submitFiles.length} file dipilih</div>
-                      )}
+                    <div className="space-y-2">
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">File Submission (Maksimal 10 file)</label>
+                      <TaskFileUpload
+                        files={submitFiles}
+                        onFilesChange={setSubmitFiles}
+                        maxFiles={10}
+                        maxFileSize={10}
+                        maxTotalSize={50}
+                        disabled={submitting}
+                      />
                     </div>
-                    <div className="flex gap-2">
-                      <Button onClick={handleSubmitTask} disabled={submitting} className="bg-blue-600 hover:bg-blue-700">{submitting ? 'Mengirim...' : 'Kirim'}</Button>
-                      <Button variant="outline" onClick={() => { setSubmitDesc(''); setSubmitFiles([]) }}>Reset</Button>
+                    <div className="flex flex-col sm:flex-row gap-3 pt-4 border-t border-gray-200 dark:border-gray-600">
+                      <Button 
+                        onClick={handleSubmitTask} 
+                        disabled={submitting} 
+                        className="w-full sm:w-auto bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg font-medium"
+                      >
+                        {submitting ? (
+                          <>
+                            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                            Mengirim...
+                          </>
+                        ) : (
+                          <>
+                            <Upload className="w-4 h-4 mr-2" />
+                            Kirim Tugas
+                          </>
+                        )}
+                      </Button>
+                      <Button 
+                        variant="outline" 
+                        onClick={() => { setSubmitDesc(''); setSubmitFiles([]) }}
+                        className="w-full sm:w-auto px-6 py-2 rounded-lg font-medium"
+                      >
+                        Reset
+                      </Button>
                     </div>
                   </div>
                 </div>
               )}
 
               {/* Actions: Selesai / Revisi */}
-              <div className="flex gap-2">
+              <div className="flex flex-col sm:flex-row gap-3 pt-4 border-t border-gray-200 dark:border-gray-600">
                 <Button
                   onClick={() => handleUpdateStatus(selectedTask.id, 'COMPLETED')}
                   disabled={selectedTask.status === 'COMPLETED'}
-                  className={`${selectedTask.status === 'COMPLETED' ? 'bg-green-600 text-white cursor-not-allowed' : 'bg-green-600 hover:bg-green-700 text-white'}`}
+                  className={`w-full sm:w-auto px-6 py-2 rounded-lg font-medium ${
+                    selectedTask.status === 'COMPLETED' 
+                      ? 'bg-green-600 text-white cursor-not-allowed' 
+                      : 'bg-green-600 hover:bg-green-700 text-white'
+                  }`}
                 >
+                  <CheckCircle className="w-4 h-4 mr-2" />
                   {selectedTask.status === 'COMPLETED' ? 'Tugas Selesai' : 'Tandai Selesai'}
                 </Button>
                 {selectedTask.status === 'COMPLETED' && (
                   <Button
                     variant="outline"
                     onClick={() => handleUpdateStatus(selectedTask.id, 'REVISION')}
+                    className="w-full sm:w-auto px-6 py-2 rounded-lg font-medium"
                   >
-                    Revisi
+                    <Clock className="w-4 h-4 mr-2" />
+                    Minta Revisi
                   </Button>
                 )}
               </div>
 
               {/* Uploaded Files */}
-              <div className="border rounded p-4">
-                <h3 className="text-sm font-medium text-gray-700 mb-2">File yang sudah diupload</h3>
-                <div className="space-y-3">
+              <div className="border border-gray-200 dark:border-gray-600 rounded-lg p-4 sm:p-6 bg-gray-50 dark:bg-gray-700/50">
+                <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-4 flex items-center">
+                  <FileText className="w-5 h-5 mr-2 text-green-600" />
+                  File yang Sudah Diupload
+                </h3>
+                <div className="space-y-4">
                   {Array.isArray(selectedTask.submissions) && selectedTask.submissions.length > 0 ? (
                     selectedTask.submissions.map((s) => (
-                      <div key={s.id} className="border rounded p-3">
-                        <div className="text-xs text-gray-500 mb-2">Dikirim: {new Date(s.submittedAt).toLocaleString('id-ID')}</div>
+                      <div key={s.id} className="border border-gray-200 dark:border-gray-600 rounded-lg p-4 bg-white dark:bg-gray-800">
+                        <div className="text-sm text-gray-500 dark:text-gray-400 mb-3 flex items-center">
+                          <Clock className="w-4 h-4 mr-2" />
+                          Dikirim: {new Date(s.submittedAt).toLocaleString('id-ID')}
+                        </div>
                         {s.files && s.files.length > 0 ? (
-                          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                             {s.files.map((f) => (
-                              <div key={f.id} className="border rounded p-2">
-                                <div className="text-xs text-gray-700 truncate" title={f.fileName}>{f.fileName}</div>
+                              <div key={f.id} className="border border-gray-200 dark:border-gray-600 rounded-lg p-3 bg-gray-50 dark:bg-gray-700">
+                                <div className="text-sm font-medium text-gray-900 dark:text-white truncate mb-2" title={f.fileName}>
+                                  {f.fileName}
+                                </div>
                                 {f.fileType?.startsWith('image/') ? (
-                                  <img src={f.fileUrl} alt={f.fileName} className="mt-2 max-h-40 object-contain w-full" />
+                                  <img src={f.fileUrl} alt={f.fileName} className="mt-2 max-h-32 sm:max-h-40 object-contain w-full rounded" />
                                 ) : f.fileType === 'application/pdf' ? (
-                                  <embed src={f.fileUrl} className="mt-2 w-full h-40" type="application/pdf" />
+                                  <embed src={f.fileUrl} className="mt-2 w-full h-32 sm:h-40 rounded" type="application/pdf" />
                                 ) : f.fileType === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' || f.fileType === 'application/msword' ? (
-                                  <div className="mt-2 w-full h-40 border border-border rounded flex items-center justify-center bg-surface">
+                                  <div className="mt-2 w-full h-32 sm:h-40 border border-gray-200 dark:border-gray-600 rounded flex items-center justify-center bg-gray-100 dark:bg-gray-600">
                                     <div className="text-center">
                                       <div className="text-2xl mb-2">📄</div>
-                                      <div className="text-xs text-text-secondary">DOCX Preview</div>
-                                      <div className="text-xs text-text-muted">Gunakan tombol Unduh untuk membuka</div>
+                                      <div className="text-xs text-gray-500 dark:text-gray-400">DOCX Preview</div>
+                                      <div className="text-xs text-gray-400 dark:text-gray-500">Gunakan tombol Unduh untuk membuka</div>
                                     </div>
                                   </div>
-                                ) : null}
-                                <div className="mt-2">
-                                  <a href={f.fileUrl} target="_blank" rel="noreferrer" download className="text-blue-600 text-xs underline">Unduh</a>
+                                ) : (
+                                  <div className="mt-2 w-full h-32 sm:h-40 border border-gray-200 dark:border-gray-600 rounded flex items-center justify-center bg-gray-100 dark:bg-gray-600">
+                                    <div className="text-center">
+                                      <div className="text-2xl mb-2">📁</div>
+                                      <div className="text-xs text-gray-500 dark:text-gray-400">File Preview</div>
+                                    </div>
+                                  </div>
+                                )}
+                                <div className="mt-3">
+                                  <a 
+                                    href={f.fileUrl} 
+                                    target="_blank" 
+                                    rel="noreferrer" 
+                                    download 
+                                    className="inline-flex items-center text-blue-600 hover:text-blue-700 text-sm font-medium"
+                                  >
+                                    <Download className="w-4 h-4 mr-1" />
+                                    Unduh File
+                                  </a>
                                 </div>
                               </div>
                             ))}
                           </div>
                         ) : (
-                          <div className="text-xs text-gray-500">Tidak ada file.</div>
+                          <div className="text-sm text-gray-500 dark:text-gray-400 text-center py-4">
+                            Tidak ada file yang diupload.
+                          </div>
                         )}
                       </div>
                     ))
                   ) : (
-                    <div className="text-sm text-gray-500">Belum ada submission atau file.</div>
+                    <div className="text-center py-8">
+                      <FileText className="w-12 h-12 text-gray-400 mx-auto mb-3" />
+                      <div className="text-sm text-gray-500 dark:text-gray-400">Belum ada submission atau file.</div>
+                    </div>
                   )}
                 </div>
               </div>

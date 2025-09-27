@@ -28,7 +28,7 @@ export async function GET(request: NextRequest) {
 
     const { searchParams } = new URL(request.url)
     const page = parseInt(searchParams.get('page') || '1')
-    const limit = parseInt(searchParams.get('limit') || '10')
+    const limit = parseInt(searchParams.get('limit') || '50') // Increased default limit
     const search = searchParams.get('search') || ''
     const status = searchParams.get('status') || ''
     const priority = searchParams.get('priority') || ''
@@ -185,6 +185,24 @@ export async function POST(request: NextRequest) {
     const session = await getServerSession(authOptions)
     if (!session?.user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
+    // Rate limiting: Check if user has created too many tasks recently
+    const recentTasks = await prisma.task.count({
+      where: {
+        createdById: session.user.id,
+        createdAt: {
+          gte: new Date(Date.now() - 60 * 60 * 1000) // Last 1 hour
+        }
+      }
+    })
+
+    // Limit: 20 tasks per hour for admin, 10 for employee
+    const maxTasksPerHour = session.user.role === 'ADMIN' ? 20 : 10
+    if (recentTasks >= maxTasksPerHour) {
+      return NextResponse.json({ 
+        error: `Terlalu banyak tugas dibuat. Maksimal ${maxTasksPerHour} tugas per jam.` 
+      }, { status: 429 })
     }
 
     const body = await request.json()

@@ -24,6 +24,8 @@ import {
   X,
   Download
 } from 'lucide-react'
+import TaskFileUpload from '@/components/tasks/TaskFileUpload'
+import AdminFileUpload from '@/components/tasks/AdminFileUpload'
 
 interface TaskSubmissionFile { id: string; fileUrl: string; fileName: string; fileSize?: number; fileType?: string }
 interface TaskAttachment { id: string; documentId: string; title: string; url: string | null; size: number; mimeType: string; uploadedAt: string | null }
@@ -73,6 +75,13 @@ export default function AdminTasksPage() {
   })
   const [createFiles, setCreateFiles] = useState<File[]>([])
   const [editFiles, setEditFiles] = useState<File[]>([])
+  const [pagination, setPagination] = useState({
+    page: 1,
+    limit: 50,
+    total: 0,
+    pages: 0
+  })
+  const [allTasksLoaded, setAllTasksLoaded] = useState(false)
 
   useEffect(() => {
     if (status === 'loading') return
@@ -81,15 +90,35 @@ export default function AdminTasksPage() {
     fetchTasks(); fetchUsers()
   }, [session, status])
 
-  const fetchTasks = async () => {
+  const fetchTasks = async (loadAll = false) => {
     try {
       setLoading(true)
-      const res = await fetch('/api/tasks')
+      const params = new URLSearchParams()
+      if (loadAll) {
+        params.set('limit', '1000') // Load all tasks
+      } else {
+        params.set('page', pagination.page.toString())
+        params.set('limit', pagination.limit.toString())
+      }
+      
+      // Add filters
+      if (filters.search) params.set('search', filters.search)
+      if (filters.status) params.set('status', filters.status)
+      if (filters.priority) params.set('priority', filters.priority)
+      if (filters.assignee) params.set('assignee', filters.assignee)
+      
+      const res = await fetch(`/api/tasks?${params.toString()}`)
       if (res.ok) {
         const data = await res.json()
         setTasks(data.tasks || [])
+        if (data.pagination) {
+          setPagination(data.pagination)
+        }
+        setAllTasksLoaded(loadAll)
       }
-    } finally { setLoading(false) }
+    } finally { 
+      setLoading(false) 
+    }
   }
 
   const fetchUsers = async () => {
@@ -105,7 +134,9 @@ export default function AdminTasksPage() {
   const handleCreateTask = async () => {
     try {
       const res = await fetch('/api/tasks', {
-        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({
+        method: 'POST', 
+        headers: { 'Content-Type': 'application/json' }, 
+        body: JSON.stringify({
           title: createForm.title,
           description: createForm.description,
           dueDate: createForm.dueDate || undefined,
@@ -115,7 +146,12 @@ export default function AdminTasksPage() {
           tags: []
         })
       })
-      if (!res.ok) throw new Error('failed')
+      
+      if (!res.ok) {
+        const errorData = await res.json().catch(() => ({}))
+        throw new Error(errorData.error || 'Failed to create task')
+      }
+      
       const json = await res.json()
       const newTaskId: string = json.task?.id
 
@@ -132,8 +168,12 @@ export default function AdminTasksPage() {
       setShowCreate(false)
       setCreateForm({ title: '', description: '', dueDate: '', priority: 'MEDIUM', assignment: 'ALL_EMPLOYEES', assigneeId: '' })
       setCreateFiles([])
-      fetchTasks()
-    } catch {}
+      await fetchTasks(true) // Load all tasks after creation
+      showSuccess('Berhasil', 'Tugas berhasil dibuat')
+    } catch (error) {
+      console.error('Error creating task:', error)
+      showError('Gagal', error instanceof Error ? error.message : 'Gagal membuat tugas')
+    }
   }
 
   const handleDeleteTask = async (taskId: string) => {
@@ -249,10 +289,20 @@ export default function AdminTasksPage() {
                 Manajemen Tugas
               </h1>
               <p className="text-sm sm:text-base text-gray-600 dark:text-gray-400">
-                Kelola dan validasi tugas karyawan
+                Kelola dan validasi tugas karyawan | Total: {pagination.total} tugas | Halaman: {pagination.page}/{pagination.pages}
               </p>
             </div>
             <div className="flex flex-col sm:flex-row gap-2">
+              {!allTasksLoaded && (
+                <Button 
+                  onClick={() => fetchTasks(true)} 
+                  variant="outline"
+                  className="w-full sm:w-auto"
+                >
+                  <Download className="w-4 h-4 mr-2" />
+                  Muat Semua Tugas
+                </Button>
+              )}
               <Button 
                 onClick={() => setShowCreate(v => !v)} 
                 className="w-full sm:w-auto bg-blue-600 hover:bg-blue-700 text-white focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
@@ -315,29 +365,111 @@ export default function AdminTasksPage() {
           </div>
 
         {showCreate && (
-          <div className="bg-card rounded-lg shadow-soft p-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div><label className="block text-sm text-text-secondary mb-1">Judul</label><input className="w-full border border-border rounded px-3 py-2 bg-surface text-text-primary" value={createForm.title} onChange={(e) => setCreateForm(p => ({ ...p, title: e.target.value }))} /></div>
-              <div><label className="block text-sm text-text-secondary mb-1">Deadline</label><input type="date" className="w-full border border-border rounded px-3 py-2 bg-surface text-text-primary" value={createForm.dueDate} onChange={(e) => setCreateForm(p => ({ ...p, dueDate: e.target.value }))} /></div>
-              <div className="md:col-span-2"><label className="block text-sm text-text-secondary mb-1">Deskripsi</label><textarea className="w-full border border-border rounded px-3 py-2 bg-surface text-text-primary" rows={3} value={createForm.description} onChange={(e) => setCreateForm(p => ({ ...p, description: e.target.value }))} /></div>
-              <div className="md:col-span-2">
-                <label className="block text-sm text-text-secondary mb-1">Lampiran (opsional)</label>
-                <input type="file" multiple onChange={(e) => setCreateFiles(Array.from(e.target.files || []))} className="w-full border border-border rounded px-3 py-2 bg-surface text-text-primary" />
-                {createFiles.length > 0 && (
-                  <div className="mt-2 text-xs text-text-secondary">{createFiles.length} file dipilih</div>
-                )}
+          <div className="bg-card rounded-lg shadow-soft p-4 sm:p-6">
+            <div className="space-y-4 sm:space-y-6">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <label className="block text-sm font-medium text-text-secondary">Judul Tugas</label>
+                  <input 
+                    className="w-full border border-border rounded-lg px-3 py-2 bg-surface text-text-primary focus:ring-2 focus:ring-blue-500 focus:border-transparent" 
+                    value={createForm.title} 
+                    onChange={(e) => setCreateForm(p => ({ ...p, title: e.target.value }))}
+                    placeholder="Masukkan judul tugas"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <label className="block text-sm font-medium text-text-secondary">Deadline</label>
+                  <input 
+                    type="date" 
+                    className="w-full border border-border rounded-lg px-3 py-2 bg-surface text-text-primary focus:ring-2 focus:ring-blue-500 focus:border-transparent" 
+                    value={createForm.dueDate} 
+                    onChange={(e) => setCreateForm(p => ({ ...p, dueDate: e.target.value }))} 
+                  />
+                </div>
               </div>
-              <div><label className="block text-sm text-text-secondary mb-1">Prioritas</label><select className="w-full border border-border rounded px-3 py-2 bg-surface text-text-primary" value={createForm.priority} onChange={(e) => setCreateForm(p => ({ ...p, priority: e.target.value as Task['priority'] }))}><option value="LOW">Rendah</option><option value="MEDIUM">Sedang</option><option value="HIGH">Tinggi</option><option value="URGENT">Urgent</option></select></div>
-              <div><label className="block text-sm text-text-secondary mb-1">Penugasan</label><select className="w-full border border-border rounded px-3 py-2 bg-surface text-text-primary" value={createForm.assignment} onChange={(e) => setCreateForm(p => ({ ...p, assignment: e.target.value as Task['assignment'] }))}><option value="ALL_EMPLOYEES">Semua Karyawan</option><option value="SPECIFIC">User Tertentu</option></select></div>
+              
+              <div className="space-y-2">
+                <label className="block text-sm font-medium text-text-secondary">Deskripsi Tugas</label>
+                <textarea 
+                  className="w-full border border-border rounded-lg px-3 py-2 bg-surface text-text-primary focus:ring-2 focus:ring-blue-500 focus:border-transparent" 
+                  rows={4} 
+                  value={createForm.description} 
+                  onChange={(e) => setCreateForm(p => ({ ...p, description: e.target.value }))}
+                  placeholder="Deskripsikan detail tugas yang harus dikerjakan"
+                />
+              </div>
+              
+              <div className="space-y-2">
+                <label className="block text-sm font-medium text-text-secondary">Lampiran Tugas (Admin - Tanpa Batas Jumlah File)</label>
+                <AdminFileUpload
+                  files={createFiles}
+                  onFilesChange={setCreateFiles}
+                  maxFileSize={10}
+                  maxTotalSize={100}
+                />
+              </div>
+              
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <label className="block text-sm font-medium text-text-secondary">Prioritas</label>
+                  <select 
+                    className="w-full border border-border rounded-lg px-3 py-2 bg-surface text-text-primary focus:ring-2 focus:ring-blue-500 focus:border-transparent" 
+                    value={createForm.priority} 
+                    onChange={(e) => setCreateForm(p => ({ ...p, priority: e.target.value as Task['priority'] }))}
+                  >
+                    <option value="LOW">Rendah</option>
+                    <option value="MEDIUM">Sedang</option>
+                    <option value="HIGH">Tinggi</option>
+                    <option value="URGENT">Urgent</option>
+                  </select>
+                </div>
+                <div className="space-y-2">
+                  <label className="block text-sm font-medium text-text-secondary">Penugasan</label>
+                  <select 
+                    className="w-full border border-border rounded-lg px-3 py-2 bg-surface text-text-primary focus:ring-2 focus:ring-blue-500 focus:border-transparent" 
+                    value={createForm.assignment} 
+                    onChange={(e) => setCreateForm(p => ({ ...p, assignment: e.target.value as Task['assignment'] }))}
+                  >
+                    <option value="ALL_EMPLOYEES">Semua Karyawan</option>
+                    <option value="SPECIFIC">User Tertentu</option>
+                  </select>
+                </div>
+              </div>
+              
               {createForm.assignment === 'SPECIFIC' && (
-                <div><label className="block text-sm text-text-secondary mb-1">Pilih Karyawan</label><select className="w-full border border-border rounded px-3 py-2 bg-card text-text-primary" value={createForm.assigneeId} onChange={(e) => setCreateForm(p => ({ ...p, assigneeId: e.target.value }))}><option value="">-- pilih --</option>{users.map(u => (<option key={u.id} value={u.id}>{u.fullName}</option>))}</select></div>
+                <div className="space-y-2">
+                  <label className="block text-sm font-medium text-text-secondary">Pilih Karyawan</label>
+                  <select 
+                    className="w-full border border-border rounded-lg px-3 py-2 bg-surface text-text-primary focus:ring-2 focus:ring-blue-500 focus:border-transparent" 
+                    value={createForm.assigneeId} 
+                    onChange={(e) => setCreateForm(p => ({ ...p, assigneeId: e.target.value }))}
+                  >
+                    <option value="">-- Pilih Karyawan --</option>
+                    {users.map(u => (
+                      <option key={u.id} value={u.id}>{u.fullName}</option>
+                    ))}
+                  </select>
+                </div>
               )}
-                </div>
-            <div className="mt-4 flex gap-2">
-              <Button onClick={handleCreateTask} className="bg-accent hover:bg-accent-hover"><Plus className="w-4 h-4 mr-2" />Kirim Tugas</Button>
-              <Button variant="outline" onClick={() => setShowCreate(false)}>Batal</Button>
-                </div>
+              
+              <div className="flex flex-col sm:flex-row gap-3 pt-4 border-t border-border">
+                <Button 
+                  onClick={handleCreateTask} 
+                  className="w-full sm:w-auto bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg font-medium"
+                >
+                  <Plus className="w-4 h-4 mr-2" />
+                  Buat Tugas
+                </Button>
+                <Button 
+                  variant="outline" 
+                  onClick={() => setShowCreate(false)}
+                  className="w-full sm:w-auto px-6 py-2 rounded-lg font-medium"
+                >
+                  Batal
+                </Button>
               </div>
+            </div>
+          </div>
         )}
 
           {/* Enhanced Filters Section */}
@@ -917,93 +1049,152 @@ export default function AdminTasksPage() {
         )}
 
         {showEdit && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
-            <div className="w-full max-w-2xl bg-card rounded-lg shadow-soft p-4">
-              <div className="flex items-center justify-between mb-3">
-                <h2 className="text-lg font-semibold text-text-primary">Edit Tugas</h2>
-                <Button variant="outline" onClick={() => setShowEdit(false)}>Tutup</Button>
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+            <div className="w-full max-w-4xl bg-card rounded-lg shadow-soft max-h-[90vh] overflow-y-auto">
+              <div className="sticky top-0 bg-card border-b border-border px-6 py-4 rounded-t-lg">
+                <div className="flex items-center justify-between">
+                  <h2 className="text-xl font-semibold text-text-primary">Edit Tugas</h2>
+                  <Button variant="outline" onClick={() => setShowEdit(false)}>
+                    <X className="w-4 h-4 mr-2" />
+                    Tutup
+                  </Button>
+                </div>
               </div>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm text-text-secondary mb-1">Judul</label>
-                  <input className="w-full border border-border rounded px-3 py-2 bg-surface text-text-primary" value={editForm.title} onChange={(e) => setEditForm(p => ({ ...p, title: e.target.value }))} />
+              
+              <div className="p-6 space-y-6">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <label className="block text-sm font-medium text-text-secondary">Judul Tugas</label>
+                    <input 
+                      className="w-full border border-border rounded-lg px-3 py-2 bg-surface text-text-primary focus:ring-2 focus:ring-blue-500 focus:border-transparent" 
+                      value={editForm.title} 
+                      onChange={(e) => setEditForm(p => ({ ...p, title: e.target.value }))}
+                      placeholder="Masukkan judul tugas"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <label className="block text-sm font-medium text-text-secondary">Deadline</label>
+                    <input 
+                      type="date" 
+                      className="w-full border border-border rounded-lg px-3 py-2 bg-surface text-text-primary focus:ring-2 focus:ring-blue-500 focus:border-transparent" 
+                      value={editForm.dueDate} 
+                      onChange={(e) => setEditForm(p => ({ ...p, dueDate: e.target.value }))} 
+                    />
+                  </div>
                 </div>
-                <div>
-                  <label className="block text-sm text-text-secondary mb-1">Deadline</label>
-                  <input type="date" className="w-full border border-border rounded px-3 py-2 bg-surface text-text-primary" value={editForm.dueDate} onChange={(e) => setEditForm(p => ({ ...p, dueDate: e.target.value }))} />
+                
+                <div className="space-y-2">
+                  <label className="block text-sm font-medium text-text-secondary">Deskripsi Tugas</label>
+                  <textarea 
+                    className="w-full border border-border rounded-lg px-3 py-2 bg-surface text-text-primary focus:ring-2 focus:ring-blue-500 focus:border-transparent" 
+                    rows={4} 
+                    value={editForm.description} 
+                    onChange={(e) => setEditForm(p => ({ ...p, description: e.target.value }))}
+                    placeholder="Deskripsikan detail tugas yang harus dikerjakan"
+                  />
                 </div>
-                <div className="md:col-span-2">
-                  <label className="block text-sm text-text-secondary mb-1">Deskripsi</label>
-                  <textarea className="w-full border border-border rounded px-3 py-2 bg-surface text-text-primary" rows={3} value={editForm.description} onChange={(e) => setEditForm(p => ({ ...p, description: e.target.value }))} />
+                
+                <div className="space-y-2">
+                  <label className="block text-sm font-medium text-text-secondary">Lampiran Tugas (Admin - Tanpa Batas Jumlah File)</label>
+                  <AdminFileUpload
+                    files={editFiles}
+                    onFilesChange={setEditFiles}
+                    maxFileSize={10}
+                    maxTotalSize={100}
+                  />
                 </div>
-                <div className="md:col-span-2">
-                  <label className="block text-sm text-text-secondary mb-1">Lampiran (opsional)</label>
-                  <input type="file" multiple onChange={(e) => setEditFiles(Array.from(e.target.files || []))} className="w-full border border-border rounded px-3 py-2 bg-surface text-text-primary" />
-                  {editFiles.length > 0 && (
-                    <div className="mt-2 text-xs text-text-secondary">{editFiles.length} file dipilih</div>
-                  )}
+                
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <label className="block text-sm font-medium text-text-secondary">Prioritas</label>
+                    <select 
+                      className="w-full border border-border rounded-lg px-3 py-2 bg-surface text-text-primary focus:ring-2 focus:ring-blue-500 focus:border-transparent" 
+                      value={editForm.priority} 
+                      onChange={(e) => setEditForm(p => ({ ...p, priority: e.target.value as Task['priority'] }))}
+                    >
+                      <option value="LOW">Rendah</option>
+                      <option value="MEDIUM">Sedang</option>
+                      <option value="HIGH">Tinggi</option>
+                      <option value="URGENT">Urgent</option>
+                    </select>
+                  </div>
+                  <div className="space-y-2">
+                    <label className="block text-sm font-medium text-text-secondary">Penugasan</label>
+                    <select 
+                      className="w-full border border-border rounded-lg px-3 py-2 bg-surface text-text-primary focus:ring-2 focus:ring-blue-500 focus:border-transparent" 
+                      value={editForm.assignment} 
+                      onChange={(e) => setEditForm(p => ({ ...p, assignment: e.target.value as Task['assignment'] }))}
+                    >
+                      <option value="ALL_EMPLOYEES">Semua Karyawan</option>
+                      <option value="SPECIFIC">User Tertentu</option>
+                    </select>
+                  </div>
                 </div>
-                <div>
-                  <label className="block text-sm text-text-secondary mb-1">Prioritas</label>
-                  <select className="w-full border border-border rounded px-3 py-2 bg-surface text-text-primary" value={editForm.priority} onChange={(e) => setEditForm(p => ({ ...p, priority: e.target.value as Task['priority'] }))}>
-                    <option value="LOW">Rendah</option>
-                    <option value="MEDIUM">Sedang</option>
-                    <option value="HIGH">Tinggi</option>
-                    <option value="URGENT">Urgent</option>
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-sm text-text-secondary mb-1">Penugasan</label>
-                  <select className="w-full border border-border rounded px-3 py-2 bg-surface text-text-primary" value={editForm.assignment} onChange={(e) => setEditForm(p => ({ ...p, assignment: e.target.value as Task['assignment'] }))}>
-                    <option value="ALL_EMPLOYEES">Semua Karyawan</option>
-                    <option value="SPECIFIC">User Tertentu</option>
-                  </select>
-                </div>
+                
                 {editForm.assignment === 'SPECIFIC' && (
-                  <div>
-                    <label className="block text-sm text-text-secondary mb-1">Pilih Karyawan</label>
-                    <select className="w-full border border-border rounded px-3 py-2 bg-card text-text-primary" value={editForm.assigneeId} onChange={(e) => setEditForm(p => ({ ...p, assigneeId: e.target.value }))}>
-                      <option value="">-- pilih --</option>
-                      {users.map(u => (<option key={u.id} value={u.id}>{u.fullName}</option>))}
+                  <div className="space-y-2">
+                    <label className="block text-sm font-medium text-text-secondary">Pilih Karyawan</label>
+                    <select 
+                      className="w-full border border-border rounded-lg px-3 py-2 bg-surface text-text-primary focus:ring-2 focus:ring-blue-500 focus:border-transparent" 
+                      value={editForm.assigneeId} 
+                      onChange={(e) => setEditForm(p => ({ ...p, assigneeId: e.target.value }))}
+                    >
+                      <option value="">-- Pilih Karyawan --</option>
+                      {users.map(u => (
+                        <option key={u.id} value={u.id}>{u.fullName}</option>
+                      ))}
                     </select>
                   </div>
                 )}
-              </div>
-              <div className="mt-4 flex gap-2">
-                <Button onClick={async () => {
-                  try {
-                    const res = await fetch(`/api/tasks/${editForm.id}`, {
-                      method: 'PATCH',
-                      headers: { 'Content-Type': 'application/json' },
-                      body: JSON.stringify({
-                        title: editForm.title,
-                        description: editForm.description,
-                        dueDate: editForm.dueDate || undefined,
-                        priority: editForm.priority,
-                        assignment: editForm.assignment,
-                        assigneeId: editForm.assignment === 'SPECIFIC' ? editForm.assigneeId : undefined,
-                      })
-                    });
-                    if (!res.ok) throw new Error('failed');
-                    // Upload files if any
-                    if (editForm.id && editFiles.length > 0) {
-                      for (const f of editFiles) {
-                        const fd = new FormData()
-                        fd.append('taskId', editForm.id)
-                        fd.append('file', f)
-                        await fetch('/api/tasks/upload-document', { method: 'POST', body: fd })
+                
+                <div className="flex flex-col sm:flex-row gap-3 pt-4 border-t border-border">
+                  <Button 
+                    onClick={async () => {
+                      try {
+                        const res = await fetch(`/api/tasks/${editForm.id}`, {
+                          method: 'PATCH',
+                          headers: { 'Content-Type': 'application/json' },
+                          body: JSON.stringify({
+                            title: editForm.title,
+                            description: editForm.description,
+                            dueDate: editForm.dueDate || undefined,
+                            priority: editForm.priority,
+                            assignment: editForm.assignment,
+                            assigneeId: editForm.assignment === 'SPECIFIC' ? editForm.assigneeId : undefined,
+                          })
+                        });
+                        if (!res.ok) throw new Error('failed');
+                        // Upload files if any
+                        if (editForm.id && editFiles.length > 0) {
+                          for (const f of editFiles) {
+                            const fd = new FormData()
+                            fd.append('taskId', editForm.id)
+                            fd.append('file', f)
+                            await fetch('/api/tasks/upload-document', { method: 'POST', body: fd })
+                          }
+                        }
+                        setShowEdit(false);
+                        setSelectedTask(null);
+                        fetchTasks();
+                        setEditFiles([])
+                        showSuccess('Berhasil', 'Tugas berhasil diperbarui');
+                      } catch {
+                        showError('Gagal', 'Gagal memperbarui tugas');
                       }
-                    }
-                    setShowEdit(false);
-                    setSelectedTask(null);
-                    fetchTasks();
-                    setEditFiles([])
-                    showSuccess('Berhasil', 'Tugas berhasil diperbarui');
-                  } catch {
-                    showError('Gagal', 'Gagal memperbarui tugas');
-                  }
-                }} className="bg-accent hover:bg-accent-hover">Simpan</Button>
-                <Button variant="outline" onClick={() => setShowEdit(false)}>Batal</Button>
+                    }} 
+                    className="w-full sm:w-auto bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg font-medium"
+                  >
+                    <Edit className="w-4 h-4 mr-2" />
+                    Simpan Perubahan
+                  </Button>
+                  <Button 
+                    variant="outline" 
+                    onClick={() => setShowEdit(false)}
+                    className="w-full sm:w-auto px-6 py-2 rounded-lg font-medium"
+                  >
+                    Batal
+                  </Button>
+                </div>
               </div>
             </div>
           </div>

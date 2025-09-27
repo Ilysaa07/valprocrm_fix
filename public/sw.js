@@ -27,6 +27,19 @@ self.addEventListener('fetch', event => {
 
 	if (request.method !== 'GET') return
 
+	// Handle external resources (like Cloudflare Insights) - let them pass through
+	if (url.origin !== self.location.origin) {
+		// For external resources, just fetch without caching
+		event.respondWith(
+			fetch(request).catch(() => {
+				// If external resource fails, return a basic response instead of error
+				return new Response('', { status: 200, statusText: 'OK' })
+			})
+		)
+		return
+	}
+
+	// Handle same-origin requests
 	if (url.origin === self.location.origin) {
 		event.respondWith(
 			caches.open(CACHE_NAME).then(async cache => {
@@ -48,7 +61,7 @@ self.addEventListener('fetch', event => {
 			fetch(request).catch(async () => {
 				const cache = await caches.open(CACHE_NAME)
 				const offline = await cache.match('/offline.html')
-				return offline || Response.error()
+				return offline || new Response('Offline', { status: 200 })
 			})
 		)
 	} else {

@@ -29,7 +29,7 @@ export function Table({ className, ...props }: TableProps) {
   return (
     <div className="relative w-full overflow-auto">
       <table
-        className={cn('w-full caption-bottom text-sm', className)}
+        className={cn('w-full caption-bottom text-sm text-gray-900 dark:text-gray-100', className)}
         {...props}
       />
     </div>
@@ -38,7 +38,7 @@ export function Table({ className, ...props }: TableProps) {
 
 export function TableHeader({ className, ...props }: TableHeaderProps) {
   return (
-    <thead className={cn('[&_tr]:border-b', className)} {...props} />
+    <thead className={cn('[&_tr]:border-b bg-gray-50 dark:bg-gray-700 border-gray-200 dark:border-gray-700', className)} {...props} />
   )
 }
 
@@ -52,7 +52,7 @@ export function TableRow({ className, ...props }: TableRowProps) {
   return (
     <tr
       className={cn(
-        'border-b transition-colors hover:bg-gray-50',
+        'border-b border-gray-200 dark:border-gray-700 transition-colors hover:bg-gray-50 dark:hover:bg-gray-700',
         className
       )}
       {...props}
@@ -64,7 +64,7 @@ export function TableHead({ className, ...props }: TableHeadProps) {
   return (
     <th
       className={cn(
-        'h-12 px-4 text-left align-middle font-medium text-gray-500',
+        'h-12 px-4 text-left align-middle font-medium text-gray-500 dark:text-gray-300',
         className
       )}
       {...props}
@@ -75,7 +75,7 @@ export function TableHead({ className, ...props }: TableHeadProps) {
 export function TableCell({ className, ...props }: TableCellProps) {
   return (
     <td
-      className={cn('p-4 align-middle', className)}
+      className={cn('p-4 align-middle text-gray-900 dark:text-gray-100', className)}
       {...props}
     />
   )

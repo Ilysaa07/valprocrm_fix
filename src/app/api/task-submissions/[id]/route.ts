@@ -55,9 +55,10 @@ export async function PATCH(
     const newFiles = form.getAll('attachments') as File[]
     const deleteFileIds = ((form.get('deleteFileIds') as string) || '').split(',').filter(Boolean)
     
-    // Validasi file
-    const maxFileSize = 10 * 1024 * 1024 // 10MB
+    // Validasi file dengan batas yang jelas
+    const maxFileSize = 10 * 1024 * 1024 // 10MB per file
     const maxTotalSize = 50 * 1024 * 1024 // 50MB total untuk semua file
+    const maxFileCount = 10 // Maksimal 10 file per submission
     const allowedTypes = [
       'image/jpeg', 
       'image/png', 
@@ -73,6 +74,13 @@ export async function PATCH(
       'text/plain'
     ]
     
+    // Validasi jumlah file
+    if (newFiles.length > maxFileCount) {
+      return NextResponse.json({ 
+        error: `Terlalu banyak file. Maksimal ${maxFileCount} file per submission` 
+      }, { status: 400 })
+    }
+    
     // Validasi ukuran total
     let totalSize = 0
     for (const file of newFiles) {
@@ -81,7 +89,7 @@ export async function PATCH(
     
     if (totalSize > maxTotalSize) {
       return NextResponse.json({ 
-        error: `Total ukuran file terlalu besar. Maksimal 50MB untuk semua file` 
+        error: `Total ukuran file terlalu besar. Maksimal ${Math.round(maxTotalSize / (1024 * 1024))}MB untuk semua file` 
       }, { status: 400 })
     }
     
@@ -89,19 +97,22 @@ export async function PATCH(
     for (const file of newFiles) {
       if (file.size > maxFileSize) {
         return NextResponse.json({ 
-          error: `File ${file.name} terlalu besar. Maksimal 10MB per file` 
+          error: `File "${file.name}" terlalu besar. Maksimal ${Math.round(maxFileSize / (1024 * 1024))}MB per file` 
         }, { status: 400 })
       }
       if (!allowedTypes.includes(file.type)) {
         return NextResponse.json({ 
-          error: `Tipe file ${file.name} tidak didukung. Gunakan: PNG, JPG, GIF, WEBP, PDF, DOC, DOCX, XLS, XLSX, ZIP, TXT` 
+          error: `Tipe file "${file.name}" tidak didukung. Format yang diperbolehkan: PNG, JPG, GIF, WEBP, PDF, DOC, DOCX, XLS, XLSX, ZIP, TXT` 
         }, { status: 400 })
       }
     }
 
     const submission = await prisma.taskSubmission.findUnique({
       where: { id: params.id },
-      include: { task: true }
+      include: { 
+        task: true,
+        files: true
+      }
     })
 
     if (!submission) return NextResponse.json({ error: 'Submission tidak ditemukan' }, { status: 404 })
@@ -113,6 +124,18 @@ export async function PATCH(
     // Allow edits only when task is in revision or still in progress (before approved)
     if (submission.task.status !== 'REVISION' && submission.task.status !== 'IN_PROGRESS') {
       return NextResponse.json({ error: 'Submission tidak dapat diedit pada status tugas saat ini' }, { status: 400 })
+    }
+
+    // Validasi total file (existing + new - deleted)
+    const existingFileCount = submission.files.length
+    const filesToDelete = deleteFileIds.length
+    const newFileCount = newFiles.length
+    const totalFileCount = existingFileCount - filesToDelete + newFileCount
+    
+    if (totalFileCount > maxFileCount) {
+      return NextResponse.json({ 
+        error: `Total file akan melebihi batas. Saat ini ada ${existingFileCount} file, akan ditambah ${newFileCount} file baru, dan dihapus ${filesToDelete} file. Total akan menjadi ${totalFileCount} file, melebihi batas maksimal ${maxFileCount} file.` 
+      }, { status: 400 })
     }
 
     // Upload any new files through existing upload endpoint

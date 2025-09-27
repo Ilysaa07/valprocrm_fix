@@ -172,7 +172,7 @@ export default function EmployeeDashboard({
   return (
       <div className="space-y-6 min-w-0 overflow-x-hidden" role="main" aria-label="Employee Dashboard">
         {/* Welcome Header */}
-        <div className="bg-gradient-to-r from-accent/10 to-accent/5 rounded-2xl p-4 sm:p-6 border border-accent/20" role="banner">
+        <div className="bg-gradient-to-r from-accent/10 to-accent/5 rounded-2xl p-4 sm:p-6 border border-accent/20 theme-transition" role="banner">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4">
             <div className="min-w-0">
               <h1 className="text-lg sm:text-2xl font-bold text-text-primary truncate" id="welcome-title">
@@ -211,9 +211,9 @@ export default function EmployeeDashboard({
       </div>
 
       {/* Key Metrics Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 w-full max-w-screen-sm mx-auto sm:max-w-none sm:mx-0 px-3 sm:px-0 min-w-0" role="region" aria-label="Key Metrics">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 w-full px-3 sm:px-0 min-w-0" role="region" aria-label="Key Metrics">
         {/* Total Tasks */}
-        <Card className="hover:shadow-lg transition-shadow duration-200">
+        <Card className="hover:shadow-lg transition-shadow duration-200 dashboard-card">
           <CardBody className="p-6">
             <div className="flex items-center justify-between">
               <div>
@@ -229,7 +229,7 @@ export default function EmployeeDashboard({
         </Card>
 
         {/* Completed Tasks */}
-        <Card className="hover:shadow-lg transition-shadow duration-200">
+        <Card className="hover:shadow-lg transition-shadow duration-200 dashboard-card">
           <CardBody className="p-6">
             <div className="flex items-center justify-between">
               <div>
@@ -247,7 +247,7 @@ export default function EmployeeDashboard({
         </Card>
 
         {/* Pending Tasks */}
-        <Card className="hover:shadow-lg transition-shadow duration-200">
+        <Card className="hover:shadow-lg transition-shadow duration-200 dashboard-card">
           <CardBody className="p-6">
             <div className="flex items-center justify-between">
               <div>
@@ -263,7 +263,7 @@ export default function EmployeeDashboard({
         </Card>
 
         {/* Notifications */}
-        <Card className="hover:shadow-lg transition-shadow duration-200">
+        <Card className="hover:shadow-lg transition-shadow duration-200 dashboard-card">
           <CardBody className="p-6">
             <div className="flex items-center justify-between">
               <div>
@@ -280,10 +280,10 @@ export default function EmployeeDashboard({
       </div>
 
         {/* Main Content Grid */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 w-full max-w-screen-sm mx-auto sm:max-w-none sm:mx-0 px-3 sm:px-0 min-w-0" role="region" aria-label="Main Content">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6 w-full px-3 sm:px-0 min-w-0" role="region" aria-label="Main Content">
         {/* Recent Tasks - Takes 2 columns */}
         <div className="lg:col-span-2">
-          <Card>
+          <Card className="dashboard-card theme-transition">
             <div className="p-6 pb-4">
               <div className="flex items-center justify-between">
                 <h2 className="text-xl font-semibold text-text-primary">Tugas Terbaru</h2>
@@ -345,43 +345,8 @@ export default function EmployeeDashboard({
 
         {/* Quick Actions & Notifications - Takes 1 column */}
         <div className="space-y-6">
-          {/* Quick Actions */}
-          <Card>
-            <div className="p-6 pb-4">
-              <h2 className="text-xl font-semibold text-text-primary">Aksi Cepat</h2>
-            </div>
-            <CardBody className="pt-0">
-              <div className="space-y-3">
-                <Link href="/employee/attendance">
-                  <Button className="w-full justify-start" variant="outline">
-                    <Clock className="h-4 w-4 mr-3" />
-                    Check In/Out
-                  </Button>
-                </Link>
-                <Link href="/employee/tasks">
-                  <Button className="w-full justify-start" variant="outline">
-                    <CheckSquare className="h-4 w-4 mr-3" />
-                    Lihat Tugas
-                  </Button>
-                </Link>
-                <Link href="/employee/leave-requests/create">
-                  <Button className="w-full justify-start" variant="outline">
-                    <Calendar className="h-4 w-4 mr-3" />
-                    Ajukan Izin
-                  </Button>
-                </Link>
-                <Link href="/employee/wfh-requests/create">
-                  <Button className="w-full justify-start" variant="outline">
-                    <Home className="h-4 w-4 mr-3" />
-                    WFH Request
-                  </Button>
-                </Link>
-              </div>
-            </CardBody>
-          </Card>
-
           {/* Recent Notifications */}
-          <Card>
+          <Card className="dashboard-card theme-transition">
             <div className="p-6 pb-4">
               <div className="flex items-center justify-between">
                 <h2 className="text-xl font-semibold text-text-primary">Notifikasi</h2>
@@ -433,7 +398,7 @@ export default function EmployeeDashboard({
       </div>
 
       {/* Progress Overview */}
-      <Card role="region" aria-label="Progress Overview">
+      <Card role="region" aria-label="Progress Overview" className="dashboard-card theme-transition">
         <div className="p-6 pb-4">
           <h2 className="text-xl font-semibold text-text-primary">Progress Tugas</h2>
         </div>
@@ -475,9 +440,9 @@ export default function EmployeeDashboard({
       </Card>
 
       {/* Additional Information Grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 w-full max-w-screen-sm mx-auto sm:max-w-none sm:mx-0 px-3 sm:px-0 min-w-0">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6 w-full px-3 sm:px-0 min-w-0">
         {/* Leave & WFH Status */}
-        <Card>
+        <Card className="dashboard-card theme-transition">
           <div className="p-6 pb-4">
             <h2 className="text-xl font-semibold text-text-primary">Status Izin & WFH</h2>
           </div>
@@ -526,7 +491,7 @@ export default function EmployeeDashboard({
         </Card>
 
         {/* Quick Stats Summary */}
-        <Card>
+        <Card className="dashboard-card theme-transition">
           <div className="p-6 pb-4">
             <h2 className="text-xl font-semibold text-text-primary">Ringkasan Cepat</h2>
           </div>
@@ -565,7 +530,7 @@ export default function EmployeeDashboard({
       </div>
 
       {/* Recent Activity Feed */}
-      <Card>
+      <Card className="dashboard-card theme-transition">
         <div className="p-6 pb-4">
           <div className="flex items-center justify-between">
             <h2 className="text-xl font-semibold text-text-primary">Aktivitas Terbaru</h2>
@@ -616,10 +581,10 @@ export default function EmployeeDashboard({
       </Card>
 
       {/* Additional Widgets Row */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 min-w-0">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6 min-w-0 px-3 sm:px-0">
 
         {/* Productivity Tips */}
-        <Card>
+        <Card className="dashboard-card theme-transition">
           <div className="p-6 pb-4">
             <div className="flex items-center space-x-2">
               <Lightbulb className="h-5 w-5 text-warning" />
@@ -674,7 +639,7 @@ export default function EmployeeDashboard({
         </Card>
 
         {/* Quick Actions Extended */}
-        <Card>
+        <Card className="dashboard-card theme-transition">
           <div className="p-6 pb-4">
             <div className="flex items-center space-x-2">
               <Plus className="h-5 w-5 text-accent" />
