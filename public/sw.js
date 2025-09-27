@@ -33,7 +33,11 @@ self.addEventListener('fetch', event => {
 		event.respondWith(
 			fetch(request).catch(() => {
 				// If external resource fails, return a basic response instead of error
-				return new Response('', { status: 200, statusText: 'OK' })
+				return new Response('', { 
+					status: 200, 
+					statusText: 'OK',
+					headers: { 'Content-Type': 'text/plain' }
+				})
 			})
 		)
 		return
