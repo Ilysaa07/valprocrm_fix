@@ -3,9 +3,9 @@ import CredentialsProvider from 'next-auth/providers/credentials'
 import * as argon2 from 'argon2'
 import { prisma } from './prisma'
 
-// Lockout config
-const MAX_ATTEMPTS = 5
-const LOCK_MINUTES = 15
+// Lockout config - More lenient for production
+const MAX_ATTEMPTS = 10
+const LOCK_MINUTES = 5
 
 export const authOptions: NextAuthOptions = {
   providers: [
