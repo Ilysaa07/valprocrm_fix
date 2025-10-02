@@ -24,9 +24,14 @@ export async function GET(request: NextRequest) {
           }
         }
       },
-      orderBy: {
-        createdAt: 'desc'
-      }
+      orderBy: [
+        {
+          invoiceNumber: 'desc'
+        },
+        {
+          createdAt: 'desc'
+        }
+      ]
     });
 
     return NextResponse.json(invoices);

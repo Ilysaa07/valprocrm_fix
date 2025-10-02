@@ -69,7 +69,7 @@ export default function InvoiceDetailPage() {
 
     try {
       setIsGeneratingPDF(true);
-      const filename = generateFilename('invoice', invoice.clientName, invoice.invoiceNumber);
+      const filename = generateFilename('invoice', invoice.clientName, invoice.invoiceNumber, invoice.companyName, invoice.date);
       await downloadPDF('invoice-content', { filename });
     } catch (err) {
       console.error('Error downloading PDF:', err);

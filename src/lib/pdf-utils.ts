@@ -222,13 +222,28 @@ const sanitizeFilename = (name: string): string => {
     .slice(0, 120);
 };
 
-export const generateFilename = (prefix: string = 'invoice', clientName?: string, invoiceNumber?: string): string => {
-  const now = new Date();
-  const timestamp = now.toISOString().slice(0, 19).replace(/:/g, '-');
-  const clientPart = clientName ? sanitizeFilename(clientName) : undefined;
-  const invPart = invoiceNumber ? sanitizeFilename(invoiceNumber) : undefined;
-  const base = [prefix, clientPart, invPart].filter(Boolean).join('_');
-  return `${base || 'invoice'}_${timestamp}.pdf`;
+export const generateFilename = (prefix: string = 'invoice', clientName?: string, invoiceNumber?: string, companyName?: string, creationDate?: string | Date): string => {
+  // Format: INVOICE_[CompanyName]_[CreationDate]_[InvoiceNumber].pdf
+  const sanitizedCompanyName = companyName ? sanitizeFilename(companyName) : 'COMPANY';
+  const sanitizedInvoiceNumber = invoiceNumber ? sanitizeFilename(invoiceNumber) : 'INV-001';
+  
+  // Format creation date as YYYYMMDD
+  let formattedDate: string;
+  if (creationDate) {
+    const date = typeof creationDate === 'string' ? new Date(creationDate) : creationDate;
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    formattedDate = `${year}${month}${day}`;
+  } else {
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = String(now.getMonth() + 1).padStart(2, '0');
+    const day = String(now.getDate()).padStart(2, '0');
+    formattedDate = `${year}${month}${day}`;
+  }
+  
+  return `INVOICE_${sanitizedCompanyName}_${formattedDate}_${sanitizedInvoiceNumber}.pdf`;
 };
 
 // Utility function to validate element before PDF generation

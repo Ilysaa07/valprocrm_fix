@@ -72,6 +72,25 @@ export async function POST(
         },
       })
     }
+    
+    // If rejected and it's a past date, create absent record
+    if (input.status === 'REJECTED') {
+      const wfhDate = new Date(wfhLog.logTime)
+      const today = new Date()
+      today.setHours(0, 0, 0, 0)
+      
+      // If the WFH request was for a past date, mark as absent
+      if (wfhDate < today && !existingAttendance) {
+        await prisma.attendance.create({
+          data: {
+            userId: wfhLog.userId,
+            checkInTime: wfhLog.logTime,
+            status: 'ABSENT',
+            notes: `Absent - WFH request rejected`,
+          },
+        })
+      }
+    }
 
     return NextResponse.json({ 
       message: `Log WFH ${input.status === 'APPROVED' ? 'disetujui' : 'ditolak'}`, 

@@ -3,15 +3,67 @@ import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 
-function generateInvoiceNumber(): string {
+async function generateSequentialInvoiceNumber(): Promise<string> {
   const now = new Date();
   const yyyy = now.getFullYear();
   const mm = String(now.getMonth() + 1).padStart(2, '0');
   const dd = String(now.getDate()).padStart(2, '0');
-  const rand = Math.floor(Math.random() * 10000)
-    .toString()
-    .padStart(4, '0');
-  return `INV-${yyyy}${mm}${dd}-${rand}`;
+  const datePrefix = `INV-${yyyy}${mm}${dd}`;
+  
+  // Use transaction with serializable isolation for concurrency control
+  return await prisma.$transaction(async (tx) => {
+    // Find the highest invoice number for today with proper ordering
+    const lastInvoice = await tx.invoice.findFirst({
+      where: {
+        invoiceNumber: {
+          startsWith: datePrefix
+        }
+      },
+      orderBy: {
+        invoiceNumber: 'desc'
+      },
+      select: {
+        invoiceNumber: true
+      }
+    });
+    
+    let nextSequence = 1;
+    
+    if (lastInvoice) {
+      // Extract the sequence number from the last invoice
+      const lastSequenceMatch = lastInvoice.invoiceNumber.match(/-(\d{4})$/);
+      if (lastSequenceMatch) {
+        nextSequence = parseInt(lastSequenceMatch[1], 10) + 1;
+      }
+    }
+    
+    // Try to create invoice numbers until we find one that doesn't exist
+    let attempts = 0;
+    const maxAttempts = 10;
+    
+    while (attempts < maxAttempts) {
+      const sequenceStr = String(nextSequence + attempts).padStart(4, '0');
+      const candidateNumber = `${datePrefix}-${sequenceStr}`;
+      
+      // Check if this number exists
+      const existingCheck = await tx.invoice.findUnique({
+        where: { invoiceNumber: candidateNumber },
+        select: { id: true }
+      });
+      
+      if (!existingCheck) {
+        return candidateNumber;
+      }
+      
+      attempts++;
+    }
+    
+    // Fallback: use timestamp-based suffix if all attempts failed
+    const timestamp = Date.now().toString().slice(-4);
+    return `${datePrefix}-${timestamp}`;
+  }, {
+    isolationLevel: 'Serializable'
+  });
 }
 
 // GET /api/invoices - Get all invoices (admin only)
@@ -38,9 +90,14 @@ export async function GET() {
           }
         }
       },
-      orderBy: {
-        createdAt: 'desc'
-      }
+      orderBy: [
+        {
+          invoiceNumber: 'desc'
+        },
+        {
+          createdAt: 'desc'
+        }
+      ]
     });
 
     return NextResponse.json(invoices);
@@ -92,8 +149,8 @@ export async function POST(request: NextRequest) {
       status
     } = body as Record<string, unknown>;
 
-    // Validate required fields
-    if (!invoiceNumber || !date || !dueDate || !companyName || !clientName || !items || !Array.isArray(items)) {
+    // Validate required fields (invoiceNumber is optional - will be generated if not provided)
+    if (!date || !dueDate || !companyName || !clientName || !items || !Array.isArray(items)) {
       return NextResponse.json(
         { error: 'Missing required fields' },
         { status: 400 }
@@ -166,16 +223,26 @@ export async function POST(request: NextRequest) {
     const computedTaxAmount = Math.max(0, (numericTaxRate || 0) * taxBase / 100);
     const computedTotal = taxBase + computedTaxAmount;
 
-    // Check if invoice number already exists
-    const existingInvoice = invoiceNumber
-      ? await prisma.invoice.findUnique({ where: { invoiceNumber: String(invoiceNumber) } })
-      : null;
+    // Generate or validate invoice number
+    let finalInvoiceNumber: string;
+    
+    if (invoiceNumber) {
+      // If invoice number is provided, check if it already exists
+      const existingInvoice = await prisma.invoice.findUnique({ 
+        where: { invoiceNumber: String(invoiceNumber) } 
+      });
 
-    if (existingInvoice) {
-      return NextResponse.json(
-        { error: 'Invoice number already exists' },
-        { status: 400 }
-      );
+      if (existingInvoice) {
+        return NextResponse.json(
+          { error: 'Invoice number already exists' },
+          { status: 400 }
+        );
+      }
+      
+      finalInvoiceNumber = String(invoiceNumber);
+    } else {
+      // Generate sequential invoice number
+      finalInvoiceNumber = await generateSequentialInvoiceNumber();
     }
 
     // Resolve creator user to satisfy FK and avoid P2003
@@ -199,7 +266,7 @@ export async function POST(request: NextRequest) {
     // Create invoice with items (cast data to any until Prisma client is regenerated)
     const invoice = await prisma.invoice.create({
       data: {
-        invoiceNumber: String(invoiceNumber || generateInvoiceNumber()),
+        invoiceNumber: finalInvoiceNumber,
         date: new Date(String(date)),
         dueDate: new Date(String(dueDate)),
         companyName: String(companyName),

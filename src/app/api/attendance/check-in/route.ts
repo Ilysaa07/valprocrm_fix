@@ -4,6 +4,7 @@ import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { z } from 'zod'
 import { isHoliday } from '@/lib/holidays'
+import { processExpiredWFHRequestsForUser } from '@/lib/wfh-cleanup'
 import type { AttendanceStatus as PrismaAttendanceStatus } from '@prisma/client'
 
 const checkInSchema = z.object({
@@ -43,6 +44,7 @@ function getAttendanceStatus(checkInTime: Date): PrismaAttendanceStatus {
   return (isLateCheckIn(checkInTime) ? 'LATE' : 'PRESENT') as PrismaAttendanceStatus
 }
 
+
 export async function POST(req: NextRequest) {
   try {
     const session = await getServerSession(authOptions)
@@ -80,7 +82,7 @@ export async function POST(req: NextRequest) {
       }, { status: 400 })
     }
 
-    // Check if user has pending or approved WFH log today
+    // Check if user has WFH log for TODAY only (not previous days)
     const existingWFH = await prisma.wfhLog.findFirst({
       where: {
         userId: session.user.id,
@@ -99,6 +101,9 @@ export async function POST(req: NextRequest) {
         error: 'Anda sudah mengajukan atau memiliki WFH hari ini. Tidak dapat melakukan absensi kantor.' 
       }, { status: 400 })
     }
+
+    // Auto-process expired pending WFH requests from previous days
+    await processExpiredWFHRequestsForUser(session.user.id)
 
     // Load latest office location
     const office = await prisma.officeLocation.findFirst({ orderBy: { createdAt: 'desc' } })

@@ -3,6 +3,7 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { isHoliday as checkHoliday } from '@/lib/holidays'
+import { processExpiredWFHRequestsForUser } from '@/lib/wfh-cleanup'
 
 export async function GET() {
   try {
@@ -16,6 +17,9 @@ export async function GET() {
     todayEnd.setHours(23, 59, 59, 999)
     const holidayInfo = checkHoliday(new Date())
     const isHoliday = holidayInfo.isHoliday
+
+    // Process expired WFH requests before checking today's status
+    await processExpiredWFHRequestsForUser(session.user.id)
 
     // Get today's attendance record
     let attendance = await prisma.attendance.findFirst({

@@ -60,14 +60,32 @@ export default function InvoiceForm({ mode, initialData, initialItems, invoiceId
     }
   }, [session, status, router]);
 
-  const generateInvoiceNumber = () => {
-    const now = new Date();
-    const year = now.getFullYear();
-    const month = String(now.getMonth() + 1).padStart(2, '0');
-    const day = String(now.getDate()).padStart(2, '0');
-    const random = Math.floor(Math.random() * 10000).toString().padStart(4, '0');
-    const invoiceNumber = `INV-${year}${month}${day}-${random}`;
-    setFormData(prev => ({ ...prev, invoiceNumber }));
+  const generateInvoiceNumber = async () => {
+    try {
+      // Call API to get next sequential invoice number
+      const response = await fetch('/api/invoices/next-number');
+      if (response.ok) {
+        const { invoiceNumber } = await response.json();
+        setFormData(prev => ({ ...prev, invoiceNumber }));
+      } else {
+        // Fallback to client-side generation if API fails
+        const now = new Date();
+        const year = now.getFullYear();
+        const month = String(now.getMonth() + 1).padStart(2, '0');
+        const day = String(now.getDate()).padStart(2, '0');
+        const invoiceNumber = `INV-${year}${month}${day}-0001`;
+        setFormData(prev => ({ ...prev, invoiceNumber }));
+      }
+    } catch (error) {
+      console.error('Error generating invoice number:', error);
+      // Fallback to client-side generation
+      const now = new Date();
+      const year = now.getFullYear();
+      const month = String(now.getMonth() + 1).padStart(2, '0');
+      const day = String(now.getDate()).padStart(2, '0');
+      const invoiceNumber = `INV-${year}${month}${day}-0001`;
+      setFormData(prev => ({ ...prev, invoiceNumber }));
+    }
   };
 
   const normalizeLeadingZeros = (raw: string): string => {
