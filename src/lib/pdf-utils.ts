@@ -223,8 +223,9 @@ const sanitizeFilename = (name: string): string => {
 };
 
 export const generateFilename = (prefix: string = 'invoice', clientName?: string, invoiceNumber?: string, companyName?: string, creationDate?: string | Date): string => {
-  // Format: INVOICE_[CompanyName]_[CreationDate]_[InvoiceNumber].pdf
-  const sanitizedCompanyName = companyName ? sanitizeFilename(companyName) : 'COMPANY';
+  // Format: INVOICE_[ClientName]_[CreationDate]_[InvoiceNumber].pdf
+  // Use clientName (PT client) instead of companyName for the filename
+  const sanitizedClientName = clientName ? sanitizeFilename(clientName) : 'CLIENT';
   const sanitizedInvoiceNumber = invoiceNumber ? sanitizeFilename(invoiceNumber) : 'INV-001';
   
   // Format creation date as YYYYMMDD
@@ -243,7 +244,7 @@ export const generateFilename = (prefix: string = 'invoice', clientName?: string
     formattedDate = `${year}${month}${day}`;
   }
   
-  return `INVOICE_${sanitizedCompanyName}_${formattedDate}_${sanitizedInvoiceNumber}.pdf`;
+  return `INVOICE_${sanitizedClientName}_${formattedDate}_${sanitizedInvoiceNumber}.pdf`;
 };
 
 // Utility function to validate element before PDF generation

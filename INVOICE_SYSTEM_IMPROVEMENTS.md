@@ -6,16 +6,16 @@ This document outlines the comprehensive improvements made to the invoice PDF do
 ## 🎯 Requirements Implemented
 
 ### 1. Filename Formatting
-**Requirement**: Ensure downloaded PDF invoice filename follows the pattern `INVOICE_[CompanyName]_[CreationDate]_[InvoiceNumber].pdf`
+**Requirement**: Ensure downloaded PDF invoice filename follows the pattern `INVOICE_[ClientName]_[CreationDate]_[InvoiceNumber].pdf`
 
 **Implementation**:
 - ✅ Updated `generateFilename()` function in `src/lib/pdf-utils.ts`
-- ✅ Format: `INVOICE_[CompanyName]_[CreationDate]_[InvoiceNumber].pdf`
-- ✅ Company name sanitization for filesystem compatibility
+- ✅ Format: `INVOICE_[ClientName]_[CreationDate]_[InvoiceNumber].pdf`
+- ✅ Client name (PT client) sanitization for filesystem compatibility
 - ✅ Creation date formatted as YYYYMMDD
 - ✅ Invoice number properly sanitized
 
-**Example Output**: `INVOICE_PT-_VALPRO_INTERTECH_20241002_INV-20241002-0001.pdf`
+**Example Output**: `INVOICE_PT_EXAMPLE_CLIENT_20241002_INV-20241002-0001.pdf`
 
 ### 2. Sequential Invoice Numbering
 **Requirement**: Generate invoice numbers sequentially in descending order without gaps or duplication
@@ -138,11 +138,12 @@ export const generateFilename = (
   companyName?: string,
   creationDate?: string | Date
 ): string => {
-  const sanitizedCompanyName = sanitizeFilename(companyName || 'COMPANY');
+  // Use clientName (PT client) instead of companyName for the filename
+  const sanitizedClientName = sanitizeFilename(clientName || 'CLIENT');
   const sanitizedInvoiceNumber = sanitizeFilename(invoiceNumber || 'INV-001');
   const formattedDate = formatDateAsYYYYMMDD(creationDate || new Date());
   
-  return `INVOICE_${sanitizedCompanyName}_${formattedDate}_${sanitizedInvoiceNumber}.pdf`;
+  return `INVOICE_${sanitizedClientName}_${formattedDate}_${sanitizedInvoiceNumber}.pdf`;
 };
 ```
 

@@ -67,7 +67,8 @@ function generateFilename(prefix = 'invoice', clientName, invoiceNumber, company
       .slice(0, 120);
   };
 
-  const sanitizedCompanyName = companyName ? sanitizeFilename(companyName) : 'COMPANY';
+  // Use clientName (PT client) instead of companyName for the filename
+  const sanitizedClientName = clientName ? sanitizeFilename(clientName) : 'CLIENT';
   const sanitizedInvoiceNumber = invoiceNumber ? sanitizeFilename(invoiceNumber) : 'INV-001';
   
   let formattedDate;
@@ -85,7 +86,7 @@ function generateFilename(prefix = 'invoice', clientName, invoiceNumber, company
     formattedDate = `${year}${month}${day}`;
   }
   
-  return `INVOICE_${sanitizedCompanyName}_${formattedDate}_${sanitizedInvoiceNumber}.pdf`;
+  return `INVOICE_${sanitizedClientName}_${formattedDate}_${sanitizedInvoiceNumber}.pdf`;
 }
 
 async function runTests() {
