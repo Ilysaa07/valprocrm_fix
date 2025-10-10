@@ -58,6 +58,117 @@ export default function InvoicePreview({
   onDownload, 
   onPrint 
 }: InvoicePreviewProps) {
+  React.useEffect(() => {
+    // Atur print settings untuk odd pages only
+    const handleBeforePrint = () => {
+      const printSettings = {
+        shouldPrintPage: (pageNum: number) => pageNum % 2 === 1 // Only odd pages
+      };
+      // @ts-expect-error - Chrome WebView API
+      if (window.chrome?.webview) {
+        // @ts-expect-error - Chrome WebView API
+        window.chrome.webview.postMessage({ printSettings });
+      }
+    };
+    window.addEventListener('beforeprint', handleBeforePrint);
+
+    const style = document.createElement('style');
+    style.textContent = `
+      @page {
+        size: A4;
+        margin: 0;
+        padding: 0;
+      }
+      @media print {
+        @page {
+          size: A4 portrait;
+          margin: 0;
+        }
+        @page :right {
+          display: none;
+        }
+        html {
+          background-color: white;
+          margin: 0;
+          padding: 0;
+        }
+        body {
+          height: 260mm;
+          width: 210mm;
+          margin: 0 !important;
+          padding: 0 !important;
+          -webkit-print-color-adjust: exact !important;
+          print-color-adjust: exact !important;
+        }
+        div {
+          break-inside: avoid !important;
+          page-break-inside: avoid !important;
+        }
+        * {
+          margin: 0 !important;
+          padding: 0 !important;
+        }
+        #invoice-content {
+          padding: 3mm !important;
+          max-height: 260mm !important;
+          height: 260mm !important;
+          transform: scale(0.95) !important;
+          transform-origin: top center !important;
+          overflow: hidden !important;
+          position: relative !important;
+        }
+        .section-wide {
+          padding: 1.5mm !important;
+        }
+        table {
+          font-size: 9px !important;
+          margin-bottom: 2mm !important;
+        }
+        td, th {
+          padding: 0.5mm 1mm !important;
+          line-height: 1.1 !important;
+        }
+        h1 {
+          font-size: 14px !important;
+          line-height: 1.1 !important;
+          margin-bottom: 1mm !important;
+        }
+        h3 {
+          font-size: 11px !important;
+          line-height: 1.1 !important;
+          margin-bottom: 1mm !important;
+        }
+        p {
+          font-size: 9px !important;
+          line-height: 1.1 !important;
+          margin: 0 !important;
+        }
+        .space-y-0\\.5 > * + * {
+          margin-top: 0.5mm !important;
+        }
+        .space-y-2 > * + * {
+          margin-top: 1mm !important;
+        }
+        .gap-4 {
+          gap: 2mm !important;
+        }
+        .gap-6 {
+          gap: 3mm !important;
+        }
+        .mb-3 {
+          margin-bottom: 1mm !important;
+        }
+        .mb-2 {
+          margin-bottom: 0.5mm !important;
+        }
+      }
+    `;
+    document.head.appendChild(style);
+    return () => {
+      document.head.removeChild(style);
+    };
+  }, []);
+
   const [currentTime, setCurrentTime] = React.useState<Date>(new Date());
 
   React.useEffect(() => {
@@ -108,7 +219,11 @@ export default function InvoicePreview({
               Unduh PDF
             </button>
             <button
-              onClick={onPrint}
+              onClick={() => {
+                // Trigger print with custom settings
+                window.dispatchEvent(new Event('beforeprint'));
+                if (onPrint) onPrint();
+              }}
               className="px-4 py-2 text-white rounded-lg transition-colors flex items-center gap-2 hover:opacity-90"
               style={{ backgroundColor: '#042d63' }}
             >
@@ -124,14 +239,22 @@ export default function InvoicePreview({
       {/* Invoice Container - A4 Size */}
       <div 
         id="invoice-content"
-        className="relative bg-white shadow-lg mx-auto print:shadow-none print:mx-0 print-safe-top print-safe-bottom"
+        className="relative bg-white shadow-lg mx-auto print:shadow-none print:mx-0"
         style={{
           width: '210mm',
-          minHeight: '297mm',
+          height: '260mm',
           maxWidth: '100%',
-          maxHeight: 'none',
-          overflow: 'visible',
+          maxHeight: '260mm',
+          overflow: 'hidden',
           background: '#ffffff',
+          pageBreakAfter: 'avoid',
+          pageBreakBefore: 'avoid',
+          breakAfter: 'avoid',
+          breakBefore: 'avoid',
+          padding: '3mm',
+          boxSizing: 'border-box',
+          transform: 'scale(0.95)',
+          transformOrigin: 'top center'
         }}
       >
         {/* Watermark */}
@@ -152,13 +275,13 @@ export default function InvoicePreview({
           />
         </div>
         {/* Header */}
-        <div className="relative p-6 print:p-4 border-b border-gray-200 invoice-header section-wide" style={{ zIndex: 1 }}>
-          <div className="grid grid-cols-1 md:grid-cols-[1fr_260px] gap-4 items-start">
+        <div className="relative p-4 print:p-2 border-b border-gray-200 invoice-header section-wide" style={{ zIndex: 1 }}>
+          <div className="grid grid-cols-1 md:grid-cols-[1fr_260px] gap-2 items-start">
             {/* Branding */}
             <div className="flex items-start gap-3">
-              <Image src="/logo_invoice.png" alt="Logo Perusahaan" width={120} height={40} className="h-10 w-auto print:h-8 block self-center" />
-              <div>
-                <h1 className="text-2xl font-bold mb-1 print:text-xl tracking-wide" style={{ color: '#042d63' }}>{(data.companyName || '').replace('INTERTECH', 'INTER TECH')}</h1>
+              {/* <Image src="/logo_invoice.png" alt="Logo Perusahaan" width={120} height={40} className="h-10 w-auto print:h-8 block self-center" /> */}
+              <div style={{ minWidth: '350px' }}>
+                <h1 className="text-2xl font-bold mb-1 print:text-xl tracking-wide whitespace-nowrap" style={{ color: '#042d63' }}>{(data.companyName || '').replace('INTERTECH', 'INTER TECH')}</h1>
                 <div className="text-xs text-gray-600 space-y-0.5 print:text-xs">
                   <p className="font-medium" style={{ color: '#042d63' }}>Business Entity Partner</p>
                   <p>{data.companyAddress}</p>
@@ -193,8 +316,8 @@ export default function InvoicePreview({
         </div>
 
         {/* Ditagihkan Kepada */}
-        <div className="p-6 print:p-4 border-b border-gray-200 section-wide">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div className="p-4 print:p-2 border-b border-gray-200 section-wide">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
               <h3 className="text-base font-semibold mb-2 print:text-sm" style={{ color: '#042d63' }}>Ditagihkan Kepada:</h3>
               <div className="text-xs text-gray-600 space-y-0.5 print:text-xs">
@@ -208,35 +331,34 @@ export default function InvoicePreview({
         </div>
 
         {/* Items Table */}
-        <div className="px-6 py-6 print:px-0 print:py-4 section-wide">
+        <div className="px-4 py-4 print:px-0 print:py-2 section-wide">
           <div className="overflow-x-auto invoice-items-wrapper">
             <table className="w-full border-collapse table-fixed print:table-fixed mx-auto" style={{ tableLayout: 'fixed' }}>
               <colgroup>
-                {/* Use percentages to avoid overflow from cell padding/borders while keeping alignment */}
-                <col style={{ width: '58%' }} />
-                <col style={{ width: '10%' }} />
-                <col style={{ width: '16%' }} />
-                <col style={{ width: '16%' }} />
+                <col style={{ width: '50%' }} />
+                <col style={{ width: '12%' }} />
+                <col style={{ width: '19%' }} />
+                <col style={{ width: '19%' }} />
               </colgroup>
               <thead className="print:table-header-group">
-                <tr className="border-b-2 print:!bg-[#042d63]" style={{ borderColor: '#042d63', backgroundColor: '#042d63' }}>
-                  <th className="text-left py-2 px-1 font-semibold text-xs print:text-xs text-white">Deskripsi</th>
-                  <th className="text-center py-2 px-1 font-semibold text-xs print:text-xs text-white">Jumlah</th>
-                  <th className="text-center py-2 px-1 font-semibold text-xs print:text-xs text-white">Harga Satuan</th>
-                  <th className="text-center py-2 px-1 font-semibold text-xs print:text-xs text-white">Total</th>
+                <tr className="border-b print:!bg-[#042d63]" style={{ borderColor: '#042d63', backgroundColor: '#042d63' }}>
+                  <th className="text-left py-1 px-1 font-semibold text-[10px] print:text-[9px] text-white">Deskripsi</th>
+                  <th className="text-center py-1 px-1 font-semibold text-[10px] print:text-[9px] text-white">Jumlah</th>
+                  <th className="text-center py-1 px-1 font-semibold text-[10px] print:text-[9px] text-white">Harga Satuan</th>
+                  <th className="text-center py-1 px-1 font-semibold text-[10px] print:text-[9px] text-white">Total</th>
                 </tr>
               </thead>
               <tbody>
                 {data.items.map((item, index) => (
                   <tr key={item.id} className={`border-b align-top ${index % 2 === 0 ? 'bg-gray-50' : 'bg-white'} print:bg-white`} style={{ borderColor: '#e5e7eb' }}>
-                    <td className="py-2 px-1 text-xs text-gray-900 align-top print:text-xs">
-                      <div className="font-medium text-gray-900">{item.description}</div>
+                    <td className="py-1 px-1 text-[11px] text-gray-900 align-top print:text-[10px]">
+                      <div className="font-medium text-gray-900 leading-tight">{item.description}</div>
                       {item.subItems && item.subItems.length > 0 && (
-                        <ul className="mt-1 text-gray-700 list-disc ml-4 space-y-0.5">
+                        <ul className="mt-0.5 text-gray-700 list-disc ml-3 space-y-0">
                           {item.subItems.map((si, idx) => (
-                            <li key={idx} className="flex items-center gap-1">
+                            <li key={idx} className="flex items-center gap-1 leading-tight">
                               <span>{si.name}</span>
-                              <span className="text-xs text-gray-500">×{si.quantity}</span>
+                              <span className="text-[10px] text-gray-500">×{si.quantity}</span>
                             </li>
                           ))}
                         </ul>
@@ -339,25 +461,25 @@ export default function InvoicePreview({
 
         {/* Notes */}
         {data.notes && (
-          <div className="p-6 print:p-4 border-t border-gray-200 section-wide">
-            <h3 className="text-sm font-semibold mb-2 print:text-xs" style={{ color: '#042d63' }}>Catatan:</h3>
+          <div className="p-4 print:p-2 border-t border-gray-200 section-wide">
+            <h3 className="text-sm font-semibold mb-1 print:text-xs" style={{ color: '#042d63' }}>Catatan:</h3>
             <p className="text-xs text-gray-700 whitespace-pre-wrap print:text-xs">{data.notes}</p>
           </div>
         )}
 
         {/* Footer: Payment details (left) and contact (right) - refined */}
-        <div className="p-6 pt-4 print:p-4 border-t border-gray-200 section-wide" style={{ zIndex: 1, position: 'relative' }}>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-stretch">
+        <div className="p-4 pt-2 print:p-2 border-t border-gray-200 section-wide" style={{ zIndex: 1, position: 'relative' }}>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-stretch">
             {/* Payment details */}
-            <div className="bg-white rounded-md border border-gray-200 p-4 print:text-xs flex flex-col">
-              <div className="flex items-center gap-2 mb-3">
-                <span className="inline-block w-1 h-4 rounded-sm" style={{ backgroundColor: '#042d63' }}></span>
-                <h3 className="text-sm font-semibold print:text-xs tracking-wide" style={{ color: '#042d63' }}>Detail Pembayaran</h3>
+            <div className="bg-white rounded-md border border-gray-200 p-1.5 print:text-[9px] flex flex-col">
+              <div className="flex items-center gap-1 mb-1">
+                <span className="inline-block w-0.5 h-3 rounded-sm" style={{ backgroundColor: '#042d63' }}></span>
+                <h3 className="text-[11px] font-semibold print:text-[9px] tracking-wide" style={{ color: '#042d63' }}>Detail Pembayaran</h3>
               </div>
-              <div className="text-xs text-gray-800 space-y-2 print:text-xs">
-                <div className="grid grid-cols-[28px_1fr] items-center gap-2">
-                  <Image src="/BRI.png" alt="BRI" width={28} height={28} className="w-7 h-auto print:w-6 object-contain block" />
-                  <div className="flex items-baseline gap-2">
+              <div className="text-[10px] text-gray-800 space-y-1 print:text-[9px]">
+                <div className="grid grid-cols-[20px_1fr] items-center gap-1">
+                  <Image src="/BRI.png" alt="BRI" width={20} height={20} className="w-5 h-auto print:w-4 object-contain block" />
+                  <div className="flex items-baseline gap-1">
                     <span className="font-medium">BRI</span>
                     <span className="font-medium tabular-nums">2105 0100 0365 563</span>
                   </div>
@@ -376,23 +498,23 @@ export default function InvoicePreview({
             </div>
 
             {/* Contact */}
-            <div className="bg-white rounded-md border border-gray-200 p-4 print:text-xs md:justify-self-end w-full flex flex-col">
-              <div className="flex items-center gap-2 mb-3">
-                <span className="inline-block w-1 h-4 rounded-sm" style={{ backgroundColor: '#042d63' }}></span>
-                <h3 className="text-sm font-semibold print:text-xs tracking-wide" style={{ color: '#042d63' }}>Kontak</h3>
+            <div className="bg-white rounded-md border border-gray-200 p-1.5 print:text-[9px] md:justify-self-end w-full flex flex-col">
+              <div className="flex items-center gap-1 mb-1">
+                <span className="inline-block w-0.5 h-3 rounded-sm" style={{ backgroundColor: '#042d63' }}></span>
+                <h3 className="text-[11px] font-semibold print:text-[9px] tracking-wide" style={{ color: '#042d63' }}>Kontak</h3>
               </div>
-              <div className="text-xs text-gray-800 space-y-2 print:text-xs">
-                <div className="grid grid-cols-[18px_1fr] items-center gap-2">
-                  <Phone size={16} className="text-gray-700 shrink-0" />
-                  <span className="tracking-wide break-words">{data.companyPhone}</span>
+              <div className="text-[10px] text-gray-800 space-y-1 print:text-[9px]">
+                <div className="flex items-center gap-2">
+                  <Phone size={12} className="text-gray-700 shrink-0 min-w-[12px]" />
+                  <span className="tracking-wide break-words leading-tight">{data.companyPhone}</span>
                 </div>
-                <div className="grid grid-cols-[18px_1fr] items-center gap-2">
-                  <Mail size={16} className="text-gray-700 shrink-0" />
-                  <span className="tracking-wide break-words">{data.companyEmail}</span>
+                <div className="flex items-center gap-2">
+                  <Mail size={12} className="text-gray-700 shrink-0 min-w-[12px]" />
+                  <span className="tracking-wide break-words leading-tight">{data.companyEmail}</span>
                 </div>
-                <div className="grid grid-cols-[18px_1fr] items-center gap-2">
-                  <Globe size={16} className="text-gray-700 shrink-0" />
-                  <span className="tracking-wide break-words">www.valprointertech.com</span>
+                <div className="flex items-center gap-2">
+                  <Globe size={12} className="text-gray-700 shrink-0 min-w-[12px]" />
+                  <span className="tracking-wide break-words leading-tight">www.valprointertech.com</span>
                 </div>
               </div>
             </div>
@@ -400,14 +522,14 @@ export default function InvoicePreview({
         </div>
 
         {/* Realtime timestamp footer */}
-        <div className="px-6 pb-6 pt-2 print:px-4 print:pt-2 print:pb-4 section-wide">
-          <div className="text-[10px] text-gray-500 text-center border-t border-gray-200 pt-2">
+        <div className="px-4 pb-4 pt-1 print:px-2 print:pt-1 print:pb-2 section-wide">
+          <div className="text-[10px] text-gray-500 text-center border-t border-gray-200 pt-1">
             <span>
               Waktu cetak: {currentTime.toLocaleString('id-ID', { dateStyle: 'full', timeStyle: 'medium' })}
             </span>
             <span className="mx-2">•</span>
             <span>
-              Invoice ini dibuat secara otomatis oleh website ValproEMS.
+              Invoice ini dibuat secara otomatis oleh website Valpro EMS.
             </span>
           </div>
         </div>
